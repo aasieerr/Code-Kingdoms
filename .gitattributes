@@ -1,11 +1,29 @@
 * text=auto eol=lf
 
+# Laravel
 *.blade.php diff=html
+*.php diff=php
+
+# Frontend
+*.vue diff=html
+*.js diff=javascript
+*.ts diff=javascript
+
+# Estilos y markup
 *.css diff=css
 *.html diff=html
 *.md diff=markdown
-*.php diff=php
 
+# Binarios (no diff)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Export ignore
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
