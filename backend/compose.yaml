@@ -48,6 +48,22 @@ services:
                 - '--innodb_initialized'
             retries: 3
             timeout: 5s
+    keycloak:
+        image: quay.io/keycloak/keycloak:24.0
+        command: start-dev
+        environment:
+            KEYCLOAK_ADMIN: admin
+            KEYCLOAK_ADMIN_PASSWORD: admin
+            KC_DB: mariadb
+            KC_DB_URL: jdbc:mariadb://mariadb:3306/keycloak
+            KC_DB_USERNAME: '${DB_USERNAME}'
+            KC_DB_PASSWORD: '${DB_PASSWORD}'
+        ports:
+            - '8080:8080'
+        depends_on:
+            - mariadb
+        networks:
+            - sail
 networks:
     sail:
         driver: bridge
