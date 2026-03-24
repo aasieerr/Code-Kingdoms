@@ -7,6 +7,9 @@ use App\Http\Controllers\RaceController;
 use App\Http\Controllers\CharacterClassController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\NPCController;
+use App\Http\Controllers\CharacterController;
+use App\Http\Controllers\CharacterItemController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -26,3 +29,7 @@ Route::get('/classes/{classId}/skills', [SkillController::class, 'getByClass']);
 Route::get('/items', [ItemController::class, 'index']);
 Route::get('/items/{id}', [ItemController::class, 'show']);
 Route::get('/items/type/{type}', [ItemController::class, 'getByType']);
+Route::get('/npcs', [NPCController::class, 'index']);
+Route::get('/npcs/{id}', [NPCController::class, 'show']);
+Route::resource('characters', CharacterController::class);
+Route::resource('character-items', CharacterItemController::class);

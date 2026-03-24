@@ -28,5 +28,8 @@ class DatabaseSeeder extends Seeder
         $this->call(CharacterClassSeeder::class);
         $this->call(SkillSeeder::class);
         $this->call(ItemSeeder::class);
+        $this->call(NPCSeeder::class);
+        $this->call(CharacterSeeder::class);
+        $this->call(CharacterItemSeeder::class);
     }
 }
