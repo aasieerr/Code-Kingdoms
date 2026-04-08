@@ -56,7 +56,7 @@ services:
             KEYCLOAK_ADMIN_PASSWORD: admin
             KC_DB: mariadb
             KC_DB_URL: jdbc:mariadb://mariadb:3306/keycloak
-            KC_DB_USERNAME: '${DB_USERNAME}'
+            KC_DB_USERNAME: root
             KC_DB_PASSWORD: '${DB_PASSWORD}'
         ports:
             - '8080:8080'
