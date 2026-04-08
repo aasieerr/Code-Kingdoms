@@ -58,6 +58,8 @@ services:
             KC_DB_URL: jdbc:mariadb://mariadb:3306/keycloak
             KC_DB_USERNAME: root
             KC_DB_PASSWORD: '${DB_PASSWORD}'
+        volumes:
+            - ./keycloak-themes:/opt/keycloak/themes
         ports:
             - '8080:8080'
         depends_on:
