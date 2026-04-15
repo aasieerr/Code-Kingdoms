@@ -1,0 +1,101 @@
+services:
+
+  # ──────────────────────────────────────────────────────
+  # LARAVEL SAIL — usa exactamente el mismo setup que Sail
+  # ──────────────────────────────────────────────────────
+  laravel.test:
+    build:
+      context: './backend/vendor/laravel/sail/runtimes/8.5'
+      dockerfile: Dockerfile
+      args:
+        WWWGROUP: '${WWWGROUP:-1000}'
+        MYSQL_CLIENT: mariadb-client
+    image: 'sail-8.5/app'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${APP_PORT:-80}:80'
+    environment:
+      WWWUSER: '${WWWUSER:-1000}'
+      LARAVEL_SAIL: 1
+      XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+      XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+      IGNITION_LOCAL_SITES_PATH: '${PWD}'
+    volumes:
+      - './backend:/var/www/html'
+    networks:
+      - sail
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────
+  # MARIADB
+  # ──────────────────────────────────────────────────────
+  mariadb:
+    image: 'mariadb:11'
+    ports:
+      - '${FORWARD_DB_PORT:-3306}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-secret}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE:-laravel}'
+      MYSQL_USER: '${DB_USERNAME:-sail}'
+      MYSQL_PASSWORD: '${DB_PASSWORD:-secret}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - 'sail-mariadb:/var/lib/mysql'
+      - './backend/vendor/laravel/sail/database/mariadb/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+    networks:
+      - sail
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      retries: 3
+      timeout: 5s
+
+  # ──────────────────────────────────────────────────────
+  # KEYCLOAK
+  # ──────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: mariadb
+      KC_DB_URL: jdbc:mariadb://mariadb:3306/keycloak
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: '${DB_PASSWORD:-secret}'
+    volumes:
+      - './backend/keycloak-themes:/opt/keycloak/themes'
+    ports:
+      - '8080:8080'
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - sail
+
+  # ──────────────────────────────────────────────────────
+  # FRONTEND — Vue 3 + Vite
+  # ──────────────────────────────────────────────────────
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - './frontend:/app'
+    ports:
+      - '5173:5173'
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    networks:
+      - sail
+    depends_on:
+      - laravel.test
+
+networks:
+  sail:
+    driver: bridge
+
+volumes:
+  sail-mariadb:
+    driver: local
