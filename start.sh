@@ -14,7 +14,7 @@ echo ""
 # ── 1. Instalar dependencias PHP si no existe vendor ──────────────────────────
 if [ ! -d "backend/vendor" ]; then
   echo -e "${YELLOW}📦 Instalando dependencias PHP (composer install)...${NC}"
-  docker run --rm \
+  MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd)/backend:/app" \
     -w /app \
     composer:latest \
@@ -27,14 +27,13 @@ if [ ! -f "backend/.env" ]; then
   echo -e "${YELLOW}⚙  Creando backend/.env...${NC}"
   cp backend/.env.example backend/.env
 
-  # Cambiar SQLite → MySQL y apuntar al contenedor mariadb
   sed -i 's/^DB_CONNECTION=sqlite/DB_CONNECTION=mariadb/' backend/.env
-  sed -i 's/^# DB_HOST=127.0.0.1/DB_HOST=127.0.0.1/'     backend/.env
-  sed -i 's/^# DB_PORT=3306/DB_PORT=3306/'             backend/.env
+  sed -i 's/^# DB_HOST=127.0.0.1/DB_HOST=mariadb/'       backend/.env
+  sed -i 's/^# DB_PORT=3306/DB_PORT=3306/'                backend/.env
   sed -i 's/^# DB_DATABASE=laravel/DB_DATABASE=codekingdomsdb/' backend/.env
-  sed -i 's/^# DB_USERNAME=root/DB_USERNAME=sail/'      backend/.env
-  sed -i 's/^# DB_PASSWORD=/DB_PASSWORD=password/'        backend/.env
-  sed -i 's/^# FORWARD_DB_PORT=33060'             backend/.env
+  sed -i 's/^# DB_USERNAME=root/DB_USERNAME=sail/'         backend/.env
+  sed -i 's/^# DB_PASSWORD=/DB_PASSWORD=password/'         backend/.env
+  sed -i 's/^# FORWARD_DB_PORT=3306/FORWARD_DB_PORT=3306/' backend/.env
 
   echo -e "${GREEN}✓ backend/.env creado${NC}"
 fi
@@ -44,8 +43,8 @@ echo ""
 echo -e "${YELLOW}🐳 Arrancando contenedores...${NC}"
 docker compose up -d
 
-# ── 4. Esperar a que Laravel esté listo ──────────────────────────────────────
-echo -e "${YELLOW}⏳ Esperando a que Laravel arranque...${NC}"
+# ── 4. Esperar a que Laravel este listo ──────────────────────────────────────
+echo -e "${YELLOW}Esperando a que Laravel arranque...${NC}"
 sleep 10
 
 # ── 5. Generar APP_KEY ────────────────────────────────────────────────────────
