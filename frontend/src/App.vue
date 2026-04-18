@@ -6,4 +6,19 @@ import { RouterView } from 'vue-router'
   <router-view />
 </template>
 
-<style scoped></style>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none; 
+  user-select: none; 
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+</style>

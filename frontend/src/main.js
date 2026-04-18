@@ -22,10 +22,7 @@ keycloak.init({
     return
   }
 
-  // Limpiar los parámetros OAuth de la URL (state, code, session_state, iss)
-  // que Keycloak deja tras el redirect de autenticación
   const cleanUrl = window.location.origin + window.location.pathname
-
   window.history.replaceState({}, document.title, cleanUrl)
 
   const app = createApp(App)
@@ -36,12 +33,10 @@ keycloak.init({
   app.provide('keycloak', keycloak)
   app.mount('#app')
 
-  // Pinia ya está activa después del mount, ahora sí se puede usar
   const authStore = useAuthStore()
   authStore.setSession(keycloak)
   setAuthToken(keycloak.token)
 
-  // Renovar token automáticamente antes de que expire
   setInterval(() => {
     keycloak.updateToken(30).then((refreshed) => {
       if (refreshed) {
@@ -53,4 +48,16 @@ keycloak.init({
 
 }).catch(() => {
   console.error('Error al conectar con Keycloak')
+})
+
+window.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) {
+    e.preventDefault()
+  }
+}, { passive: false })
+
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+    e.preventDefault()
+  }
 })

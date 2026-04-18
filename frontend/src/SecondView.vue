@@ -1,10 +1,16 @@
 <template>
-  <div class="viewport" ref="arenaRef" tabindex="0"
+  <div
+    class="viewport"
+    ref="arenaRef"
+    tabindex="0"
     @click="arenaRef.focus()"
     @focus="focused = true"
     @blur="focused = false"
   >
-    <div class="world" :style="{ transform: cameraTransform }">
+    <div
+      class="world"
+      :style="{ transform: cameraTransform }"
+    >
       <div class="grid"></div>
 
       <div
@@ -15,11 +21,8 @@
           background: moving ? '#f5a623' : '#e94560',
         }"
       ></div>
-
     </div>
-
     <div class="fade-overlay" :class="{ active: isFading }"></div>
-
   </div>
 </template>
 
@@ -30,13 +33,13 @@ import { useWasd } from './components/controlChar'
 import { lastTransition } from './gameState'
 
 const router = useRouter()
-const isFading = ref(lastTransition.value === 'second-to-main')
-const startY = lastTransition.value === 'second-to-main' ? 2050 : 1000
+const isFading = ref(lastTransition.value === 'main-to-second')
+const startY = lastTransition.value === 'main-to-second' ? -50 : 10
 
 const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
 
 onMounted(() => {
-  if (lastTransition.value === 'second-to-main') {
+  if (lastTransition.value === 'main-to-second') {
     locked.value = true
     moving.value = true
     
@@ -45,8 +48,8 @@ onMounted(() => {
     }, 50)
     
     const enterLoop = () => {
-      y.value -= 4
-      if (y.value <= 1950) {
+      y.value += 4
+      if (y.value >= 10) {
         locked.value = false
         moving.value = false
         lastTransition.value = null
@@ -61,18 +64,16 @@ onMounted(() => {
 })
 
 watch([x, y], ([newX, newY]) => {
-  const WORLD_HEIGHT = 2000
-  const PLAYER_SIZE = 40
-  if (!locked.value && newY >= WORLD_HEIGHT - PLAYER_SIZE && newX > 800 && newX < 1200) {
+  if (!locked.value && newY <= 0 && newX > 800 && newX < 1200) {
     locked.value = true
     moving.value = true
     isFading.value = true
     
     const exitLoop = () => {
-      y.value += 4
-      if (y.value >= WORLD_HEIGHT + 60) {
-        lastTransition.value = 'main-to-second'
-        router.push({ name: 'SecondGame' })
+      y.value -= 4
+      if (y.value <= -60) {
+        lastTransition.value = 'second-to-main'
+        router.push({ name: 'Game' })
       } else {
         requestAnimationFrame(exitLoop)
       }
