@@ -12,11 +12,21 @@ const keycloak = new Keycloak({
   clientId: 'vue-frontend',
 })
 
-keycloak.init({ onLoad: 'login-required' }).then((authenticated) => {
+keycloak.init({
+  onLoad: 'login-required',
+  checkLoginIframe: false,
+  pkceMethod: 'S256',
+}).then((authenticated) => {
   if (!authenticated) {
     window.location.reload()
     return
   }
+
+  // Limpiar los parámetros OAuth de la URL (state, code, session_state, iss)
+  // que Keycloak deja tras el redirect de autenticación
+  const cleanUrl = window.location.origin + window.location.pathname
+
+  window.history.replaceState({}, document.title, cleanUrl)
 
   const app = createApp(App)
   const pinia = createPinia()
