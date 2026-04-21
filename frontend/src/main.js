@@ -12,15 +12,15 @@ const keycloak = new Keycloak({
   clientId: 'vue-frontend',
 })
 
-keycloak.init({
-  onLoad: 'login-required',
-  checkLoginIframe: false,
-  pkceMethod: 'S256',
-}).then((authenticated) => {
-  if (!authenticated) {
-    window.location.reload()
-    return
-  }
+// keycloak.init({
+//   onLoad: 'login-required',
+//   checkLoginIframe: false,
+//   pkceMethod: 'S256',
+// }).then((authenticated) => {
+//   if (!authenticated) {
+//     window.location.reload()
+//     return
+//   }
 
   const cleanUrl = window.location.origin + window.location.pathname
   window.history.replaceState({}, document.title, cleanUrl)
@@ -46,9 +46,9 @@ keycloak.init({
     })
   }, 10000)
 
-}).catch(() => {
-  console.error('Error al conectar con Keycloak')
-})
+// }).catch(() => {
+//   console.error('Error al conectar con Keycloak')
+// })
 
 window.addEventListener('wheel', (e) => {
   if (e.ctrlKey) {
