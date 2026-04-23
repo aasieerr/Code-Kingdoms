@@ -25,10 +25,10 @@ class CharacterItemController extends Controller
         $characterItems->transform(function ($ci) {
             if ($ci->item) {
                 $ci->item->details = match ($ci->item->type) {
-                    'weapon'     => $ci->item->weapon,
-                    'armor'      => $ci->item->armor,
+                    'weapon' => $ci->item->weapon,
+                    'armor' => $ci->item->armor,
                     'consumable' => $ci->item->consumable,
-                    default      => null,
+                    default => null,
                 };
             }
             return $ci;

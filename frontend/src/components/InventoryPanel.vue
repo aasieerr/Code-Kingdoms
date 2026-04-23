@@ -1,7 +1,10 @@
 <template>
   <section class="character-panel" @click.stop>
     <header class="panel-header">
-      <h2>Inventario</h2>
+      <div class="panel-tabs">
+        <button class="tab-btn active">Inventario</button>
+        <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
+      </div>
       <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
@@ -41,31 +44,39 @@
     <div v-else class="inventory-grid">
       <ul class="item-list">
         <li
-          v-for="item in filteredItems"
-          :key="item.id_item"
-          :class="{ selected: selectedItem?.id_item === item.id_item }"
-          @click="selectedItem = item"
+          v-for="ci in filteredItems"
+          :key="ci.id"
+          :class="{ selected: selectedItem?.id === ci.id }"
+          @click="selectedItem = ci"
         >
-          <span class="item-icon">{{ spriteByType[item.type] }}</span>
+          <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
           <div>
-            <p class="item-name">{{ item.name }}</p>
-            <p class="item-type">{{ labelsByType[item.type] }}</p>
+            <p class="item-name">{{ ci.item.name }} <span v-if="ci.is_equipped">(E)</span></p>
+            <p class="item-type">{{ labelsByType[ci.item.type] }} · x{{ ci.quantity }}</p>
           </div>
         </li>
       </ul>
 
-      <article class="item-preview" v-if="selectedItem">
-        <div class="sprite-box">{{ spriteByType[selectedItem.type] }}</div>
-        <h3>{{ selectedItem.name }}</h3>
-        <p>{{ selectedItem.description }}</p>
+      <article class="item-preview" v-if="selectedItem?.item">
+        <div class="sprite-box">{{ spriteByType[selectedItem.item.type] }}</div>
+        <h3>{{ selectedItem.item.name }}</h3>
+        <p>{{ selectedItem.item.description }}</p>
         <ul class="item-stats">
-          <li v-if="selectedItem.type === 'weapon'">Daño: {{ selectedItem.details?.damage ?? '-' }}</li>
-          <li v-if="selectedItem.type === 'weapon'">Tipo: {{ selectedItem.details?.weapon_type ?? '-' }}</li>
-          <li v-if="selectedItem.type === 'armor'">Defensa: {{ selectedItem.details?.defense ?? '-' }}</li>
-          <li v-if="selectedItem.type === 'armor'">Clase: {{ selectedItem.details?.armor_type ?? '-' }}</li>
-          <li v-if="selectedItem.type === 'consumable'">Efecto: {{ selectedItem.details?.effect ?? '-' }}</li>
-          <li v-if="selectedItem.type === 'consumable'">Potencia: {{ selectedItem.details?.power ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'weapon'">Daño: {{ selectedItem.item.details?.damage ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'weapon'">Tipo: {{ selectedItem.item.details?.weapon_type ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'armor'">Defensa: {{ selectedItem.item.details?.defense ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'armor'">Clase: {{ selectedItem.item.details?.armor_type ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'consumable'">Efecto: {{ selectedItem.item.details?.effect ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'consumable'">Potencia: {{ selectedItem.item.details?.power ?? '-' }}</li>
         </ul>
+        <button 
+          v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
+          class="equip-btn" 
+          @click="handleEquip(selectedItem)"
+          :disabled="toggling"
+        >
+          {{ toggling ? 'Cargando...' : (selectedItem.is_equipped ? 'Desequipar' : 'Equipar') }}
+        </button>
       </article>
     </div>
   </section>
@@ -73,9 +84,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchItems } from '../api/inventario'
+import { fetchItems, fetchCharacterItems, toggleEquipItem } from '../api/inventario'
 
-defineEmits(['close'])
+defineEmits(['close', 'switch-panel'])
 
 const LABELS = { weapon: 'Arma', armor: 'Armadura', consumable: 'Consumible' }
 const SPRITES = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
@@ -95,10 +106,11 @@ const selectedItem = ref(null)
 const activeFilter = ref('all')
 const loading = ref(false)
 const error = ref(null)
+const toggling = ref(false)
 
 const filteredItems = computed(() => {
   if (activeFilter.value === 'all') return items.value
-  return items.value.filter((item) => item.type === activeFilter.value)
+  return items.value.filter((ci) => ci.item?.type === activeFilter.value)
 })
 
 async function load() {
@@ -106,15 +118,72 @@ async function load() {
   error.value = null
   selectedItem.value = null
   try {
-    items.value = await fetchItems()
+    const [allCatalogItems, myCharacterItems] = await Promise.all([
+      fetchItems(),
+      fetchCharacterItems() // Hardcodeado internamente en api para el personaje
+    ])
+
+    // Cruzar los datos: Para cada item del catálogo, vemos si el personaje ya lo tiene
+    const mergedList = allCatalogItems.map(catalogItem => {
+      // ¿Lo tiene el personaje?
+      const owned = myCharacterItems.find(ci => ci.item?.id_item === catalogItem.id_item)
+      if (owned) {
+        return owned // Devolvemos el CharacterItem real
+      } else {
+        // "Fingimos" un characterItem no equipado para que se pueda mostrar en el UI
+        return {
+          id: null,
+          id_item: catalogItem.id_item,
+          quantity: 0,
+          is_equipped: false,
+          item: catalogItem
+        }
+      }
+    })
+
+    items.value = mergedList
     if (items.value.length > 0) selectedItem.value = items.value[0]
   } catch (err) {
     items.value = []
+    console.error(err)
     error.value =
       err?.response?.data?.message ??
       'No se pudo conectar con el servidor. Asegúrate de que el backend está activo.'
   } finally {
     loading.value = false
+  }
+}
+
+async function handleEquip(ci) {
+  if (toggling.value) return
+  toggling.value = true
+  try {
+    if (!ci.is_equipped) {
+      const type = ci.item.type
+      const toUnequip = items.value.filter(x => x.is_equipped && x.item?.type === type && x.id && x.id !== ci.id)
+      for (const u of toUnequip) {
+        await toggleEquipItem(u.id, false)
+        u.is_equipped = false
+      }
+      
+      // Si el id es null, es que es un objeto del catálogo que aún no tenemos. 
+      // El 3er parámetro le dice a toggleEquipItem que cree uno nuevo.
+      const responseData = await toggleEquipItem(ci.id, true, ci.item.id_item)
+      
+      ci.id = ci.id || responseData.id
+      ci.is_equipped = true
+      ci.quantity = Math.max(1, ci.quantity)
+    } else {
+      await toggleEquipItem(ci.id, false)
+      ci.is_equipped = false
+    }
+  } catch (err) {
+    console.error("Error al equipar/desequipar", err)
+  } finally {
+    toggling.value = false
+    const currentIdItem = selectedItem.value?.item?.id_item
+    await load()
+    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
   }
 }
 
@@ -144,6 +213,12 @@ onMounted(load)
   justify-content: space-between;
   align-items: center;
 }
+.panel-tabs { display: flex; gap: 8px; }
+.tab-btn {
+  border: 2px solid #0f1518; background: #455a64; color: #e9eef0;
+  padding: 8px 12px; font-size: 10px; cursor: pointer; font-family: inherit;
+}
+.tab-btn.active { background: #8bc34a; color: #17210f; }
 .panel-header h2 { font-size: 14px; margin: 0; }
 .close-btn {
   width: 34px;
@@ -226,6 +301,12 @@ onMounted(load)
 }
 .item-preview h3 { margin: 0 0 8px; font-size: 12px; }
 .item-preview p { margin: 0 0 8px; line-height: 1.45; font-size: 10px; }
-.item-stats { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.item-stats { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;}
 .item-stats li { font-size: 10px; }
+.equip-btn {
+  width: 100%; border: 2px solid #0f1518; background: #c9b27a;
+  color: #1f1f1f; padding: 10px; font-size: 10px; cursor: pointer; font-family: inherit; font-weight: bold;
+}
+.equip-btn:hover:not(:disabled) { background: #e3cc8d; }
+.equip-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

@@ -37,12 +37,14 @@
     <InventoryPanel
       v-if="showPanel === 'inventory'"
       @close="showPanel = null"
+      @switch-panel="openPanel"
     />
 
     <!-- Panel equipo -->
     <EquipmentPanel
       v-if="showPanel === 'equipment'"
       @close="showPanel = null"
+      @switch-panel="openPanel"
     />
 
     <!-- Mapa -->

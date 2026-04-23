@@ -20,3 +20,27 @@ export async function fetchCharacterItems(characterId) {
   })
   return Array.isArray(data) ? data : []
 }
+
+/**
+ * Cambia el estado de equipamiento de un item para un personaje.
+ * @param {number|null} id - ID del character_item (si existe)
+ * @param {boolean} equip - true para equipar, false para desequipar
+ * @param {number} [id_item] - ID del item base (solo si se va a crear por primera vez)
+ */
+export async function toggleEquipItem(id, equip, id_item = null) {
+  if (!id && equip && id_item) {
+    // Si no existía en el inventario del jugador, lo creamos directamente equipado
+    const { data } = await api.post(`/character-items`, {
+      id_character: 1, // Hardcodeado temporalmente para pruebas sin token
+      id_item: id_item,
+      quantity: 1,
+      is_equipped: true
+    })
+    return data
+  }
+
+  const { data } = await api.put(`/character-items/${id}`, {
+    is_equipped: equip
+  })
+  return data
+}

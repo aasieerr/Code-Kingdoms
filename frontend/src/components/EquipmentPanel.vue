@@ -1,7 +1,10 @@
 <template>
   <section class="character-panel" @click.stop>
     <header class="panel-header">
-      <h2>Equipo</h2>
+      <div class="panel-tabs">
+        <button class="tab-btn" @click="$emit('switch-panel', 'inventory')">Inventario</button>
+        <button class="tab-btn active">Equipo</button>
+      </div>
       <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
@@ -86,7 +89,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { fetchCharacterItems } from '../api/inventario'
 
-defineEmits(['close'])
+defineEmits(['close', 'switch-panel'])
 
 const LABELS  = { weapon: 'Arma', armor: 'Armadura', consumable: 'Consumible' }
 const SPRITES = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
@@ -163,6 +166,12 @@ onMounted(load)
   gap: 12px;
 }
 .panel-header { display: flex; justify-content: space-between; align-items: center; }
+.panel-tabs { display: flex; gap: 8px; }
+.tab-btn {
+  border: 2px solid #0f1518; background: #455a64; color: #e9eef0;
+  padding: 8px 12px; font-size: 10px; cursor: pointer; font-family: inherit;
+}
+.tab-btn.active { background: #8bc34a; color: #17210f; }
 .panel-header h2 { font-size: 14px; margin: 0; }
 .close-btn {
   width: 34px; height: 34px;

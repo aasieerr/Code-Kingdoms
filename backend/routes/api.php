@@ -28,6 +28,8 @@ Route::get('/npcs/{id}', [NPCController::class, 'show']);
 // TODO: mover de vuelta al grupo protegido cuando se active la autenticación
 Route::get('/character-items', [CharacterItemController::class, 'index']);
 Route::get('/character-items/{id}', [CharacterItemController::class, 'show']);
+Route::post('/character-items', [CharacterItemController::class, 'store']); // Agregado PÚBLICO para probar el Equipar desde 0
+Route::put('/character-items/{id}', [CharacterItemController::class, 'update']); // Agregado PÚBLICO para probar el Equipar sin token
 
 // GET /api/characters (público mientras Keycloak está deshabilitado en el front)
 Route::get('/characters', [CharacterController::class, 'index']);
@@ -40,9 +42,8 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/characters/{id}', [CharacterController::class, 'update']);
     Route::patch('/characters/{id}', [CharacterController::class, 'update']);
     Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
-    // Character-items — escritura
-    Route::post('/character-items', [CharacterItemController::class, 'store']);
-    Route::put('/character-items/{id}', [CharacterItemController::class, 'update']);
+    
+    // Character-items — escritura (temporalmente movido store y update a público)
     Route::patch('/character-items/{id}', [CharacterItemController::class, 'update']);
     Route::delete('/character-items/{id}', [CharacterItemController::class, 'destroy']);
 });
