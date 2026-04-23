@@ -9,10 +9,32 @@ class CharacterItemController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * Acepta ?id_character=X para filtrar por personaje.
+     * Cada entrada incluye el item con sus detalles específicos.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(CharacterItem::all());
+        $query = CharacterItem::with(['item.weapon', 'item.armor', 'item.consumable']);
+
+        if ($request->has('id_character')) {
+            $query->where('id_character', $request->input('id_character'));
+        }
+
+        $characterItems = $query->get();
+
+        $characterItems->transform(function ($ci) {
+            if ($ci->item) {
+                $ci->item->details = match ($ci->item->type) {
+                    'weapon'     => $ci->item->weapon,
+                    'armor'      => $ci->item->armor,
+                    'consumable' => $ci->item->consumable,
+                    default      => null,
+                };
+            }
+            return $ci;
+        });
+
+        return response()->json($characterItems);
     }
 
     /**

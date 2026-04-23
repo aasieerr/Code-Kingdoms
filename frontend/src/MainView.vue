@@ -54,7 +54,27 @@
           </button>
         </div>
 
-        <div class="inventory-grid">
+        <!-- Estado: cargando -->
+        <div v-if="itemsLoading" class="inventory-status">
+          <span class="status-icon">⏳</span>
+          <p>Cargando inventario...</p>
+        </div>
+
+        <!-- Estado: error -->
+        <div v-else-if="itemsError" class="inventory-status error">
+          <span class="status-icon">⚠</span>
+          <p>{{ itemsError }}</p>
+          <button class="filter-btn" @click="loadItems">Reintentar</button>
+        </div>
+
+        <!-- Estado: sin items -->
+        <div v-else-if="filteredItems.length === 0" class="inventory-status">
+          <span class="status-icon">📦</span>
+          <p>No hay items de este tipo.</p>
+        </div>
+
+        <!-- Estado: datos del backend -->
+        <div v-else class="inventory-grid">
           <ul class="item-list">
             <li
               v-for="item in filteredItems"
@@ -140,6 +160,8 @@ const activePanelTab = ref('inventory')
 const items = ref([])
 const selectedItem = ref(null)
 const activeFilter = ref('all')
+const itemsLoading = ref(false)
+const itemsError = ref(null)
 
 const labelsByType = { weapon: 'Arma', armor: 'Armadura', consumable: 'Consumible' }
 const spriteByType = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
@@ -179,17 +201,21 @@ function toggleMapPanel() {
 }
 
 async function loadItems() {
+  itemsLoading.value = true
+  itemsError.value = null
+  selectedItem.value = null
   try {
     const { data } = await api.get('/items')
     items.value = Array.isArray(data) ? data : []
-  } catch {
-    items.value = [
-      { id_item: 'fallback-1', name: 'Espada del Guerrero', description: 'Ejemplo local mientras el backend no responde.', type: 'weapon', details: { damage: 35, weapon_type: 'espada' } },
-      { id_item: 'fallback-2', name: 'Armadura de Placas', description: 'Ejemplo local mientras el backend no responde.', type: 'armor', details: { defense: 25, armor_type: 'armadura_pesada' } },
-      { id_item: 'fallback-3', name: 'Pocion de Curacion', description: 'Ejemplo local mientras el backend no responde.', type: 'consumable', details: { effect: 'heal', power: 75 } },
-    ]
+    if (items.value.length > 0) selectedItem.value = items.value[0]
+  } catch (err) {
+    items.value = []
+    itemsError.value =
+      err?.response?.data?.message ??
+      'No se pudo conectar con el servidor. Asegúrate de que el backend está activo.'
+  } finally {
+    itemsLoading.value = false
   }
-  if (items.value.length > 0) selectedItem.value = items.value[0]
 }
 
 onMounted(() => {
@@ -272,6 +298,9 @@ const cameraTransform = computed(() => {
 .hud-btn.logout { margin-top: 8px; background: #8f3b2c; color: #f7ebd0; }
 .character-panel,.map-panel { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(920px, 92vw); min-height: 520px; z-index: 45; border: 5px solid #1f1f1f; background: linear-gradient(180deg, #263238 0%, #1b2529 100%); box-shadow: 0 0 0 5px #607d8b, 12px 12px 0 rgba(0,0,0,.5); color: #f5f5f5; padding: 16px; }
 .panel-header,.map-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.inventory-status { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 200px; border: 3px solid #111; background: #2a373d; padding: 20px; text-align: center; font-size: 10px; color: #b0bec5; }
+.inventory-status.error { color: #ef9a9a; border-color: #b71c1c; background: #1a1a2a; }
+.status-icon { font-size: 32px; }
 .panel-header h2,.map-header h3 { font-size: 14px; margin: 0; }
 .close-btn { width: 34px; height: 34px; border: 2px solid #0f1518; background: #b74a3c; color: #fff7e6; cursor: pointer; }
 .panel-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
