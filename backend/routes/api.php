@@ -29,10 +29,18 @@ Route::get('/npcs/{id}', [NPCController::class, 'show']);
 Route::get('/character-items', [CharacterItemController::class, 'index']);
 Route::get('/character-items/{id}', [CharacterItemController::class, 'show']);
 
-// Rutas protegidas con Keycloak
+// GET /api/characters (público mientras Keycloak está deshabilitado en el front)
+Route::get('/characters', [CharacterController::class, 'index']);
+Route::get('/characters/{id}', [CharacterController::class, 'show']);
+
+// Rutas protegidas con Keycloak (escritura)
 Route::middleware('auth:api')->group(function () {
-    Route::resource('characters', CharacterController::class);
-    // character-items de escritura siguen protegidas
+    // Characters — escritura
+    Route::post('/characters', [CharacterController::class, 'store']);
+    Route::put('/characters/{id}', [CharacterController::class, 'update']);
+    Route::patch('/characters/{id}', [CharacterController::class, 'update']);
+    Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
+    // Character-items — escritura
     Route::post('/character-items', [CharacterItemController::class, 'store']);
     Route::put('/character-items/{id}', [CharacterItemController::class, 'update']);
     Route::patch('/character-items/{id}', [CharacterItemController::class, 'update']);
