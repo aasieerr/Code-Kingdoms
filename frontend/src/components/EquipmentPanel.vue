@@ -87,7 +87,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchCharacterItems } from '../api/inventario'
+import {
+  equippedItems as globalEquippedItems,
+  isInventoryLoading,
+  lastInventoryError,
+  fetchInventoryData
+} from '../api/inventario'
 
 defineEmits(['close', 'switch-panel'])
 
@@ -102,49 +107,36 @@ const SLOTS = [
   { key: 'shield', label: 'Escudo',  css: 'shield' },
 ]
 
-const equippedItems = ref([])
 const selectedItem  = ref(null)
-const loading       = ref(false)
-const error         = ref(null)
+
+const loading = isInventoryLoading
+const error = lastInventoryError
+const equippedItems = globalEquippedItems
 
 // Mapea cada slot-key al character-item que ocupa ese slot
 const equippedMap = computed(() => {
   const map = {}
   for (const ci of equippedItems.value) {
     const type      = ci.item?.type
-    const armorType = ci.item?.details?.armor_type ?? ''
+    const armorType = (ci.item?.details?.armor_type ?? '').toLowerCase()
     if (type === 'weapon') {
       map['weapon'] = ci
     } else if (type === 'armor') {
       if (armorType.includes('cabeza') || armorType.includes('head')) map['head']  = ci
       else if (armorType.includes('pierna') || armorType.includes('leg'))  map['legs']  = ci
+      else if (armorType.includes('escudo') || armorType.includes('shield')) map['shield'] = ci
       else map['chest'] = ci
     }
   }
   return map
 })
 
-async function load() {
-  loading.value    = true
-  error.value      = null
-  selectedItem.value = null
-  try {
-    // Filtra solo los que están equipados
-    // TODO: cuando Keycloak esté activo, pasar el id del personaje del usuario
-    const all = await fetchCharacterItems()
-    equippedItems.value = all.filter((ci) => ci.is_equipped)
-    if (equippedItems.value.length > 0) selectedItem.value = equippedItems.value[0]
-  } catch (err) {
-    equippedItems.value = []
-    error.value =
-      err?.response?.data?.message ??
-      'No se pudo cargar el equipo. Asegúrate de que el backend está activo.'
-  } finally {
-    loading.value = false
+onMounted(async () => {
+  await fetchInventoryData()
+  if (!selectedItem.value && equippedItems.value.length > 0) {
+    selectedItem.value = equippedItems.value[0]
   }
-}
-
-onMounted(load)
+})
 </script>
 
 <style scoped>

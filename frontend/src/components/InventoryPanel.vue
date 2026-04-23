@@ -45,8 +45,8 @@
       <ul class="item-list">
         <li
           v-for="ci in filteredItems"
-          :key="ci.id"
-          :class="{ selected: selectedItem?.id === ci.id }"
+          :key="ci.item.id_item"
+          :class="{ selected: selectedItem?.item?.id_item === ci.item.id_item }"
           @click="selectedItem = ci"
         >
           <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
@@ -64,10 +64,15 @@
         <ul class="item-stats">
           <li v-if="selectedItem.item.type === 'weapon'">Daño: {{ selectedItem.item.details?.damage ?? '-' }}</li>
           <li v-if="selectedItem.item.type === 'weapon'">Tipo: {{ selectedItem.item.details?.weapon_type ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'weapon'">Durabilidad: {{ selectedItem.item.details?.durability ?? '-' }}</li>
+          
           <li v-if="selectedItem.item.type === 'armor'">Defensa: {{ selectedItem.item.details?.defense ?? '-' }}</li>
           <li v-if="selectedItem.item.type === 'armor'">Clase: {{ selectedItem.item.details?.armor_type ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'armor'">Durabilidad: {{ selectedItem.item.details?.durability ?? '-' }}</li>
+          
           <li v-if="selectedItem.item.type === 'consumable'">Efecto: {{ selectedItem.item.details?.effect ?? '-' }}</li>
           <li v-if="selectedItem.item.type === 'consumable'">Potencia: {{ selectedItem.item.details?.power ?? '-' }}</li>
+          <li v-if="selectedItem.item.type === 'consumable'">Duración: {{ selectedItem.item.details?.duration ?? '-' }}</li>
         </ul>
         <button 
           v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
@@ -84,7 +89,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { fetchItems, fetchCharacterItems, toggleEquipItem } from '../api/inventario'
+import {
+  mergedInventoryItems,
+  isInventoryLoading,
+  lastInventoryError,
+  fetchInventoryData,
+  toggleEquipItem
+} from '../api/inventario'
 
 defineEmits(['close', 'switch-panel'])
 
@@ -101,57 +112,38 @@ const filterTypes = [
   { value: 'consumable',label: 'Consumibles' },
 ]
 
-const items = ref([])
 const selectedItem = ref(null)
 const activeFilter = ref('all')
-const loading = ref(false)
-const error = ref(null)
 const toggling = ref(false)
+
+// Se exponen directamente los refs globales al template
+const loading = isInventoryLoading
+const error = lastInventoryError
+const items = mergedInventoryItems
 
 const filteredItems = computed(() => {
   if (activeFilter.value === 'all') return items.value
   return items.value.filter((ci) => ci.item?.type === activeFilter.value)
 })
 
-async function load() {
-  loading.value = true
-  error.value = null
-  selectedItem.value = null
-  try {
-    const [allCatalogItems, myCharacterItems] = await Promise.all([
-      fetchItems(),
-      fetchCharacterItems() // Hardcodeado internamente en api para el personaje
-    ])
-
-    // Cruzar los datos: Para cada item del catálogo, vemos si el personaje ya lo tiene
-    const mergedList = allCatalogItems.map(catalogItem => {
-      // ¿Lo tiene el personaje?
-      const owned = myCharacterItems.find(ci => ci.item?.id_item === catalogItem.id_item)
-      if (owned) {
-        return owned // Devolvemos el CharacterItem real
-      } else {
-        // "Fingimos" un characterItem no equipado para que se pueda mostrar en el UI
-        return {
-          id: null,
-          id_item: catalogItem.id_item,
-          quantity: 0,
-          is_equipped: false,
-          item: catalogItem
-        }
-      }
-    })
-
-    items.value = mergedList
-    if (items.value.length > 0) selectedItem.value = items.value[0]
-  } catch (err) {
-    items.value = []
-    console.error(err)
-    error.value =
-      err?.response?.data?.message ??
-      'No se pudo conectar con el servidor. Asegúrate de que el backend está activo.'
-  } finally {
-    loading.value = false
+onMounted(async () => {
+  await fetchInventoryData()
+  if (!selectedItem.value && items.value.length > 0) {
+    selectedItem.value = items.value[0]
   }
+})
+
+function getSlot(item) {
+  if (!item) return null
+  if (item.type === 'weapon') return 'weapon'
+  if (item.type === 'armor') {
+    const t = (item.details?.armor_type || '').toLowerCase()
+    if (t.includes('cabeza') || t.includes('head')) return 'head'
+    if (t.includes('pierna') || t.includes('leg')) return 'legs'
+    if (t.includes('escudo') || t.includes('shield')) return 'shield'
+    return 'chest'
+  }
+  return null
 }
 
 async function handleEquip(ci) {
@@ -159,35 +151,23 @@ async function handleEquip(ci) {
   toggling.value = true
   try {
     if (!ci.is_equipped) {
-      const type = ci.item.type
-      const toUnequip = items.value.filter(x => x.is_equipped && x.item?.type === type && x.id && x.id !== ci.id)
+      const mySlot = getSlot(ci.item)
+      const toUnequip = items.value.filter(x => x.is_equipped && x.id && x.id !== ci.id && getSlot(x.item) === mySlot)
       for (const u of toUnequip) {
         await toggleEquipItem(u.id, false)
-        u.is_equipped = false
       }
-      
-      // Si el id es null, es que es un objeto del catálogo que aún no tenemos. 
-      // El 3er parámetro le dice a toggleEquipItem que cree uno nuevo.
-      const responseData = await toggleEquipItem(ci.id, true, ci.item.id_item)
-      
-      ci.id = ci.id || responseData.id
-      ci.is_equipped = true
-      ci.quantity = Math.max(1, ci.quantity)
+      await toggleEquipItem(ci.id, true, ci.item.id_item)
     } else {
       await toggleEquipItem(ci.id, false)
-      ci.is_equipped = false
     }
   } catch (err) {
     console.error("Error al equipar/desequipar", err)
   } finally {
     toggling.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    await load()
     if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
   }
 }
-
-onMounted(load)
 </script>
 
 <style scoped>

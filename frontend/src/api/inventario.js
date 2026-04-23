@@ -1,46 +1,66 @@
 import api from './axios'
+import { ref, computed } from 'vue'
 
-/**
- * Obtiene todos los items del juego con sus detalles (weapon/armor/consumable).
- * Ruta pública: GET /api/items
- */
-export async function fetchItems() {
-  const { data } = await api.get('/items')
-  return Array.isArray(data) ? data : []
-}
+export const globalItems = ref([])
+export const myCharacterItems = ref([])
+export const isInventoryLoading = ref(false)
+export const lastInventoryError = ref(null)
 
-/**
- * Obtiene los items equipados/en inventario de un personaje concreto.
- * Devuelve los character-items con el item anidado y sus detalles.
- * Ruta protegida: GET /api/character-items?id_character={id}
- */
-export async function fetchCharacterItems(characterId) {
-  const { data } = await api.get('/character-items', {
-    params: characterId ? { id_character: characterId } : {},
+let isDataLoaded = false
+
+// Inventario cruzado para el UI (catálogo + posesiones)
+export const mergedInventoryItems = computed(() => {
+  return globalItems.value.map(catalogItem => {
+    const owned = myCharacterItems.value.find(ci => ci.item?.id_item === catalogItem.id_item)
+    if (owned) return owned
+    return {
+      id: null,
+      id_item: catalogItem.id_item,
+      quantity: ['weapon', 'armor'].includes(catalogItem.type) ? 1 : 0,
+      is_equipped: false,
+      item: catalogItem
+    }
   })
-  return Array.isArray(data) ? data : []
+})
+
+// Solo lo que tenemos equipado para el panel de equipo
+export const equippedItems = computed(() => {
+  return myCharacterItems.value.filter(ci => ci.is_equipped)
+})
+
+export async function fetchInventoryData(force = false) {
+  if (isDataLoaded && !force) return
+  isInventoryLoading.value = true
+  lastInventoryError.value = null
+  try {
+    const [resItems, resChar] = await Promise.all([
+      api.get('/items'),
+      api.get('/character-items', { params: { id_character: 1 } })
+    ])
+    globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
+    myCharacterItems.value = Array.isArray(resChar.data) ? resChar.data : []
+    isDataLoaded = true
+  } catch (err) {
+    lastInventoryError.value = err?.response?.data?.message ?? 'Error de red.'
+  } finally {
+    isInventoryLoading.value = false
+  }
 }
 
-/**
- * Cambia el estado de equipamiento de un item para un personaje.
- * @param {number|null} id - ID del character_item (si existe)
- * @param {boolean} equip - true para equipar, false para desequipar
- * @param {number} [id_item] - ID del item base (solo si se va a crear por primera vez)
- */
 export async function toggleEquipItem(id, equip, id_item = null) {
   if (!id && equip && id_item) {
-    // Si no existía en el inventario del jugador, lo creamos directamente equipado
-    const { data } = await api.post(`/character-items`, {
-      id_character: 1, // Hardcodeado temporalmente para pruebas sin token
+    await api.post(`/character-items`, {
+      id_character: 1,
       id_item: id_item,
       quantity: 1,
       is_equipped: true
     })
-    return data
+  } else {
+    await api.put(`/character-items/${id}`, {
+      is_equipped: equip
+    })
   }
 
-  const { data } = await api.put(`/character-items/${id}`, {
-    is_equipped: equip
-  })
-  return data
+  const { data } = await api.get('/character-items', { params: { id_character: 1 } })
+  myCharacterItems.value = Array.isArray(data) ? data : []
 }

@@ -35,14 +35,14 @@
 
     <!-- Panel inventario -->
     <InventoryPanel
-      v-if="showPanel === 'inventory'"
+      v-show="showPanel === 'inventory'"
       @close="showPanel = null"
       @switch-panel="openPanel"
     />
 
     <!-- Panel equipo -->
     <EquipmentPanel
-      v-if="showPanel === 'equipment'"
+      v-show="showPanel === 'equipment'"
       @close="showPanel = null"
       @switch-panel="openPanel"
     />
