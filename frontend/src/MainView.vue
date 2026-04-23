@@ -107,17 +107,76 @@
       </div>
 
       <div v-else class="equipment-content">
-        <div class="character-silhouette">
-          <div class="equip-slot head">Cabeza</div>
-          <div class="equip-slot chest">Pecho</div>
-          <div class="equip-slot legs">Piernas</div>
-          <div class="equip-slot weapon">Arma</div>
-          <div class="equip-slot shield">Escudo</div>
+        <!-- Cargando equipo -->
+        <div v-if="equipLoading" class="inventory-status" style="grid-column:1/-1">
+          <span class="status-icon">⏳</span>
+          <p>Cargando equipo...</p>
         </div>
-        <div class="equipment-help">
-          <p>Panel base de equipamiento.</p>
-          <p>Los huecos muestran dónde irá cada pieza de armadura/equipo.</p>
+
+        <!-- Error al cargar equipo -->
+        <div v-else-if="equipError" class="inventory-status error" style="grid-column:1/-1">
+          <span class="status-icon">⚠</span>
+          <p>{{ equipError }}</p>
+          <button class="filter-btn" @click="loadEquipment">Reintentar</button>
         </div>
+
+        <!-- Equipo cargado -->
+        <template v-else>
+          <div class="character-silhouette">
+            <div
+              v-for="slot in equipSlots"
+              :key="slot.key"
+              class="equip-slot"
+              :class="[slot.css, { occupied: equippedMap[slot.key] }]"
+              :title="slot.label"
+            >
+              <template v-if="equippedMap[slot.key]">
+                <span class="slot-icon">{{ spriteByType[equippedMap[slot.key].item?.type] }}</span>
+                <span class="slot-name">{{ equippedMap[slot.key].item?.name }}</span>
+              </template>
+              <template v-else>
+                <span class="slot-empty">{{ slot.label }}</span>
+              </template>
+            </div>
+          </div>
+
+          <div class="equipment-detail">
+            <template v-if="Object.keys(equippedMap).length">
+              <p class="equip-section-title">Items equipados</p>
+              <ul class="item-list" style="max-height:300px">
+                <li
+                  v-for="ci in equippedItems"
+                  :key="ci.id"
+                  :class="{ selected: selectedEquipped?.id === ci.id }"
+                  @click="selectedEquipped = ci"
+                >
+                  <span class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
+                  <div>
+                    <p class="item-name">{{ ci.item?.name }}</p>
+                    <p class="item-type">{{ labelsByType[ci.item?.type] }} · x{{ ci.quantity }}</p>
+                  </div>
+                </li>
+              </ul>
+              <article class="item-preview" v-if="selectedEquipped?.item" style="margin-top:10px">
+                <div class="sprite-box">{{ spriteByType[selectedEquipped.item.type] }}</div>
+                <h3>{{ selectedEquipped.item.name }}</h3>
+                <p>{{ selectedEquipped.item.description }}</p>
+                <ul class="item-stats">
+                  <li v-if="selectedEquipped.item.type === 'weapon'">Daño: {{ selectedEquipped.item.details?.damage ?? '-' }}</li>
+                  <li v-if="selectedEquipped.item.type === 'weapon'">Tipo: {{ selectedEquipped.item.details?.weapon_type ?? '-' }}</li>
+                  <li v-if="selectedEquipped.item.type === 'armor'">Defensa: {{ selectedEquipped.item.details?.defense ?? '-' }}</li>
+                  <li v-if="selectedEquipped.item.type === 'armor'">Clase: {{ selectedEquipped.item.details?.armor_type ?? '-' }}</li>
+                  <li v-if="selectedEquipped.item.type === 'consumable'">Efecto: {{ selectedEquipped.item.details?.effect ?? '-' }}</li>
+                  <li v-if="selectedEquipped.item.type === 'consumable'">Potencia: {{ selectedEquipped.item.details?.power ?? '-' }}</li>
+                </ul>
+              </article>
+            </template>
+            <div v-else class="inventory-status" style="min-height:120px">
+              <span class="status-icon">🗡</span>
+              <p>Sin objetos equipados.</p>
+            </div>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -147,7 +206,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import api from './api/axios'
+import { fetchItems, fetchCharacterItems } from './api/inventario'
 import { useWasd } from './components/controlChar'
 import { lastTransition } from './gameState'
 
@@ -162,6 +221,38 @@ const selectedItem = ref(null)
 const activeFilter = ref('all')
 const itemsLoading = ref(false)
 const itemsError = ref(null)
+
+// --- Equipo ---
+const equippedItems = ref([])   // character-items con is_equipped = true
+const selectedEquipped = ref(null)
+const equipLoading = ref(false)
+const equipError = ref(null)
+
+// Slots del personaje: key coincide con item.type o armor_type para mapear
+const equipSlots = [
+  { key: 'head',       label: 'Cabeza',   css: 'head' },
+  { key: 'chest',      label: 'Pecho',    css: 'chest' },
+  { key: 'legs',       label: 'Piernas',  css: 'legs' },
+  { key: 'weapon',     label: 'Arma',     css: 'weapon' },
+  { key: 'shield',     label: 'Escudo',   css: 'shield' },
+]
+
+// Mapa slot-key → character-item equipado
+const equippedMap = computed(() => {
+  const map = {}
+  for (const ci of equippedItems.value) {
+    const type = ci.item?.type
+    const armorType = ci.item?.details?.armor_type
+    // armas → slot 'weapon', armaduras por tipo, consumibles no tienen slot
+    if (type === 'weapon') map['weapon'] = ci
+    else if (type === 'armor') {
+      if (armorType?.includes('cabeza') || armorType?.includes('head')) map['head'] = ci
+      else if (armorType?.includes('pierna') || armorType?.includes('leg')) map['legs'] = ci
+      else map['chest'] = ci   // pecho por defecto
+    }
+  }
+  return map
+})
 
 const labelsByType = { weapon: 'Arma', armor: 'Armadura', consumable: 'Consumible' }
 const spriteByType = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
@@ -192,7 +283,12 @@ function openCharacterPanel(tab) {
   showMapPanel.value = false
   activePanelTab.value = tab
   showCharacterPanel.value = true
-  if (!selectedItem.value && filteredItems.value.length > 0) selectedItem.value = filteredItems.value[0]
+  if (tab === 'inventory' && !selectedItem.value && filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
+  }
+  if (tab === 'equipment' && !equippedItems.value.length && !equipLoading.value) {
+    loadEquipment()
+  }
 }
 
 function toggleMapPanel() {
@@ -205,8 +301,7 @@ async function loadItems() {
   itemsError.value = null
   selectedItem.value = null
   try {
-    const { data } = await api.get('/items')
-    items.value = Array.isArray(data) ? data : []
+    items.value = await fetchItems()
     if (items.value.length > 0) selectedItem.value = items.value[0]
   } catch (err) {
     items.value = []
@@ -215,6 +310,26 @@ async function loadItems() {
       'No se pudo conectar con el servidor. Asegúrate de que el backend está activo.'
   } finally {
     itemsLoading.value = false
+  }
+}
+
+async function loadEquipment() {
+  equipLoading.value = true
+  equipError.value = null
+  selectedEquipped.value = null
+  try {
+    // Trae todos los character-items equipados (sin filtrar por personaje aún,
+    // hasta que el login de Keycloak esté activo y podamos obtener el id del personaje)
+    const all = await fetchCharacterItems()
+    equippedItems.value = all.filter((ci) => ci.is_equipped)
+    if (equippedItems.value.length > 0) selectedEquipped.value = equippedItems.value[0]
+  } catch (err) {
+    equippedItems.value = []
+    equipError.value =
+      err?.response?.data?.message ??
+      'No se pudo cargar el equipo. Asegúrate de que el backend está activo.'
+  } finally {
+    equipLoading.value = false
   }
 }
 
@@ -325,13 +440,18 @@ const cameraTransform = computed(() => {
 .item-stats li { font-size: 10px; }
 .equipment-content { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .character-silhouette { min-height: 380px; border: 3px solid #111; background: #2a373d; position: relative; }
-.equip-slot { position: absolute; width: 120px; border: 2px dashed #d6bd8a; background: rgba(28,36,40,.65); color: #f5deb3; text-align: center; font-size: 9px; padding: 8px 6px; }
+.equip-slot { position: absolute; width: 120px; border: 2px dashed #d6bd8a; background: rgba(28,36,40,.65); color: #f5deb3; text-align: center; font-size: 9px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.equip-slot.occupied { border-style: solid; border-color: #8bc34a; background: rgba(60,90,40,.75); }
+.slot-icon { font-size: 18px; line-height: 1; }
+.slot-name { font-size: 7px; color: #c5e1a5; word-break: break-word; max-width: 110px; }
+.slot-empty { opacity: .6; }
 .head { top: 20px; left: 50%; transform: translateX(-50%); }
 .chest { top: 92px; left: 50%; transform: translateX(-50%); }
 .legs { top: 164px; left: 50%; transform: translateX(-50%); }
 .weapon { top: 130px; left: 18px; }
 .shield { top: 130px; right: 18px; }
-.equipment-help { border: 3px solid #111; background: #243238; padding: 14px; font-size: 10px; line-height: 1.6; }
+.equipment-detail { display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.equip-section-title { margin: 0 0 6px; font-size: 9px; color: #8bc34a; text-transform: uppercase; letter-spacing: 1px; }
 .pixel-map { width: 520px; max-width: 100%; aspect-ratio: 13/8; margin: 0 auto; position: relative; border: 4px solid #111; background: #5da25d; overflow: hidden; }
 .biome,.road,.landmark,.player-marker { position: absolute; }
 .grasslands { inset: 0; background: linear-gradient(90deg, rgba(255,255,255,.07) 2px, transparent 2px), linear-gradient(rgba(255,255,255,.07) 2px, transparent 2px), #62a84f; background-size: 20px 20px, 20px 20px, auto; }
