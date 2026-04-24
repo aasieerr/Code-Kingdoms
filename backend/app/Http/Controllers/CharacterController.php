@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Character;
+use App\Models\User;
 
 class CharacterController extends Controller
 {
@@ -42,7 +43,17 @@ class CharacterController extends Controller
      */
     public function show(string $id)
     {
-        return response()->json(Character::findOrFail($id));
+        $character = Character::query()
+            ->with(['equippedSkin'])
+            ->findOrFail($id);
+
+        $user = User::query()->findOrFail($character->id_user);
+        $ownedIds = $user->ownedSkins()->pluck('cosmetic_skins.id');
+
+        return response()->json(array_merge($character->toArray(), [
+            'code_coins' => $user->code_coins,
+            'owned_skin_ids' => $ownedIds,
+        ]));
     }
 
     /**

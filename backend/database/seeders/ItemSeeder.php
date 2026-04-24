@@ -35,6 +35,7 @@ class ItemSeeder extends Seeder
                 'damage' => 35,
                 'weapon_type' => 'espada',
                 'durability' => 100,
+                'price' => 180,
             ],
             [
                 'name' => 'Varita Arcana',
@@ -42,6 +43,7 @@ class ItemSeeder extends Seeder
                 'damage' => 25,
                 'weapon_type' => 'varita',
                 'durability' => 80,
+                'price' => 150,
             ],
             [
                 'name' => 'Arco de Roble',
@@ -49,6 +51,7 @@ class ItemSeeder extends Seeder
                 'damage' => 30,
                 'weapon_type' => 'arco',
                 'durability' => 90,
+                'price' => 165,
             ],
             [
                 'name' => 'Hacha de Batalla',
@@ -56,6 +59,7 @@ class ItemSeeder extends Seeder
                 'damage' => 40,
                 'weapon_type' => 'hacha',
                 'durability' => 95,
+                'price' => 200,
             ],
             [
                 'name' => 'Daga Asesina',
@@ -63,6 +67,7 @@ class ItemSeeder extends Seeder
                 'damage' => 20,
                 'weapon_type' => 'daga',
                 'durability' => 70,
+                'price' => 120,
             ],
         ];
 
@@ -71,6 +76,7 @@ class ItemSeeder extends Seeder
                 'name' => $weaponData['name'],
                 'description' => $weaponData['description'],
                 'type' => 'weapon',
+                'price' => $weaponData['price'],
             ]);
 
             Weapon::create([
@@ -91,6 +97,7 @@ class ItemSeeder extends Seeder
                 'defense' => 25,
                 'armor_type' => 'armadura_pesada',
                 'durability' => 100,
+                'price' => 220,
             ],
             [
                 'name' => 'Túnica Mágica',
@@ -98,6 +105,7 @@ class ItemSeeder extends Seeder
                 'defense' => 12,
                 'armor_type' => 'armadura_ligera',
                 'durability' => 75,
+                'price' => 140,
             ],
             [
                 'name' => 'Escudo de Acero',
@@ -105,6 +113,7 @@ class ItemSeeder extends Seeder
                 'defense' => 18,
                 'armor_type' => 'escudo',
                 'durability' => 90,
+                'price' => 160,
             ],
             [
                 'name' => 'Armadura de Cuero',
@@ -112,6 +121,7 @@ class ItemSeeder extends Seeder
                 'defense' => 15,
                 'armor_type' => 'armadura_media',
                 'durability' => 85,
+                'price' => 150,
             ],
         ];
 
@@ -120,6 +130,7 @@ class ItemSeeder extends Seeder
                 'name' => $armorData['name'],
                 'description' => $armorData['description'],
                 'type' => 'armor',
+                'price' => $armorData['price'],
             ]);
 
             Armor::create([
@@ -141,6 +152,7 @@ class ItemSeeder extends Seeder
                 'power' => 75,
                 'duration' => null,
                 'quantity' => 3,
+                'price' => 25,
             ],
             [
                 'name' => 'Poción de Maná',
@@ -149,6 +161,7 @@ class ItemSeeder extends Seeder
                 'power' => 60,
                 'duration' => null,
                 'quantity' => 2,
+                'price' => 22,
             ],
             [
                 'name' => 'Elixir de Fuerza',
@@ -157,6 +170,7 @@ class ItemSeeder extends Seeder
                 'power' => 10,
                 'duration' => 5,
                 'quantity' => 1,
+                'price' => 45,
             ],
             [
                 'name' => 'Antídoto',
@@ -165,6 +179,7 @@ class ItemSeeder extends Seeder
                 'power' => 100,
                 'duration' => null,
                 'quantity' => 2,
+                'price' => 30,
             ],
             [
                 'name' => 'Elixir de Vida',
@@ -173,6 +188,7 @@ class ItemSeeder extends Seeder
                 'power' => 50,
                 'duration' => null,
                 'quantity' => 1,
+                'price' => 120,
             ],
         ];
 
@@ -181,6 +197,7 @@ class ItemSeeder extends Seeder
                 'name' => $consumableData['name'],
                 'description' => $consumableData['description'],
                 'type' => 'consumable',
+                'price' => $consumableData['price'],
             ]);
 
             Consumable::create([

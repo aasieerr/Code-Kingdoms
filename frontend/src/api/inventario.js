@@ -1,5 +1,7 @@
 import api from './axios'
 import { ref, computed } from 'vue'
+import { activeCharacterId } from '../gameState'
+import { ensureActiveCharacterId } from './character'
 
 export const globalItems = ref([])
 export const myCharacterItems = ref([])
@@ -33,9 +35,11 @@ export async function fetchInventoryData(force = false) {
   isInventoryLoading.value = true
   lastInventoryError.value = null
   try {
+    await ensureActiveCharacterId()
+    const cid = activeCharacterId.value
     const [resItems, resChar] = await Promise.all([
       api.get('/items'),
-      api.get('/character-items', { params: { id_character: 1 } })
+      api.get('/character-items', { params: { id_character: cid } })
     ])
     globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
     myCharacterItems.value = Array.isArray(resChar.data) ? resChar.data : []
@@ -48,9 +52,11 @@ export async function fetchInventoryData(force = false) {
 }
 
 export async function toggleEquipItem(id, equip, id_item = null) {
+  await ensureActiveCharacterId()
+  const cid = activeCharacterId.value
   if (!id && equip && id_item) {
     await api.post(`/character-items`, {
-      id_character: 1,
+      id_character: cid,
       id_item: id_item,
       quantity: 1,
       is_equipped: true
@@ -61,6 +67,6 @@ export async function toggleEquipItem(id, equip, id_item = null) {
     })
   }
 
-  const { data } = await api.get('/character-items', { params: { id_character: 1 } })
+  const { data } = await api.get('/character-items', { params: { id_character: cid } })
   myCharacterItems.value = Array.isArray(data) ? data : []
 }

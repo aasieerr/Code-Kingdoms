@@ -13,11 +13,17 @@ class KingdomSeeder extends Seeder
      */
     public function run(): void
     {
-        Kingdom::factory()->peachepe()->create([
-            'id_king' => null,
-        ]);
-        Kingdom::factory()->java()->create([
-            'id_king' => null,
-        ]);
+        Kingdom::query()->firstOrCreate(
+            ['name' => 'Peachepe'],
+            Kingdom::factory()->peachepe()->raw() + [
+                'id_king' => null,
+            ],
+        );
+        Kingdom::query()->firstOrCreate(
+            ['name' => 'Java'],
+            Kingdom::factory()->java()->raw() + [
+                'id_king' => null,
+            ],
+        );
     }
 }

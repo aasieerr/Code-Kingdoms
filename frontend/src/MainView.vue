@@ -18,11 +18,31 @@
       <div class="terrain road-cross"></div>
       <div class="terrain village-zone"></div>
       <div class="terrain ruins-zone"></div>
-      <div class="player" :style="{ left: x + 'px', top: y + 'px', background: moving ? '#f5a623' : '#e94560' }"></div>
+      <div
+        class="player"
+        :style="{
+          left: x + 'px',
+          top: y + 'px',
+          background: moving ? colorMoving : colorStill,
+        }"
+      />
     </div>
+
+    <p
+      v-if="inSkinShopZone && !showSkinShop && !showMicropay"
+      class="shop-hint"
+    >
+      Pulsa <kbd>E</kbd> — Apariencia
+    </p>
 
     <!-- Logo -->
     <img class="game-logo" src="/code-kingdoms-logo.png" alt="Code Kingdoms logo" />
+
+    <WalletBar
+      :gold="walletGold"
+      :code-coins="walletCodeCoins"
+      @open-micropay="showMicropay = true"
+    />
 
     <!-- HUD -->
     <HudPanel
@@ -47,6 +67,14 @@
       @switch-panel="openPanel"
     />
 
+    <SkinShopPanel
+      v-if="showSkinShop"
+      @close="showSkinShop = false"
+      @wallet-updated="refreshWallet"
+    />
+
+    <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
+
     <!-- Mapa -->
     <MapPanel
       v-if="showMapPanel"
@@ -61,14 +89,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
-import { lastTransition } from './gameState'
+import { lastTransition, activeCharacterId } from './gameState'
+import { ensureActiveCharacterId, fetchCharacter } from './api/character'
 import HudPanel       from './components/HudPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel       from './components/MapPanel.vue'
+import WalletBar      from './components/WalletBar.vue'
+import SkinShopPanel  from './components/SkinShopPanel.vue'
+import MicropayModal  from './components/MicropayModal.vue'
 
 const router   = useRouter()
 const isFading = ref(lastTransition.value === 'second-to-main')
@@ -77,14 +109,23 @@ const startY   = lastTransition.value === 'second-to-main' ? 2050 : 1000
 // Estado de paneles
 const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
 const showMapPanel = ref(false)
+const showSkinShop = ref(false)
+const showMicropay = ref(false)
+
+const walletGold = ref(null)
+const walletCodeCoins = ref(null)
+const colorStill = ref('#e94560')
+const colorMoving = ref('#f5a623')
 
 function openPanel(name) {
   showMapPanel.value = false
+  showSkinShop.value = false
   showPanel.value = name
 }
 
 function toggleMap() {
   showPanel.value = null
+  showSkinShop.value = false
   showMapPanel.value = !showMapPanel.value
 }
 
@@ -94,6 +135,20 @@ function handleLogout() {
 
 // Movimiento del personaje
 const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
+
+/** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
+const SKIN_SHOP = { x: 230, y: 1130, w: 300, h: 220, pad: 40 }
+const inSkinShopZone = computed(() => {
+  const ax = x.value
+  const ay = y.value
+  const p = SKIN_SHOP.pad
+  return (
+    ax >= SKIN_SHOP.x - p
+    && ax <= SKIN_SHOP.x + SKIN_SHOP.w + p
+    && ay >= SKIN_SHOP.y - p
+    && ay <= SKIN_SHOP.y + SKIN_SHOP.h + p
+  )
+})
 
 // Cámara centrada en el jugador
 const cameraTransform = computed(() => {
@@ -108,8 +163,49 @@ const cameraTransform = computed(() => {
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
 
+async function refreshWallet() {
+  try {
+    await ensureActiveCharacterId()
+    if (activeCharacterId.value == null) {
+      return
+    }
+    const ch = await fetchCharacter(activeCharacterId.value)
+    walletGold.value = ch.gold
+    walletCodeCoins.value = ch.code_coins ?? 0
+    if (ch.equipped_skin) {
+      colorStill.value = ch.equipped_skin.color_still
+      colorMoving.value = ch.equipped_skin.color_moving
+    } else {
+      colorStill.value = '#e94560'
+      colorMoving.value = '#f5a623'
+    }
+  } catch {
+    // demo sin API
+  }
+}
+
+function onSkinShopKey(e) {
+  if (e.key.toLowerCase() !== 'e') {
+    return
+  }
+  if (showSkinShop.value || showMicropay.value) {
+    return
+  }
+  if (showMapPanel.value || showPanel.value) {
+    return
+  }
+  if (!inSkinShopZone.value) {
+    return
+  }
+  e.preventDefault()
+  showSkinShop.value = true
+}
+
 // Entrada desde SecondView (transición)
 onMounted(() => {
+  refreshWallet()
+  window.addEventListener('keydown', onSkinShopKey)
+
   if (lastTransition.value === 'second-to-main') {
     locked.value = true
     moving.value = true
@@ -149,6 +245,10 @@ watch([x, y], ([newX, newY]) => {
     }
     requestAnimationFrame(exitLoop)
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onSkinShopKey)
 })
 </script>
 
@@ -248,4 +348,26 @@ watch([x, y], ([newX, newY]) => {
   transition: opacity .5s ease-in-out; z-index: 1000;
 }
 .fade-overlay.active { opacity: 1; }
+.shop-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin: 0;
+  font-size: 8px;
+  color: #fff8e1;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.shop-hint kbd {
+  display: inline-block;
+  border: 2px solid #333;
+  background: #222;
+  color: #ffcc80;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-family: inherit;
+  margin: 0 2px;
+}
 </style>

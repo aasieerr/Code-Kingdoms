@@ -18,11 +18,17 @@ class Character extends Model
         'health',
         'mana',
         'gold',
+        'equipped_skin_id',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_user');
+    }
+
+    public function equippedSkin(): BelongsTo
+    {
+        return $this->belongsTo(CosmeticSkin::class, 'equipped_skin_id');
     }
 
     public function kingdom(): BelongsTo

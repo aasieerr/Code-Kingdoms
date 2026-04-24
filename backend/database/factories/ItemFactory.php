@@ -20,6 +20,7 @@ class ItemFactory extends Factory
             'name' => $this->faker->words(2, true),
             'description' => $this->faker->sentence(8),
             'type' => $this->faker->randomElement(['weapon', 'armor', 'consumable']),
+            'price' => $this->faker->numberBetween(20, 250),
         ];
     }
 
