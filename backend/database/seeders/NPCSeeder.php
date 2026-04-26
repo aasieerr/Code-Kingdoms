@@ -12,6 +12,10 @@ class NPCSeeder extends Seeder
      */
     public function run(): void
     {
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\DB::table('npcs')->truncate();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
         \App\Models\NPC::create([
             'nombre' => 'Guardián del Reino',
             'descripcion' => 'Un sabio guardián que protege el reino.',
@@ -21,6 +25,9 @@ class NPCSeeder extends Seeder
                 'Cuídate en tu viaje.'
             ],
             'tipo' => 'normal',
+            'map' => 'MainGame',
+            'x' => 950,
+            'y' => 900,
         ]);
 
         \App\Models\NPC::create([
@@ -32,6 +39,37 @@ class NPCSeeder extends Seeder
                 'Regatea conmigo, pero no demasiado.'
             ],
             'tipo' => 'vendedor',
+            'map' => 'MainGame',
+            'x' => 380,
+            'y' => 1240,
+        ]);
+
+        \App\Models\NPC::create([
+            'nombre' => 'Bibliotecario Real',
+            'descripcion' => 'Conoce toda la historia del código.',
+            'dialogos' => [
+                'Los antiguos escribieron el mundo en binario.',
+                'Busca los fragmentos de la compilación perdida.',
+                'El conocimiento es la mejor arma.'
+            ],
+            'tipo' => 'normal',
+            'map' => 'MainGame',
+            'x' => 1250,
+            'y' => 700,
+        ]);
+
+        \App\Models\NPC::create([
+            'nombre' => 'Herrero de las Ruinas',
+            'descripcion' => 'Forja armas legendarias.',
+            'dialogos' => [
+                'El acero se templa con paciencia.',
+                '¿Has traído materiales raros?',
+                'Vuelve cuando tengas suficiente oro.'
+            ],
+            'tipo' => 'vendedor',
+            'map' => 'MainGame',
+            'x' => 1350,
+            'y' => 1500,
         ]);
     }
 }

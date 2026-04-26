@@ -14,6 +14,17 @@
       <div class="landmark village">Pueblo</div>
       <div class="landmark ruins">Ruinas</div>
       <div class="landmark tower">Torre</div>
+      
+      <!-- Marcadores de NPCs -->
+      <div 
+        v-for="npc in npcs" 
+        :key="npc.id" 
+        class="npc-marker"
+        :class="npc.tipo"
+        :style="getNpcStyle(npc)"
+        :title="npc.nombre"
+      ></div>
+
       <div class="player-marker" :style="playerMarkerStyle">🧍</div>
     </div>
   </section>
@@ -25,6 +36,7 @@ import { computed } from 'vue'
 const props = defineProps({
   playerX: { type: Number, default: 1000 },
   playerY: { type: Number, default: 1000 },
+  npcs: { type: Array, default: () => [] }
 })
 
 defineEmits(['close'])
@@ -38,6 +50,15 @@ const playerMarkerStyle = computed(() => {
   const py = Math.max(0, Math.min(MAP_H - 16, (props.playerY / WORLD) * MAP_H))
   return { left: `${px}px`, top: `${py}px` }
 })
+
+function getNpcStyle(npc) {
+  if (npc.x === undefined || npc.y === undefined || npc.x === null || npc.y === null) {
+    return { display: 'none' }
+  }
+  const nx = Math.max(0, Math.min(MAP_W - 8, (npc.x / WORLD) * MAP_W))
+  const ny = Math.max(0, Math.min(MAP_H - 8, (npc.y / WORLD) * MAP_H))
+  return { left: `${nx}px`, top: `${ny}px` }
+}
 </script>
 
 <style scoped>
@@ -105,5 +126,20 @@ const playerMarkerStyle = computed(() => {
   box-shadow: 0 0 0 2px #3b2d16;
   display: grid; place-items: center;
   z-index: 2; font-size: 11px;
+}
+
+.npc-marker {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #000;
+  background: #4a90e2;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.npc-marker.vendedor {
+  background: #f5a623;
 }
 </style>

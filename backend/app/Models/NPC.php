@@ -13,9 +13,20 @@ class NPC extends Model
         'descripcion',
         'dialogos',
         'tipo',
+        'map',
+        'x',
+        'y',
     ];
 
     protected $casts = [
         'dialogos' => 'array',
     ];
+
+    /**
+     * Scope a query to only include NPCs of a given map.
+     */
+    public function scopeOfMap($query, string $map)
+    {
+        return $query->where('map', $map);
+    }
 }

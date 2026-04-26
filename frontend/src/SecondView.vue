@@ -21,7 +21,23 @@
           background: moving ? '#f5a623' : '#e94560',
         }"
       ></div>
+
+      <!-- NPCs -->
+      <NpcSprite
+        v-for="npc in npcs"
+        :key="npc.id"
+        :npc="npc"
+        :is-near="getIsNear(npc)"
+        @interact="openDialogue"
+      />
     </div>
+
+    <!-- Diálogos NPC -->
+    <DialogueModal
+      v-if="activeDialogueNpc"
+      :npc="activeDialogueNpc"
+      @close="activeDialogueNpc = null"
+    />
     <div class="fade-overlay" :class="{ active: isFading }"></div>
   </div>
 </template>
@@ -31,6 +47,9 @@ import { computed, watch, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { lastTransition } from './gameState'
+import { useNpcs } from './composables/useNpcs'
+import NpcSprite from './components/NpcSprite.vue'
+import DialogueModal from './components/DialogueModal.vue'
 
 const router = useRouter()
 const isFading = ref(lastTransition.value === 'main-to-second')
@@ -38,7 +57,27 @@ const startY = lastTransition.value === 'main-to-second' ? -50 : 10
 
 const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
 
+// NPCs Composable
+const { 
+  npcs, 
+  activeDialogueNpc, 
+  loadNpcs, 
+  getIsNear, 
+  openDialogue 
+} = useNpcs('SecondGame', x, y)
+
+function onNpcKey(e) {
+  if (e.key.toLowerCase() !== 'e') return
+  const nearNpc = npcs.value.find(n => getIsNear(n))
+  if (nearNpc) {
+    e.preventDefault()
+    openDialogue(nearNpc)
+  }
+}
+
 onMounted(() => {
+  loadNpcs()
+  window.addEventListener('keydown', onNpcKey)
   if (lastTransition.value === 'main-to-second') {
     locked.value = true
     moving.value = true

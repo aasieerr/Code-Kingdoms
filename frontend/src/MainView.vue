@@ -26,6 +26,15 @@
           background: moving ? colorMoving : colorStill,
         }"
       />
+
+      <!-- NPCs -->
+      <NpcSprite
+        v-for="npc in npcs"
+        :key="npc.id"
+        :npc="npc"
+        :is-near="getIsNear(npc)"
+        @interact="openDialogue"
+      />
     </div>
 
     <p
@@ -80,7 +89,15 @@
       v-if="showMapPanel"
       :player-x="x"
       :player-y="y"
+      :npcs="npcs"
       @close="showMapPanel = false"
+    />
+
+    <!-- Diálogos NPC -->
+    <DialogueModal
+      v-if="activeDialogueNpc"
+      :npc="activeDialogueNpc"
+      @close="activeDialogueNpc = null"
     />
 
     <!-- Fade de transición -->
@@ -93,7 +110,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { lastTransition, activeCharacterId } from './gameState'
-import { ensureActiveCharacterId, fetchCharacter } from './api/character'
+import { fetchCharacter, ensureActiveCharacterId } from './api/character'
+import { useNpcs } from './composables/useNpcs'
 import HudPanel       from './components/HudPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
@@ -101,6 +119,8 @@ import MapPanel       from './components/MapPanel.vue'
 import WalletBar      from './components/WalletBar.vue'
 import SkinShopPanel  from './components/SkinShopPanel.vue'
 import MicropayModal  from './components/MicropayModal.vue'
+import NpcSprite      from './components/NpcSprite.vue'
+import DialogueModal  from './components/DialogueModal.vue'
 
 const router   = useRouter()
 const isFading = ref(lastTransition.value === 'second-to-main')
@@ -111,6 +131,18 @@ const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
 const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
+
+// Movimiento del personaje
+const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
+
+// NPCs Composable
+const { 
+  npcs, 
+  activeDialogueNpc, 
+  loadNpcs, 
+  getIsNear, 
+  openDialogue 
+} = useNpcs('MainGame', x, y)
 
 const walletGold = ref(null)
 const walletCodeCoins = ref(null)
@@ -132,9 +164,6 @@ function toggleMap() {
 function handleLogout() {
   // TODO: Keycloak logout cuando se active la autenticación
 }
-
-// Movimiento del personaje
-const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
 
 /** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
 const SKIN_SHOP = { x: 230, y: 1130, w: 300, h: 220, pad: 40 }
@@ -195,6 +224,13 @@ function onSkinShopKey(e) {
     return
   }
   if (!inSkinShopZone.value) {
+    // Check for NPCs
+    const nearNpc = npcs.value.find(n => getIsNear(n))
+    if (nearNpc) {
+      e.preventDefault()
+      openDialogue(nearNpc)
+      return
+    }
     return
   }
   e.preventDefault()
@@ -204,6 +240,7 @@ function onSkinShopKey(e) {
 // Entrada desde SecondView (transición)
 onMounted(() => {
   refreshWallet()
+  loadNpcs()
   window.addEventListener('keydown', onSkinShopKey)
 
   if (lastTransition.value === 'second-to-main') {

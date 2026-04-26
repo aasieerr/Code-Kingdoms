@@ -2,16 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\NPC;
+use Illuminate\Http\Request;
 
 class NPCController extends Controller
 {
-    public function index()
+    /**
+     * Display a listing of NPCs, optionally filtered by map.
+     */
+    public function index(Request $request)
     {
-        return response()->json(NPC::all());
+        $npcs = NPC::query()
+            ->when($request->map, fn($q) => $q->ofMap($request->map))
+            ->get();
+
+        return response()->json($npcs);
     }
 
+    /**
+     * Display the specified NPC.
+     */
     public function show($id)
     {
         return response()->json(NPC::findOrFail($id));

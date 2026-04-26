@@ -25,6 +25,9 @@ class NPCFactory extends Factory
                 $this->faker->sentence(),
             ],
             'tipo' => $this->faker->randomElement(['normal', 'vendedor']),
+            'map' => 'MainGame',
+            'x' => $this->faker->numberBetween(0, 2000),
+            'y' => $this->faker->numberBetween(0, 2000),
         ];
     }
 }
