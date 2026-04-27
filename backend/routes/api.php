@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/character-items/{id}', [CharacterItemController::class, 'update']);
     Route::patch('/character-items/{id}', [CharacterItemController::class, 'update']);
     Route::post('/shop/purchase', [ShopController::class, 'purchase']);
+    Route::post('/shop/sell', [ShopController::class, 'sell']);
     Route::post('/skins/purchase', [CosmeticSkinController::class, 'purchase']);
     Route::post('/characters/{id}/equip-skin', [CosmeticSkinController::class, 'equip']);
 

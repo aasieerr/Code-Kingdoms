@@ -37,6 +37,7 @@ import { WORLD_EDGE } from '../constants/world'
 const props = defineProps({
   playerX: { type: Number, default: WORLD_EDGE / 2 },
   playerY: { type: Number, default: WORLD_EDGE / 2 },
+  npcs: { type: Array, default: () => [] },
 })
 
 defineEmits(['close'])

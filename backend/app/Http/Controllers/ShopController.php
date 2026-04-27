@@ -88,4 +88,58 @@ class ShopController extends Controller
 
         return response()->json($result, 201);
     }
+
+    /**
+     * Vende un artículo del inventario: elimina/decrementa y suma oro (50% del valor).
+     */
+    public function sell(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id_character' => 'required|integer|exists:characters,id',
+            'id_character_item' => 'required|integer|exists:character_items,id',
+            'quantity' => 'sometimes|integer|min:1',
+        ]);
+
+        $quantity = (int) ($data['quantity'] ?? 1);
+
+        $result = DB::transaction(function () use ($data, $quantity) {
+            $characterItem = CharacterItem::with('item')->findOrFail($data['id_character_item']);
+            $character = Character::lockForUpdate()->findOrFail($data['id_character']);
+
+            if ($characterItem->id_character !== $character->id) {
+                throw ValidationException::withMessages([
+                    'id_character_item' => 'Este item no pertenece a este personaje.',
+                ]);
+            }
+
+            if ($characterItem->quantity < $quantity) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'No tienes suficiente cantidad para vender.',
+                ]);
+            }
+
+            $sellPrice = (int) floor(($characterItem->item->price ?? 0) * 0.5);
+            $totalGain = $sellPrice * $quantity;
+
+            $character->gold += $totalGain;
+            $character->save();
+
+            if ($characterItem->quantity <= $quantity) {
+                $characterItem->delete();
+                $remaining = null;
+            } else {
+                $characterItem->quantity -= $quantity;
+                $characterItem->save();
+                $remaining = $characterItem->fresh();
+            }
+
+            return [
+                'character' => $character->fresh(),
+                'character_item' => $remaining,
+                'gain' => $totalGain,
+            ];
+        });
+
+        return response()->json($result, 200);
+    }
 }

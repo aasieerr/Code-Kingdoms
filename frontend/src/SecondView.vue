@@ -85,6 +85,7 @@
       v-if="showMapPanel"
       :player-x="x"
       :player-y="y"
+      :npcs="[]"
       @close="showMapPanel = false"
     />
 
@@ -140,6 +141,8 @@ const walletGold = ref(null)
 const walletCodeCoins = ref(null)
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
+const navigating = ref(false)
+const portalCooldown = ref(true)
 
 const {
   arenaRef,
@@ -164,6 +167,11 @@ const {
   startX: WORLD_EDGE / 2,
   startY,
 })
+
+// Bloquear inmediatamente si venimos de otra escena para evitar rebotes
+if (lastTransition.value === 'main-to-second') {
+  locked.value = true
+}
 
 function openPanel(name) {
   showMapPanel.value = false
@@ -232,83 +240,119 @@ let sessionSynced = false
 
 async function refreshWallet() {
   try {
-    await ensureActiveCharacterId()
-    if (activeCharacterId.value == null) {
+    const id = await ensureActiveCharacterId()
+    if (id == null) {
+      walletGold.value = null
       return
     }
-    const ch = await fetchCharacter(activeCharacterId.value)
+    const ch = await fetchCharacter(id)
+    if (!ch) return
     walletGold.value = ch.gold
     walletCodeCoins.value = ch.code_coins ?? 0
     if (ch.equipped_skin) {
       colorStill.value = ch.equipped_skin.color_still
       colorMoving.value = ch.equipped_skin.color_moving
+    } else {
+      colorStill.value = '#e94560'
+      colorMoving.value = '#f5a623'
     }
-  } catch {
+  } catch (err) {
+    console.error("Error al refrescar wallet:", err)
     walletGold.value = null
   }
 }
 
 async function syncRunGoldOnce() {
+  if (sessionSynced) return
   const delta = sessionGold.value
-  if (sessionSynced || delta <= 0) {
+  if (delta <= 0) {
+    sessionSynced = true
     return
   }
   try {
-    await ensureActiveCharacterId()
-    if (activeCharacterId.value != null) {
-      await addCharacterGold(activeCharacterId.value, delta)
+    const id = await ensureActiveCharacterId()
+    if (id != null) {
       sessionSynced = true
+      await addCharacterGold(id, delta)
       await refreshWallet()
     }
-  } catch {
-    /* Sin token o API: el oro de la run solo en cliente hasta la próxima vez */
+  } catch (err) {
+    sessionSynced = false
+    console.error("Error al sincronizar oro de la run:", err)
   }
 }
 
 async function leaveArena() {
-  await syncRunGoldOnce()
+  if (locked.value || navigating.value) return
+  navigating.value = true
   locked.value = true
+  
+  try {
+    await syncRunGoldOnce()
+  } catch (err) {
+    console.error("Fallo final de sync:", err)
+  }
+  
   isFading.value = true
   lastTransition.value = 'second-to-main'
-  router.push({ name: 'Game' })
+  
+  setTimeout(() => {
+    router.push({ name: 'Game' }).catch(() => {
+      navigating.value = false
+      locked.value = false
+    })
+  }, 100)
 }
 
 onMounted(async () => {
-  await refreshWallet()
-
   window.addEventListener('keydown', onArenaPanelHotkey)
-
-  const startCombat = () => beginFirstWave()
+  
+  try {
+    await refreshWallet()
+  } catch (err) {
+    console.error("Error inicial en SecondView:", err)
+  }
 
   if (lastTransition.value === 'main-to-second') {
     locked.value = true
     moving.value = true
+    isFading.value = true
+    
     setTimeout(() => {
       isFading.value = false
-    }, 50)
-    const enterLoop = () => {
-      y.value += 4
-      if (y.value >= WORLD / 2) {
-        locked.value = false
-        moving.value = false
-        lastTransition.value = null
-        startCombat()
-      } else {
+      const enterLoop = () => {
+        // Mover hasta y=180 para alejarnos bien del portal superior (y<=0)
+        if (y.value >= 180) {
+          locked.value = false
+          moving.value = false
+          lastTransition.value = null
+          // Retrasar el fin del cooldown del portal
+          setTimeout(() => { portalCooldown.value = false }, 500)
+          // Retrasar inicio de combate
+          setTimeout(() => {
+            if (phase.value === 'idle') beginFirstWave()
+          }, 400)
+          return
+        }
+        y.value += 5
         requestAnimationFrame(enterLoop)
       }
-    }
-    requestAnimationFrame(enterLoop)
+      requestAnimationFrame(enterLoop)
+    }, 100)
   } else {
     isFading.value = false
-    startCombat()
+    locked.value = false
+    portalCooldown.value = false
+    if (phase.value === 'idle') beginFirstWave()
   }
 })
 
 watch([x, y], ([newX, newY]) => {
+  if (locked.value || navigating.value || portalCooldown.value) return
+  
   const cx = WORLD / 2
   if (
-    !locked.value
-    && phase.value !== 'gameover'
+    phase.value !== 'gameover'
     && newY <= 0
     && newX > cx - PORTAL_HALF_WIDTH
     && newX < cx + PORTAL_HALF_WIDTH

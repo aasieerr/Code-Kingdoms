@@ -52,7 +52,11 @@
           <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
           <div>
             <p class="item-name">{{ ci.item.name }} <span v-if="ci.is_equipped">(E)</span></p>
-            <p class="item-type">{{ labelsByType[ci.item.type] }} · x{{ ci.quantity }}</p>
+            <p class="item-type">
+              {{ labelsByType[ci.item.type] }} 
+              <span v-if="ci.id">· x{{ ci.quantity }}</span>
+              <span v-else>· {{ ci.item.price }} 🪙</span>
+            </p>
           </div>
         </li>
       </ul>
@@ -74,14 +78,35 @@
           <li v-if="selectedItem.item.type === 'consumable'">Potencia: {{ selectedItem.item.details?.power ?? '-' }}</li>
           <li v-if="selectedItem.item.type === 'consumable'">Duración: {{ selectedItem.item.details?.duration ?? '-' }}</li>
         </ul>
-        <button 
-          v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
-          class="equip-btn" 
-          @click="handleEquip(selectedItem)"
-          :disabled="toggling"
-        >
-          {{ toggling ? 'Cargando...' : (selectedItem.is_equipped ? 'Desequipar' : 'Equipar') }}
-        </button>
+
+        <div class="item-actions">
+          <button 
+            v-if="selectedItem.id"
+            class="action-btn sell"
+            @click="handleSell(selectedItem)"
+            :disabled="busy"
+          >
+            Vender ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
+          </button>
+          
+          <button
+            v-else
+            class="action-btn buy"
+            @click="handleBuy(selectedItem.item)"
+            :disabled="busy"
+          >
+            Comprar ({{ selectedItem.item.price || 0 }} 🪙)
+          </button>
+
+          <button 
+            v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
+            class="action-btn equip" 
+            @click="handleEquip(selectedItem)"
+            :disabled="busy"
+          >
+            {{ selectedItem.is_equipped ? 'Desequipar' : 'Equipar' }}
+          </button>
+        </div>
       </article>
     </div>
   </section>
@@ -96,6 +121,7 @@ import {
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
+import { purchaseItem, sellItem } from '../api/shop'
 
 defineEmits(['close', 'switch-panel'])
 
@@ -114,7 +140,7 @@ const filterTypes = [
 
 const selectedItem = ref(null)
 const activeFilter = ref('all')
-const toggling = ref(false)
+const busy = ref(false)
 
 // Se exponen directamente los refs globales al template
 const loading = isInventoryLoading
@@ -147,8 +173,8 @@ function getSlot(item) {
 }
 
 async function handleEquip(ci) {
-  if (toggling.value) return
-  toggling.value = true
+  if (busy.value) return
+  busy.value = true
   try {
     if (!ci.is_equipped) {
       const mySlot = getSlot(ci.item)
@@ -163,7 +189,35 @@ async function handleEquip(ci) {
   } catch (err) {
     console.error("Error al equipar/desequipar", err)
   } finally {
-    toggling.value = false
+    busy.value = false
+    const currentIdItem = selectedItem.value?.item?.id_item
+    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+  }
+}
+
+async function handleBuy(item) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    await purchaseItem(item.id_item)
+  } catch (err) {
+    alert(err?.response?.data?.message || 'Error al comprar')
+  } finally {
+    busy.value = false
+    const currentIdItem = selectedItem.value?.item?.id_item
+    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+  }
+}
+
+async function handleSell(ci) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    await sellItem(ci.id)
+  } catch (err) {
+    alert(err?.response?.data?.message || 'Error al vender')
+  } finally {
+    busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
     if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
   }
@@ -283,10 +337,16 @@ async function handleEquip(ci) {
 .item-preview p { margin: 0 0 8px; line-height: 1.45; font-size: 10px; }
 .item-stats { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;}
 .item-stats li { font-size: 10px; }
-.equip-btn {
-  width: 100%; border: 2px solid #0f1518; background: #c9b27a;
-  color: #1f1f1f; padding: 10px; font-size: 10px; cursor: pointer; font-family: inherit; font-weight: bold;
+
+.item-actions { display: flex; flex-direction: column; gap: 8px; }
+.action-btn {
+  width: 100%; border: 2px solid #0f1518; padding: 10px;
+  font-size: 10px; cursor: pointer; font-family: inherit; font-weight: bold;
 }
-.equip-btn:hover:not(:disabled) { background: #e3cc8d; }
-.equip-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.action-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.action-btn.buy { background: #8bc34a; color: #17210f; }
+.action-btn.sell { background: #b74a3c; color: #fff7e6; }
+.action-btn.equip { background: #c9b27a; color: #1f1f1f; }
 </style>

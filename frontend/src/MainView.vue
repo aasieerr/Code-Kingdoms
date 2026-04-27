@@ -96,9 +96,9 @@
 
     <!-- Diálogos NPC -->
     <DialogueModal
-      v-if="activeDialogueNpc"
-      :npc="activeDialogueNpc"
-      @close="activeDialogueNpc = null"
+      v-if="npcsManager.activeDialogueNpc.value"
+      :npc="npcsManager.activeDialogueNpc.value"
+      @close="npcsManager.activeDialogueNpc.value = null"
     />
 
     <!-- Fade de transición -->
@@ -114,6 +114,7 @@ import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
 import { lastTransition, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
 import { ensureActiveCharacterId, fetchCharacter } from './api/character'
+import { useNpcs } from './composables/useNpcs'
 import HudPanel       from './components/HudPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
@@ -136,47 +137,28 @@ const showSkinShop = ref(false)
 const showMicropay = ref(false)
 const authStore = useAuthStore()
 
-// Movimiento del personaje
-const { arenaRef, x, y, focused, moving, locked } = useWasd(1000, startY)
-
-// NPCs Composable
-const { 
-  npcs, 
-  activeDialogueNpc, 
-  loadNpcs, 
-  getIsNear, 
-  openDialogue 
-} = useNpcs('MainGame', x, y)
-
+// Monedero y apariencia
 const walletGold = ref(null)
 const walletCodeCoins = ref(null)
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
 
-function openPanel(name) {
-  showMapPanel.value = false
-  showSkinShop.value = false
-  showPanel.value = name
-}
-
-function toggleMap() {
-  showPanel.value = null
-  showSkinShop.value = false
-  showMapPanel.value = !showMapPanel.value
-}
-
-function goCharacterMenu() {
-  router.push({ name: 'CharacterMenu' })
-}
-
-async function handleLogout() {
-  setActiveCharacterId(null)
-  await authStore.logout()
-  router.push({ name: 'Login' })
-}
-
 // Movimiento del personaje
 const { arenaRef, x, y, focused, moving, locked } = useWasd(WORLD_EDGE / 2, startY)
+
+// Bloquear inmediatamente si venimos de otra escena para evitar rebotes
+if (lastTransition.value === 'second-to-main') {
+  locked.value = true
+}
+
+// NPCs
+const npcsManager = useNpcs('world', x, y)
+const {
+  npcs,
+  loadNpcs,
+  getIsNear,
+  openDialogue
+} = npcsManager
 
 /** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
 const SKIN_SHOP = { x: 138, y: 678, w: 180, h: 132, pad: 24 }
@@ -216,6 +198,7 @@ async function refreshWallet() {
     }
     locked.value = false
     const ch = await fetchCharacter(id)
+    if (!ch) return
     walletGold.value = ch.gold
     walletCodeCoins.value = ch.code_coins ?? 0
     if (ch.equipped_skin) {
@@ -225,9 +208,29 @@ async function refreshWallet() {
       colorStill.value = '#e94560'
       colorMoving.value = '#f5a623'
     }
-  } catch {
-    // demo sin API
+  } catch (err) {
+    console.error("Error al refrescar wallet en reino:", err)
   }
+}
+
+function openPanel(name) {
+  showMapPanel.value = false
+  showPanel.value = name
+}
+
+function toggleMap() {
+  showPanel.value = null
+  showMapPanel.value = !showMapPanel.value
+}
+
+function goCharacterMenu() {
+  router.push({ name: 'CharacterMenu' })
+}
+
+async function handleLogout() {
+  setActiveCharacterId(null)
+  await authStore.logout()
+  router.push({ name: 'Login' })
 }
 
 function onSkinShopKey(e) {
@@ -254,49 +257,72 @@ function onSkinShopKey(e) {
   showSkinShop.value = true
 }
 
+const navigating = ref(false)
+const portalCooldown = ref(true)
+
 // Entrada desde SecondView (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
-  await refreshWallet()
+  
+  try {
+    await refreshWallet()
+  } catch (err) {
+    console.error("Error inicial en MainView:", err)
+  }
 
   if (lastTransition.value === 'second-to-main') {
     locked.value = true
     moving.value = true
-    setTimeout(() => { isFading.value = false }, 50)
-    const enterLoop = () => {
-      y.value -= 4
-      if (y.value <= WORLD_EDGE - 50) {
-        locked.value = false
-        moving.value = false
-        lastTransition.value = null
-      } else {
+    isFading.value = true
+    
+    // Pequeña espera para asegurar que el componente se asiente
+    setTimeout(() => {
+      isFading.value = false
+      const enterLoop = () => {
+        if (y.value <= WORLD_EDGE - 180) {
+          locked.value = false
+          moving.value = false
+          lastTransition.value = null
+          // Mantener cooldown un poco más tras desbloquear
+          setTimeout(() => { portalCooldown.value = false }, 500)
+          return
+        }
+        y.value -= 5
         requestAnimationFrame(enterLoop)
       }
-    }
-    requestAnimationFrame(enterLoop)
+      requestAnimationFrame(enterLoop)
+    }, 100)
   } else {
     isFading.value = false
+    locked.value = false
+    portalCooldown.value = false
   }
 })
 
 // Salida hacia SecondView (caminar al borde inferior)
 watch([x, y], ([newX, newY]) => {
+  if (locked.value || navigating.value || portalCooldown.value) return
+  
   const PLAYER = 40
   const cx = WORLD_EDGE / 2
   if (
-    !locked.value
-    && newY >= WORLD_EDGE - PLAYER
+    newY >= WORLD_EDGE - PLAYER
     && newX > cx - PORTAL_HALF_WIDTH
     && newX < cx + PORTAL_HALF_WIDTH
   ) {
+    navigating.value = true
     locked.value = true
     moving.value = true
     isFading.value = true
+    
     const exitLoop = () => {
-      y.value += 4
-      if (y.value >= WORLD_EDGE + 60) {
+      y.value += 5
+      if (y.value >= WORLD_EDGE + 80) {
         lastTransition.value = 'main-to-second'
-        router.push({ name: 'SecondGame' })
+        router.push({ name: 'SecondGame' }).catch(() => {
+          navigating.value = false
+          locked.value = false
+        })
       } else {
         requestAnimationFrame(exitLoop)
       }
