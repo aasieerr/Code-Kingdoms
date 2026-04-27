@@ -1,4 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
+import { WORLD_EDGE } from '../constants/world'
 
 export function useWasd(initialX = 280, initialY = 170) {
   const arenaRef = ref(null)
@@ -29,8 +30,8 @@ export function useWasd(initialX = 280, initialY = 170) {
   function loop() {
     const arena = arenaRef.value
     if (arena && !locked.value) {
-      const WORLD_WIDTH = 2000
-      const WORLD_HEIGHT = 2000
+      const WORLD_WIDTH = WORLD_EDGE
+      const WORLD_HEIGHT = WORLD_EDGE
       const W = WORLD_WIDTH - SIZE
       const H = WORLD_HEIGHT - SIZE
 

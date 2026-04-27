@@ -32,18 +32,18 @@
 
 <script setup>
 import { computed } from 'vue'
+import { WORLD_EDGE } from '../constants/world'
 
 const props = defineProps({
-  playerX: { type: Number, default: 1000 },
-  playerY: { type: Number, default: 1000 },
-  npcs: { type: Array, default: () => [] }
+  playerX: { type: Number, default: WORLD_EDGE / 2 },
+  playerY: { type: Number, default: WORLD_EDGE / 2 },
 })
 
 defineEmits(['close'])
 
 const MAP_W    = 520
 const MAP_H    = 320
-const WORLD    = 2000
+const WORLD    = WORLD_EDGE
 
 const playerMarkerStyle = computed(() => {
   const px = Math.max(0, Math.min(MAP_W - 16, (props.playerX / WORLD) * MAP_W))

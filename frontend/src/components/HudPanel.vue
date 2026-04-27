@@ -6,6 +6,7 @@
     <button class="hud-btn secondary" @click.stop="$emit('toggle-map')">
       {{ mapOpen ? 'Cerrar mapa' : 'Mapa' }}
     </button>
+    <button class="hud-btn menu-pj" @click.stop="$emit('character-menu')">Personajes</button>
     <button class="hud-btn logout" @click.stop="$emit('logout')">Cerrar sesión</button>
   </aside>
 </template>
@@ -15,7 +16,7 @@ defineProps({
   mapOpen: { type: Boolean, default: false },
 })
 
-defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'logout'])
+defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'logout'])
 </script>
 
 <style scoped>
@@ -61,5 +62,6 @@ defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'logout'])
 }
 .hud-btn:hover { background: #e3cc8d; }
 .hud-btn.secondary { background: #ad9a6a; }
-.hud-btn.logout { margin-top: 8px; background: #8f3b2c; color: #f7ebd0; }
+.hud-btn.menu-pj { margin-top: 8px; background: #3d5a6f; color: #e8f0f5; }
+.hud-btn.logout { margin-top: 6px; background: #8f3b2c; color: #f7ebd0; }
 </style>

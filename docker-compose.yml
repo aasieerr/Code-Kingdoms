@@ -54,34 +54,13 @@ services:
       timeout: 5s
 
   # ──────────────────────────────────────────────────────
-  # KEYCLOAK
-  # ──────────────────────────────────────────────────────
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    command: start-dev
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: mariadb
-      KC_DB_URL: jdbc:mariadb://mariadb:3306/keycloak
-      KC_DB_USERNAME: root
-      KC_DB_PASSWORD: 'password'
-    volumes:
-      - './backend/keycloak-themes:/opt/keycloak/themes'
-    ports:
-      - '8080:8080'
-    depends_on:
-      mariadb:
-        condition: service_healthy
-    networks:
-      - sail
-
-  # ──────────────────────────────────────────────────────
   # FRONTEND — Vue 3 + Vite
   # ──────────────────────────────────────────────────────
   frontend:
     image: node:22-alpine
     working_dir: /app
+    environment:
+      VITE_API_PROXY_TARGET: 'http://laravel.test:80'
     volumes:
       - './frontend:/app'
     ports:

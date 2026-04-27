@@ -1,9 +1,8 @@
 import api from './axios'
-import { activeCharacterId } from '../gameState'
+import { activeCharacterId, setActiveCharacterId } from '../gameState'
 
 /**
- * Obtiene todos los personajes.
- * Ruta pública: GET /api/characters
+ * Personajes del usuario (requiere token Sanctum).
  */
 export async function fetchCharacters() {
   const { data } = await api.get('/characters')
@@ -11,8 +10,20 @@ export async function fetchCharacters() {
 }
 
 /**
- * Obtiene un personaje concreto por su ID.
- * Ruta pública: GET /api/characters/{id}
+ * Crea un personaje para el usuario autenticado.
+ */
+export async function createCharacter(payload) {
+  const { data } = await api.post('/characters', {
+    name: payload.name,
+    id_kingdom: payload.id_kingdom,
+    id_race: payload.id_race,
+    id_class: payload.id_class,
+  })
+  return data
+}
+
+/**
+ * Detalle (requiere ser el dueño del personaje).
  */
 export async function fetchCharacter(id) {
   const { data } = await api.get(`/characters/${id}`)
@@ -20,19 +31,41 @@ export async function fetchCharacter(id) {
 }
 
 /**
- * Asigna activeCharacterId al primer personaje de la API si aún no está fijado.
- * Evita depender de id=1, que no existe si la base no está resembrada igual.
+ * Devuelve el personaje activo (elegido en el menú). No asigna ningún PJ por defecto.
  */
 export async function ensureActiveCharacterId() {
   if (activeCharacterId.value != null) {
     return activeCharacterId.value
   }
-  const list = await fetchCharacters()
-  if (list.length === 0) {
-    throw new Error(
-      'No hay personajes. En el contenedor: php artisan db:seed (o crea un personaje por la API).'
-    )
+  const s = readStoredId()
+  if (s != null) {
+    setActiveCharacterId(s)
   }
-  activeCharacterId.value = list[0].id
   return activeCharacterId.value
+}
+
+function readStoredId() {
+  try {
+    const raw = localStorage.getItem('ck_active_character_id')
+    if (raw == null || raw === '') {
+      return null
+    }
+    const n = parseInt(raw, 10)
+    return Number.isNaN(n) ? null : n
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Suma oro al personaje. Requiere JWT.
+ */
+export async function addCharacterGold(characterId, delta) {
+  if (delta <= 0 || characterId == null) {
+    return null
+  }
+  const ch = await fetchCharacter(characterId)
+  const next = (ch.gold ?? 0) + delta
+  const { data } = await api.patch(`/characters/${characterId}`, { gold: next })
+  return data
 }

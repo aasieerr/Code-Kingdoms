@@ -1,0 +1,310 @@
+import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
+import { WORLD_EDGE as WORLD } from '../constants/world'
+
+const PLAYER_SIZE = 40
+const MOVE_SPEED = 4
+const COIN_PICKUP_R = 52
+const CONTACT_DAMAGE = 10
+const CONTACT_COOLDOWN_MS = 480
+const BULLET_SPEED = 10
+const BULLET_LIFETIME_MS = 2200
+const FIRE_INTERVAL_MS = 320
+const BULLET_DAMAGE = 16
+const ENEMY_SIZE = 36
+const ENEMY_HIT_R = 16
+
+/** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
+export function useArenaCombat(options = {}) {
+  const startX = options.startX ?? WORLD / 2
+  const startY = options.startY ?? WORLD / 2
+
+  const arenaRef = ref(null)
+  const x = ref(startX)
+  const y = ref(startY)
+  const focused = ref(false)
+  const moving = ref(false)
+  const locked = ref(false)
+
+  const keys = { w: false, a: false, s: false, d: false }
+
+  const wave = ref(1)
+  /** idle (sin run aún) | fighting | between | gameover */
+  const phase = ref('idle')
+  const playerHp = ref(100)
+  const playerMaxHp = ref(100)
+  /** Oro recogido en esta sesión de arena (antes de sincronizar con API) */
+  const sessionGold = ref(0)
+
+  const enemies = shallowRef([])
+  const bullets = shallowRef([])
+  const coins = shallowRef([])
+
+  let enemyId = 1
+  let bulletId = 1
+  let coinId = 1
+  let lastFireAt = 0
+  let lastContactAt = 0
+  let rafId = null
+
+  function spawnWave() {
+    const n = Math.min(42, 4 + wave.value * 2)
+    const list = []
+    const pad = 80
+    for (let i = 0; i < n; i++) {
+      const edge = Math.floor(Math.random() * 4)
+      let ex
+      let ey
+      if (edge === 0) {
+        ex = Math.random() * (WORLD - pad * 2) + pad
+        ey = pad
+      } else if (edge === 1) {
+        ex = WORLD - pad
+        ey = Math.random() * (WORLD - pad * 2) + pad
+      } else if (edge === 2) {
+        ex = Math.random() * (WORLD - pad * 2) + pad
+        ey = WORLD - pad
+      } else {
+        ex = pad
+        ey = Math.random() * (WORLD - pad * 2) + pad
+      }
+      const hp = 16 + wave.value * 7
+      list.push({
+        id: enemyId++,
+        x: ex,
+        y: ey,
+        hp,
+        maxHp: hp,
+        speed: 1.05 + wave.value * 0.14,
+      })
+    }
+    enemies.value = list
+  }
+
+  function nearestEnemy(px, py) {
+    let best = null
+    let bestD = Infinity
+    const pcx = px + PLAYER_SIZE / 2
+    const pcy = py + PLAYER_SIZE / 2
+    for (const e of enemies.value) {
+      const ecx = e.x + ENEMY_SIZE / 2
+      const ecy = e.y + ENEMY_SIZE / 2
+      const dx = ecx - pcx
+      const dy = ecy - pcy
+      const d = dx * dx + dy * dy
+      if (d < bestD) {
+        bestD = d
+        best = e
+      }
+    }
+    return best
+  }
+
+  function tick() {
+    const now = performance.now()
+
+    if (!locked.value && arenaRef.value) {
+      const W = WORLD - PLAYER_SIZE
+      const H = WORLD - PLAYER_SIZE
+      if (keys.w) {
+        y.value = Math.max(0, y.value - MOVE_SPEED)
+      }
+      if (keys.s) {
+        y.value = Math.min(H, y.value + MOVE_SPEED)
+      }
+      if (keys.a) {
+        x.value = Math.max(0, x.value - MOVE_SPEED)
+      }
+      if (keys.d) {
+        x.value = Math.min(W, x.value + MOVE_SPEED)
+      }
+      moving.value = Object.values(keys).some(Boolean)
+    }
+
+    if (phase.value === 'fighting') {
+      const px = x.value
+      const py = y.value
+      const pcx = px + PLAYER_SIZE / 2
+      const pcy = py + PLAYER_SIZE / 2
+
+      let elist = enemies.value.map((e) => {
+        const ecx = e.x + ENEMY_SIZE / 2
+        const ecy = e.y + ENEMY_SIZE / 2
+        let dx = pcx - ecx
+        let dy = pcy - ecy
+        const len = Math.hypot(dx, dy) || 1
+        dx /= len
+        dy /= len
+        let nx = e.x + dx * e.speed
+        let ny = e.y + dy * e.speed
+        nx = Math.max(0, Math.min(WORLD - ENEMY_SIZE, nx))
+        ny = Math.max(0, Math.min(WORLD - ENEMY_SIZE, ny))
+        return { ...e, x: nx, y: ny }
+      })
+      enemies.value = elist
+
+      for (const e of elist) {
+        const ecx = e.x + ENEMY_SIZE / 2
+        const ecy = e.y + ENEMY_SIZE / 2
+        const dist = Math.hypot(ecx - pcx, ecy - pcy)
+        if (dist < 30 && now - lastContactAt > CONTACT_COOLDOWN_MS) {
+          playerHp.value = Math.max(0, playerHp.value - CONTACT_DAMAGE)
+          lastContactAt = now
+          break
+        }
+      }
+
+      const tgt = nearestEnemy(px, py)
+      if (tgt && now - lastFireAt >= FIRE_INTERVAL_MS) {
+        lastFireAt = now
+        const ecx = tgt.x + ENEMY_SIZE / 2
+        const ecy = tgt.y + ENEMY_SIZE / 2
+        let dx = ecx - pcx
+        let dy = ecy - pcy
+        const len = Math.hypot(dx, dy) || 1
+        bullets.value = [
+          ...bullets.value,
+          {
+            id: bulletId++,
+            x: pcx,
+            y: pcy,
+            vx: (dx / len) * BULLET_SPEED,
+            vy: (dy / len) * BULLET_SPEED,
+            born: now,
+          },
+        ]
+      }
+
+      const moved = bullets.value
+        .map((b) => ({
+          ...b,
+          x: b.x + b.vx,
+          y: b.y + b.vy,
+        }))
+        .filter((b) => now - b.born < BULLET_LIFETIME_MS)
+        .filter((b) => b.x >= -40 && b.x <= WORLD + 40 && b.y >= -40 && b.y <= WORLD + 40)
+
+      const newCoins = [...coins.value]
+      const keptBullets = []
+
+      for (const b of moved) {
+        let hitIndex = -1
+        for (let i = 0; i < elist.length; i++) {
+          const e = elist[i]
+          const ecx = e.x + ENEMY_SIZE / 2
+          const ecy = e.y + ENEMY_SIZE / 2
+          if (Math.hypot(b.x - ecx, b.y - ecy) < ENEMY_HIT_R + 6) {
+            hitIndex = i
+            break
+          }
+        }
+        if (hitIndex < 0) {
+          keptBullets.push(b)
+          continue
+        }
+        const e = elist[hitIndex]
+        const nh = e.hp - BULLET_DAMAGE
+        if (nh <= 0) {
+          newCoins.push({
+            id: coinId++,
+            x: e.x + 8,
+            y: e.y + 8,
+            value: 2 + Math.floor(Math.random() * 4),
+          })
+          elist.splice(hitIndex, 1)
+        } else {
+          elist[hitIndex] = { ...e, hp: nh }
+        }
+      }
+
+      bullets.value = keptBullets
+      enemies.value = elist
+
+      coins.value = newCoins.filter((c) => {
+        const cx = c.x + 10
+        const cy = c.y + 10
+        if (Math.hypot(cx - pcx, cy - pcy) < COIN_PICKUP_R) {
+          sessionGold.value += c.value
+          return false
+        }
+        return true
+      })
+
+      if (playerHp.value <= 0) {
+        phase.value = 'gameover'
+      } else if (enemies.value.length === 0 && phase.value === 'fighting') {
+        phase.value = 'between'
+      }
+    }
+
+    rafId = requestAnimationFrame(tick)
+  }
+
+  function startNextWave() {
+    wave.value += 1
+    playerHp.value = Math.min(
+      playerMaxHp.value,
+      playerHp.value + Math.floor(playerMaxHp.value * 0.12)
+    )
+    phase.value = 'fighting'
+    spawnWave()
+  }
+
+  function beginFirstWave() {
+    phase.value = 'fighting'
+    spawnWave()
+  }
+
+  function onKeyDown(e) {
+    const k = e.key.toLowerCase()
+    if (k in keys) {
+      if (focused.value && !locked.value) {
+        e.preventDefault()
+      }
+      if (!locked.value) {
+        keys[k] = true
+      }
+    }
+  }
+
+  function onKeyUp(e) {
+    const k = e.key.toLowerCase()
+    if (k in keys) {
+      keys[k] = false
+    }
+  }
+
+  onMounted(() => {
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    rafId = requestAnimationFrame(tick)
+    arenaRef.value?.focus()
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('keydown', onKeyDown)
+    window.removeEventListener('keyup', onKeyUp)
+    cancelAnimationFrame(rafId)
+  })
+
+  return {
+    arenaRef,
+    x,
+    y,
+    focused,
+    moving,
+    locked,
+    PLAYER_SIZE,
+    WORLD,
+    ENEMY_SIZE,
+    wave,
+    phase,
+    playerHp,
+    playerMaxHp,
+    sessionGold,
+    enemies,
+    bullets,
+    coins,
+    startNextWave,
+    beginFirstWave,
+  }
+}

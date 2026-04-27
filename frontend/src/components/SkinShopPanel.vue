@@ -81,6 +81,10 @@ async function load() {
   msg.value = ''
   try {
     await ensureActiveCharacterId()
+    if (activeCharacterId.value == null) {
+      err.value = 'Crea un personaje en el mapa principal antes de ir a la tienda de apariencias.'
+      return
+    }
     const [list, ch] = await Promise.all([fetchSkinsCatalog(), fetchCharacter(activeCharacterId.value)])
     skins.value = list
     codeCoins.value = ch.code_coins ?? 0

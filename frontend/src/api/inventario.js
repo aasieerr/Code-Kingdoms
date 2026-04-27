@@ -35,7 +35,12 @@ export async function fetchInventoryData(force = false) {
   isInventoryLoading.value = true
   lastInventoryError.value = null
   try {
-    await ensureActiveCharacterId()
+    const id = await ensureActiveCharacterId()
+    if (id == null) {
+      isDataLoaded = false
+      isInventoryLoading.value = false
+      return
+    }
     const cid = activeCharacterId.value
     const [resItems, resChar] = await Promise.all([
       api.get('/items'),
@@ -52,7 +57,10 @@ export async function fetchInventoryData(force = false) {
 }
 
 export async function toggleEquipItem(id, equip, id_item = null) {
-  await ensureActiveCharacterId()
+  const ensured = await ensureActiveCharacterId()
+  if (ensured == null) {
+    return
+  }
   const cid = activeCharacterId.value
   if (!id && equip && id_item) {
     await api.post(`/character-items`, {
