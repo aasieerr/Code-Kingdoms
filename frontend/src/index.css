@@ -1,0 +1,65 @@
+/* 
+  CODE KINGDOMS - GLOBAL STYLES
+*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-gold: #facc15;
+  --color-gold-dark: #854d0e;
+}
+
+/* Global scroll */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #0b0d17;
+}
+
+#app {
+  width: 100%;
+  height: auto;
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0d17;
+}
+::-webkit-scrollbar-thumb {
+  background: #854d0e;
+  border: 2px solid #facc15;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #facc15;
+}
+
+/* Click Effect Particles */
+.click-particle {
+  position: fixed;
+  pointer-events: none;
+  background: #facc15;
+  z-index: 9999;
+  box-shadow: 0 0 4px #854d0e;
+}
+
+/* Shockwave ring */
+.click-shockwave {
+  position: fixed;
+  border: 4px solid #facc15;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px #facc15, inset 0 0 8px rgba(250, 204, 21, 0.3);
+}

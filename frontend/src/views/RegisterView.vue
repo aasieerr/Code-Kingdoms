@@ -3,7 +3,6 @@
     <AppHeader />
     
     <div class="flex-grow flex items-center justify-center relative px-6 py-12">
-      <!-- Split background effect -->
       <div class="fixed inset-0 z-0 pointer-events-none">
         <div class="absolute inset-0 bg-gradient-to-r from-[#1e3a8a]/10 via-transparent to-[#7f1d1d]/10"></div>
       </div>
@@ -11,21 +10,11 @@
       <div class="auth__card relative z-10">
         <img class="auth__logo" src="/code-kingdoms-logo.png" alt="logo" width="80" height="80" />
         <h1 class="auth__title">CODE & KINGDOMS</h1>
-        <p class="auth__subtitle">INGRESA AL REINO DEL CÓDIGO</p>
+        <p class="auth__subtitle">FORJA TU LEYENDA</p>
 
         <p v-if="errorMsg" class="auth__err">{{ errorMsg }}</p>
 
-        <form v-if="mode === 'login'" class="auth__form" @submit.prevent="submitLogin">
-          <label class="auth__label">EMAIL DE HÉROE</label>
-          <input v-model="loginEmail" type="email" class="auth__input" required autocomplete="email" />
-          <label class="auth__label">CONTRASEÑA ARCANO</label>
-          <input v-model="loginPassword" type="password" class="auth__input" required autocomplete="current-password" />
-          <button type="submit" class="auth__btn" :disabled="busy">
-            {{ busy ? 'CARGANDO...' : 'ENTRAR AL REINO' }}
-          </button>
-        </form>
-
-        <form v-else class="auth__form" @submit.prevent="submitRegister">
+        <form class="auth__form" @submit.prevent="submitRegister">
           <label class="auth__label">NOMBRE DEL HÉROE</label>
           <input v-model="regName" type="text" class="auth__input" required maxlength="255" autocomplete="name" />
           <label class="auth__label">EMAIL DE HÉROE</label>
@@ -35,14 +24,13 @@
           <label class="auth__label">REPETIR CONTRASEÑA</label>
           <input v-model="regPassword2" type="password" class="auth__input" required autocomplete="new-password" />
           <button type="submit" class="auth__btn" :disabled="busy">
-            {{ busy ? 'CARGANDO...' : 'REGISTRARSE' }}
+            {{ busy ? 'CREANDO HÉROE...' : '► CREAR CUENTA' }}
           </button>
         </form>
 
         <p class="auth__switch">
-          <button type="button" class="auth__link" @click="toggleMode">
-            {{ mode === 'login' ? '¿SIN CUENTA? FORJA UNA' : '¿YA TIENES CUENTA? ENTRAR' }}
-          </button>
+          ¿YA TIENES CUENTA?
+          <router-link to="/login" class="auth__link">INICIA SESIÓN</router-link>
         </p>
       </div>
     </div>
@@ -62,43 +50,17 @@ import AppFooter from '../components/AppFooter.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const mode = ref('login')
 const busy = ref(false)
 const errorMsg = ref('')
-
-const loginEmail = ref('')
-const loginPassword = ref('')
 
 const regName = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
 const regPassword2 = ref('')
 
-function toggleMode() {
-  mode.value = mode.value === 'login' ? 'register' : 'login'
-  errorMsg.value = ''
-}
-
-async function submitLogin() {
-  busy.value = true
-  errorMsg.value = ''
-  try {
-    const res = await api.post('/login', {
-      email: loginEmail.value,
-      password: loginPassword.value
-    })
-    authStore.setSession(res.data)
-    router.push('/personajes')
-  } catch (err) {
-    errorMsg.value = err.response?.data?.message || 'Error al iniciar sesión'
-  } finally {
-    busy.value = false
-  }
-}
-
 async function submitRegister() {
   if (regPassword.value !== regPassword2.value) {
-    errorMsg.value = 'Las contraseñas no coinciden'
+    errorMsg.value = 'LAS CONTRASEÑAS NO COINCIDEN'
     return
   }
   
@@ -173,7 +135,7 @@ async function submitRegister() {
 .auth__input {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   padding: 0.8rem 1rem;
   font-family: inherit;
   font-size: 0.6rem;
@@ -215,18 +177,14 @@ async function submitRegister() {
 .auth__switch {
   margin-top: 2rem;
   font-size: 0.5rem;
+  color: rgba(250, 204, 21, 0.4);
 }
 .auth__link {
-  font-family: inherit;
-  font-size: inherit;
-  background: none;
-  border: none;
   color: #facc15;
   text-decoration: underline;
-  cursor: pointer;
-  opacity: 0.6;
+  margin-left: 0.5rem;
 }
 .auth__link:hover {
-  opacity: 1;
+  color: white;
 }
 </style>
