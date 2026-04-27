@@ -7,6 +7,7 @@ export const useCharacterStore = defineStore('character', () => {
   const codeCoins = ref(0)
   const name = ref('')
   const equippedSkin = ref(null)
+  const equippedWeapon = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
@@ -33,6 +34,19 @@ export const useCharacterStore = defineStore('character', () => {
       codeCoins.value = ch.code_coins ?? 0
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
+      
+      // Encontrar arma equipada
+      const weaponItem = ch.equipped_items?.find(i => i.type === 'weapon')
+      if (weaponItem && weaponItem.weapon) {
+        equippedWeapon.value = {
+          name: weaponItem.name,
+          damage: weaponItem.weapon.damage,
+          weaponType: weaponItem.weapon.weapon_type
+        }
+      } else {
+        equippedWeapon.value = null
+      }
+
       error.value = null
     } catch (err) {
       error.value = err.message
@@ -47,6 +61,7 @@ export const useCharacterStore = defineStore('character', () => {
     codeCoins,
     name,
     equippedSkin,
+    equippedWeapon,
     loading,
     error,
     refresh

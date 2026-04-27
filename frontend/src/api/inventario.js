@@ -12,17 +12,7 @@ let isDataLoaded = false
 
 // Inventario cruzado para el UI (catálogo + posesiones)
 export const mergedInventoryItems = computed(() => {
-  return globalItems.value.map(catalogItem => {
-    const owned = myCharacterItems.value.find(ci => ci.item?.id_item === catalogItem.id_item)
-    if (owned) return owned
-    return {
-      id: null,
-      id_item: catalogItem.id_item,
-      quantity: ['weapon', 'armor'].includes(catalogItem.type) ? 1 : 0,
-      is_equipped: false,
-      item: catalogItem
-    }
-  })
+  return myCharacterItems.value
 })
 
 // Solo lo que tenemos equipado para el panel de equipo

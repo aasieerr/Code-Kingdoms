@@ -57,7 +57,7 @@
       <div class="hp-bar-outer">
         <div class="hp-bar-inner" :style="{ width: playerHpPct + '%' }"></div>
       </div>
-      <p class="hud-hint hint-top">Norte — vuelve al reino</p>
+      <p v-if="phase === 'idle'" class="hud-hint hint-top">Norte — vuelve al reino</p>
       <p class="hud-hint hint-keys">WASD · disparo automático · <kbd>I</kbd> inventario · <kbd>K</kbd> equipo · <kbd>M</kbd> mapa</p>
     </div>
 
@@ -95,7 +95,10 @@
       <div class="modal-card">
         <h2>Ronda {{ wave }} completada</h2>
         <p>Tienes {{ sessionGold }} 🪙 esta run. Equipa ítems en el panel o sigue luchando.</p>
-        <button type="button" class="btn-primary" @click="startNextWave">Siguiente ronda</button>
+        <div class="modal-actions">
+          <button type="button" class="btn-primary" @click="startNextWave">Siguiente ronda</button>
+          <button type="button" class="btn-secondary" @click="leaveArena">Volver al reino</button>
+        </div>
       </div>
     </div>
 
@@ -169,6 +172,7 @@ const {
 } = useArenaCombat({
   startX: WORLD_EDGE / 2,
   startY,
+  equippedWeapon: computed(() => characterStore.equippedWeapon),
 })
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
@@ -345,7 +349,7 @@ watch([x, y], ([newX, newY]) => {
   
   const cx = WORLD / 2
   if (
-    phase.value !== 'gameover'
+    phase.value === 'idle'
     && newY <= 0
     && newX > cx - PORTAL_HALF_WIDTH
     && newX < cx + PORTAL_HALF_WIDTH
@@ -610,5 +614,25 @@ watch(phase, (p) => {
 }
 .btn-primary:hover {
   filter: brightness(1.08);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.btn-secondary {
+  border: 3px solid #1f1f1f;
+  background: #546e7a;
+  color: #ffffff;
+  padding: 10px 18px;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-secondary:hover {
+  filter: brightness(1.15);
 }
 </style>

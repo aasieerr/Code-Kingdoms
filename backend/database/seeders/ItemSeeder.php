@@ -72,19 +72,23 @@ class ItemSeeder extends Seeder
         ];
 
         foreach ($weapons as $weaponData) {
-            $item = Item::create([
-                'name' => $weaponData['name'],
-                'description' => $weaponData['description'],
-                'type' => 'weapon',
-                'price' => $weaponData['price'],
-            ]);
+            $item = Item::updateOrCreate(
+                ['name' => $weaponData['name']],
+                [
+                    'description' => $weaponData['description'],
+                    'type' => 'weapon',
+                    'price' => $weaponData['price'],
+                ]
+            );
 
-            Weapon::create([
-                'id_item' => $item->id_item,
-                'damage' => $weaponData['damage'],
-                'weapon_type' => $weaponData['weapon_type'],
-                'durability' => $weaponData['durability'],
-            ]);
+            Weapon::updateOrCreate(
+                ['id_item' => $item->id_item],
+                [
+                    'damage' => $weaponData['damage'],
+                    'weapon_type' => $weaponData['weapon_type'],
+                    'durability' => $weaponData['durability'],
+                ]
+            );
         }
     }
 
@@ -126,19 +130,23 @@ class ItemSeeder extends Seeder
         ];
 
         foreach ($armors as $armorData) {
-            $item = Item::create([
-                'name' => $armorData['name'],
-                'description' => $armorData['description'],
-                'type' => 'armor',
-                'price' => $armorData['price'],
-            ]);
+            $item = Item::updateOrCreate(
+                ['name' => $armorData['name']],
+                [
+                    'description' => $armorData['description'],
+                    'type' => 'armor',
+                    'price' => $armorData['price'],
+                ]
+            );
 
-            Armor::create([
-                'id_item' => $item->id_item,
-                'defense' => $armorData['defense'],
-                'armor_type' => $armorData['armor_type'],
-                'durability' => $armorData['durability'],
-            ]);
+            Armor::updateOrCreate(
+                ['id_item' => $item->id_item],
+                [
+                    'defense' => $armorData['defense'],
+                    'armor_type' => $armorData['armor_type'],
+                    'durability' => $armorData['durability'],
+                ]
+            );
         }
     }
 
@@ -193,20 +201,24 @@ class ItemSeeder extends Seeder
         ];
 
         foreach ($consumables as $consumableData) {
-            $item = Item::create([
-                'name' => $consumableData['name'],
-                'description' => $consumableData['description'],
-                'type' => 'consumable',
-                'price' => $consumableData['price'],
-            ]);
+            $item = Item::updateOrCreate(
+                ['name' => $consumableData['name']],
+                [
+                    'description' => $consumableData['description'],
+                    'type' => 'consumable',
+                    'price' => $consumableData['price'],
+                ]
+            );
 
-            Consumable::create([
-                'id_item' => $item->id_item,
-                'effect' => $consumableData['effect'],
-                'power' => $consumableData['power'],
-                'duration' => $consumableData['duration'],
-                'quantity' => $consumableData['quantity'],
-            ]);
+            Consumable::updateOrCreate(
+                ['id_item' => $item->id_item],
+                [
+                    'effect' => $consumableData['effect'],
+                    'power' => $consumableData['power'],
+                    'duration' => $consumableData['duration'],
+                    'quantity' => $consumableData['quantity'],
+                ]
+            );
         }
     }
 }

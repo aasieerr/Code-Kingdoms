@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Character;
 use App\Models\User;
+use App\Models\CharacterClass;
+use App\Models\Item;
+use App\Models\CharacterItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -53,7 +56,52 @@ class CharacterController extends Controller
         );
         $character = Character::create($payload);
 
+        // Asignar equipo inicial según la clase
+        $this->assignStartingEquipment($character);
+
         return response()->json($character, 201);
+    }
+
+    /**
+     * Asigna un arma y armadura inicial al personaje recién creado según su clase.
+     */
+    private function assignStartingEquipment(Character $character)
+    {
+        $charClass = CharacterClass::find($character->id_class);
+        if (!$charClass)
+            return;
+
+        // Selección de arma
+        $weaponName = match ($charClass->name) {
+            'Guerrero' => 'Espada del Guerrero',
+            'Mago' => 'Varita Arcana',
+            'Arquero' => 'Arco de Roble',
+            'Paladín' => 'Hacha de Batalla',
+            'Asesino' => 'Daga Asesina',
+            default => 'Espada del Guerrero',
+        };
+
+        // Selección de armadura
+        $armorName = match ($charClass->name) {
+            'Guerrero', 'Paladín' => 'Armadura de Placas',
+            'Mago' => 'Túnica Mágica',
+            'Arquero', 'Asesino' => 'Armadura de Cuero',
+            default => 'Armadura de Cuero',
+        };
+
+        $this->giveAndEquipItem($character->id, $weaponName);
+        $this->giveAndEquipItem($character->id, $armorName);
+    }
+
+    private function giveAndEquipItem($characterId, $itemName)
+    {
+        $item = Item::where('name', $itemName)->first();
+        if ($item) {
+            CharacterItem::updateOrCreate(
+                ['id_character' => $characterId, 'id_item' => $item->id_item],
+                ['quantity' => 1, 'is_equipped' => true]
+            );
+        }
     }
 
     /**
@@ -62,7 +110,7 @@ class CharacterController extends Controller
     public function show(string $id)
     {
         $character = Character::query()
-            ->with(['equippedSkin'])
+            ->with(['equippedSkin', 'equippedItems.weapon', 'equippedItems.armor'])
             ->findOrFail($id);
 
         if ((int) $character->id_user !== (int) Auth::id()) {
