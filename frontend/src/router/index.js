@@ -22,9 +22,7 @@ router.beforeEach((to) => {
   if (to.name !== 'Login' && !auth.token) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
-  if (to.name === 'Login' && auth.token) {
-    return { name: 'CharacterMenu' }
-  }
+
   if (to.name === 'Game' && activeCharacterId.value == null) {
     return { name: 'CharacterMenu' }
   }

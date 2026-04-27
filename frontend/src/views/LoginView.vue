@@ -3,9 +3,11 @@
     <div class="auth__card">
       <img class="auth__logo" src="/code-kingdoms-logo.png" alt="" width="72" height="72" />
       <h1 class="auth__title">Code Kingdoms</h1>
-      <p class="auth__subtitle">Cargando...</p>
+      <p class="auth__subtitle">
+        {{ mode === 'login' ? 'Accede a tu cuenta' : 'Crea una nueva cuenta' }}
+      </p>
 
-      <!--
+
       <p v-if="errorMsg" class="auth__err">{{ errorMsg }}</p>
 
       <form v-if="mode === 'login'" class="auth__form" @submit.prevent="submitLogin">
@@ -33,27 +35,77 @@
           {{ mode === 'login' ? '¿Sin cuenta? Regístrate' : '¿Ya tienes cuenta? Entrar' }}
         </button>
       </p>
-      -->
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { setActiveCharacterId } from '../gameState'
+import api from '../api/axios'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-onMounted(() => {
-  // Bypass authentication and go directly to the game
-  authStore.setSession({ token: 'fake-token', user: { id: 1, name: 'Demo User' } })
-  setActiveCharacterId(1) // Fake character ID
-  router.replace('/game')
-})
+const mode = ref('login')
+const busy = ref(false)
+const errorMsg = ref('')
+
+const loginEmail = ref('')
+const loginPassword = ref('')
+
+const regName = ref('')
+const regEmail = ref('')
+const regPassword = ref('')
+const regPassword2 = ref('')
+
+function toggleMode() {
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+  errorMsg.value = ''
+}
+
+async function submitLogin() {
+  busy.value = true
+  errorMsg.value = ''
+  try {
+    const { data } = await api.post('/login', {
+      email: loginEmail.value,
+      password: loginPassword.value,
+    })
+    authStore.setSession(data)
+    router.push({ name: 'CharacterMenu' })
+  } catch (err) {
+    errorMsg.value = err.response?.data?.message || 'Error al iniciar sesión'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function submitRegister() {
+  if (regPassword.value !== regPassword2.value) {
+    errorMsg.value = 'Las contraseñas no coinciden'
+    return
+  }
+  busy.value = true
+  errorMsg.value = ''
+  try {
+    const { data } = await api.post('/register', {
+      name: regName.value,
+      email: regEmail.value,
+      password: regPassword.value,
+      password_confirmation: regPassword2.value,
+    })
+    authStore.setSession(data)
+    router.push({ name: 'CharacterMenu' })
+  } catch (err) {
+    errorMsg.value = err.response?.data?.message || 'Error al registrarse'
+  } finally {
+    busy.value = false
+  }
+}
 </script>
+
 
 <style scoped>
 .auth {

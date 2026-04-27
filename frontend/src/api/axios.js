@@ -20,18 +20,19 @@ export function clearAuthToken() {
   delete api.defaults.headers.common.Authorization
 }
 
+import { useAuthStore } from '../stores/auth'
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status
     const url = error.config?.url || ''
+    
+    // Si recibimos 401 (No autorizado) y no es una ruta de auth
     if (status === 401 && !url.includes('/login') && !url.includes('/register')) {
-      clearAuthToken()
-      try {
-        localStorage.removeItem(AUTH_STORAGE_KEY)
-      } catch {
-        /* */
-      }
+      const authStore = useAuthStore()
+      authStore.clearSession()
+      
       if (!window.location.pathname.startsWith('/login')) {
         window.location.assign('/login')
       }
@@ -39,5 +40,6 @@ api.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
 
 export default api
