@@ -51,8 +51,9 @@
       <p class="hud-line wave-line">Ronda {{ wave }}</p>
       <p class="hud-line gold-line">
         <span class="lbl">Run</span> {{ sessionGold }} 🪙
-        <span v-if="walletGold !== null" class="wallet-rest"> · Banco {{ walletGold }}</span>
+        <span v-if="characterStore.gold !== null" class="wallet-rest"> · Banco {{ characterStore.gold }}</span>
       </p>
+
       <div class="hp-bar-outer">
         <div class="hp-bar-inner" :style="{ width: playerHpPct + '%' }"></div>
       </div>
@@ -61,11 +62,11 @@
     </div>
 
     <WalletBar
-      v-if="walletGold !== null"
-      :gold="walletGold"
-      :code-coins="walletCodeCoins"
+      :gold="characterStore.gold + sessionGold"
+      :code-coins="characterStore.codeCoins"
       @open-micropay="showMicropay = true"
     />
+
 
     <InventoryPanel
       v-show="showPanel === 'inventory'"
@@ -127,6 +128,8 @@ import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel from './components/MapPanel.vue'
 import WalletBar from './components/WalletBar.vue'
 import MicropayModal from './components/MicropayModal.vue'
+import { useCharacterStore } from './stores/character'
+
 
 const router = useRouter()
 const worldEdgePx = `${WORLD_EDGE}px`
@@ -137,12 +140,12 @@ const showPanel = ref(null)
 const showMapPanel = ref(false)
 const showMicropay = ref(false)
 
-const walletGold = ref(null)
-const walletCodeCoins = ref(null)
+const characterStore = useCharacterStore()
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
 const navigating = ref(false)
 const portalCooldown = ref(true)
+
 
 const {
   arenaRef,
@@ -239,28 +242,16 @@ const cameraTransform = computed(() => {
 let sessionSynced = false
 
 async function refreshWallet() {
-  try {
-    const id = await ensureActiveCharacterId()
-    if (id == null) {
-      walletGold.value = null
-      return
-    }
-    const ch = await fetchCharacter(id)
-    if (!ch) return
-    walletGold.value = ch.gold
-    walletCodeCoins.value = ch.code_coins ?? 0
-    if (ch.equipped_skin) {
-      colorStill.value = ch.equipped_skin.color_still
-      colorMoving.value = ch.equipped_skin.color_moving
-    } else {
-      colorStill.value = '#e94560'
-      colorMoving.value = '#f5a623'
-    }
-  } catch (err) {
-    console.error("Error al refrescar wallet:", err)
-    walletGold.value = null
+  await characterStore.refresh()
+  if (characterStore.equippedSkin) {
+    colorStill.value = characterStore.equippedSkin.color_still
+    colorMoving.value = characterStore.equippedSkin.color_moving
+  } else {
+    colorStill.value = '#e94560'
+    colorMoving.value = '#f5a623'
   }
 }
+
 
 async function syncRunGoldOnce() {
   if (sessionSynced) return
@@ -274,6 +265,8 @@ async function syncRunGoldOnce() {
     if (id != null) {
       sessionSynced = true
       await addCharacterGold(id, delta)
+      // Limpiar el oro de la sesión local una vez guardado en el servidor
+      sessionGold.value = 0
       await refreshWallet()
     }
   } catch (err) {

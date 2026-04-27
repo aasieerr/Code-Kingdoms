@@ -48,10 +48,11 @@
     <img class="game-logo" src="/code-kingdoms-logo.png" alt="Code Kingdoms logo" />
 
     <WalletBar
-      :gold="walletGold"
-      :code-coins="walletCodeCoins"
+      :gold="characterStore.gold"
+      :code-coins="characterStore.codeCoins"
       @open-micropay="showMicropay = true"
     />
+
 
     <!-- HUD -->
     <HudPanel
@@ -99,6 +100,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
+      @open-shop="openPanel('inventory')"
     />
 
     <!-- Fade de transición -->
@@ -124,6 +126,8 @@ import SkinShopPanel  from './components/SkinShopPanel.vue'
 import MicropayModal  from './components/MicropayModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
+import { useCharacterStore } from './stores/character'
+
 
 const router        = useRouter()
 const worldEdgePx   = `${WORLD_EDGE}px`
@@ -136,12 +140,13 @@ const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
 const authStore = useAuthStore()
+const characterStore = useCharacterStore()
 
 // Monedero y apariencia
-const walletGold = ref(null)
-const walletCodeCoins = ref(null)
+
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
+
 
 // Movimiento del personaje
 const { arenaRef, x, y, focused, moving, locked } = useWasd(WORLD_EDGE / 2, startY)
@@ -152,7 +157,7 @@ if (lastTransition.value === 'second-to-main') {
 }
 
 // NPCs
-const npcsManager = useNpcs('world', x, y)
+const npcsManager = useNpcs('MainGame', x, y)
 const {
   npcs,
   loadNpcs,
@@ -187,31 +192,18 @@ const cameraTransform = computed(() => {
 })
 
 async function refreshWallet() {
-  try {
-    const id = await ensureActiveCharacterId()
-    if (id == null) {
-      locked.value = true
-      walletGold.value = null
-      walletCodeCoins.value = null
-      router.push({ name: 'CharacterMenu' })
-      return
-    }
-    locked.value = false
-    const ch = await fetchCharacter(id)
-    if (!ch) return
-    walletGold.value = ch.gold
-    walletCodeCoins.value = ch.code_coins ?? 0
-    if (ch.equipped_skin) {
-      colorStill.value = ch.equipped_skin.color_still
-      colorMoving.value = ch.equipped_skin.color_moving
-    } else {
-      colorStill.value = '#e94560'
-      colorMoving.value = '#f5a623'
-    }
-  } catch (err) {
-    console.error("Error al refrescar wallet en reino:", err)
+  await characterStore.refresh()
+  if (characterStore.equippedSkin) {
+    colorStill.value = characterStore.equippedSkin.color_still
+    colorMoving.value = characterStore.equippedSkin.color_moving
   }
 }
+
+
+// Observar NPCs para depuración
+watch(npcs, (list) => {
+  console.log(`NPCs cargados en ${npcsManager.mapName || 'mapa'}: ${list.length}`, list)
+})
 
 function openPanel(name) {
   showMapPanel.value = false

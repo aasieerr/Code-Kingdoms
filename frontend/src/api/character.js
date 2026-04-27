@@ -26,7 +26,8 @@ export async function createCharacter(payload) {
  * Detalle (requiere ser el dueño del personaje).
  */
 export async function fetchCharacter(id) {
-  const { data } = await api.get(`/characters/${id}`)
+  // Cache-buster para evitar datos obsoletos (especialmente oro)
+  const { data } = await api.get(`/characters/${id}?t=${Date.now()}`)
   return data
 }
 
