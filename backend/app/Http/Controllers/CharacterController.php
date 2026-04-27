@@ -29,10 +29,10 @@ class CharacterController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_kingdom' => 'required|exists:kingdoms,id',
-            'id_race' => 'required|exists:races,id',
-            'id_class' => 'required|exists:character_classes,id',
-            'name' => 'required|string|max:50',
+            'id_kingdom' => 'required|exists:kingdoms,id_kingdom',
+            'id_race' => 'required|exists:races,id_race',
+            'id_class' => 'required|exists:character_classes,id_class',
+            'name' => 'required|string|max:50|unique:characters,name',
             'level' => 'sometimes|integer|min:1',
             'experience' => 'sometimes|integer|min:0',
             'health' => 'sometimes|integer|min:0',
@@ -86,10 +86,10 @@ class CharacterController extends Controller
         }
 
         $request->validate([
-            'id_kingdom' => 'sometimes|exists:kingdoms,id',
-            'id_race' => 'sometimes|exists:races,id',
-            'id_class' => 'sometimes|exists:character_classes,id',
-            'name' => 'sometimes|string|max:50',
+            'id_kingdom' => 'sometimes|exists:kingdoms,id_kingdom',
+            'id_race' => 'sometimes|exists:races,id_race',
+            'id_class' => 'sometimes|exists:character_classes,id_class',
+            'name' => 'sometimes|string|max:50|unique:characters,name,' . $id,
             'level' => 'sometimes|integer|min:1',
             'experience' => 'sometimes|integer|min:0',
             'health' => 'sometimes|integer|min:0',

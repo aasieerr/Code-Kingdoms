@@ -14,6 +14,9 @@
       </div>
 
       <div class="dialogue-footer">
+        <button v-if="npc.tipo === 'vendedor' && !isTyping" class="shop-btn" @click="$emit('open-shop')">
+          Comerciar
+        </button>
         <button class="next-btn" @click="nextDialogue">
           {{ isTyping ? 'Saltar' : (isLastDialogue ? 'Cerrar' : 'Siguiente') }}
           <span class="btn-hint" v-if="!isLastDialogue">Enter</span>
@@ -197,6 +200,23 @@ onUnmounted(() => {
 
 .next-btn:hover {
   background: #357abd;
+  transform: translateY(-2px);
+}
+.shop-btn {
+  background: #f5a623;
+  border: none;
+  color: #1a1a2e;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  margin-right: auto;
+  transition: all 0.2s;
+  font-weight: bold;
+}
+.shop-btn:hover {
+  background: #ffb142;
   transform: translateY(-2px);
 }
 

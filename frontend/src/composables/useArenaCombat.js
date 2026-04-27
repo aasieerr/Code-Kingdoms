@@ -12,6 +12,9 @@ const FIRE_INTERVAL_MS = 320
 const BULLET_DAMAGE = 16
 const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
+const MAGNET_RANGE = 120
+const MAGNET_SPEED = 6
+
 
 /** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
 export function useArenaCombat(options = {}) {
@@ -219,15 +222,33 @@ export function useArenaCombat(options = {}) {
       bullets.value = keptBullets
       enemies.value = elist
 
-      coins.value = newCoins.filter((c) => {
-        const cx = c.x + 10
-        const cy = c.y + 10
-        if (Math.hypot(cx - pcx, cy - pcy) < COIN_PICKUP_R) {
-          sessionGold.value += c.value
-          return false
-        }
-        return true
-      })
+      coins.value = newCoins
+        .map((c) => {
+          const cx = c.x + 10
+          const cy = c.y + 10
+          const dist = Math.hypot(cx - pcx, cy - pcy)
+          if (dist < MAGNET_RANGE) {
+            let dx = pcx - cx
+            let dy = pcy - cy
+            const len = Math.hypot(dx, dy) || 1
+            return {
+              ...c,
+              x: c.x + (dx / len) * MAGNET_SPEED,
+              y: c.y + (dy / len) * MAGNET_SPEED,
+            }
+          }
+          return c
+        })
+        .filter((c) => {
+          const cx = c.x + 10
+          const cy = c.y + 10
+          if (Math.hypot(cx - pcx, cy - pcy) < COIN_PICKUP_R) {
+            sessionGold.value += c.value
+            return false
+          }
+          return true
+        })
+
 
       if (playerHp.value <= 0) {
         phase.value = 'gameover'

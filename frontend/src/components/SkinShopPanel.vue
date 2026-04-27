@@ -57,19 +57,23 @@ import { onMounted, ref, computed } from 'vue'
 import { fetchSkinsCatalog, purchaseSkin, equipSkin } from '../api/skins'
 import { ensureActiveCharacterId, fetchCharacter } from '../api/character'
 import { activeCharacterId } from '../gameState'
+import { useCharacterStore } from '../stores/character'
+
 
 const emit = defineEmits(['close', 'wallet-updated'])
 
 const skins = ref([])
 const ownedIds = ref(new Set())
-const codeCoins = ref(0)
+const characterStore = useCharacterStore()
 const equippedId = ref(null)
+
 const loading = ref(true)
 const err = ref(null)
 const actionId = ref(null)
 const msg = ref('')
 
-const codeCoinsDisplay = computed(() => (loading.value ? '—' : codeCoins.value))
+const codeCoinsDisplay = computed(() => (loading.value ? '—' : characterStore.codeCoins))
+
 
 function isOwned(id) {
   return ownedIds.value.has(id)
@@ -87,8 +91,11 @@ async function load() {
     }
     const [list, ch] = await Promise.all([fetchSkinsCatalog(), fetchCharacter(activeCharacterId.value)])
     skins.value = list
-    codeCoins.value = ch.code_coins ?? 0
+    // Actualizar el store también para que todo esté sincronizado
+    characterStore.codeCoins = ch.code_coins ?? 0
+    characterStore.gold = ch.gold ?? 0
     equippedId.value = ch.equipped_skin_id ?? null
+
     const ids = ch.owned_skin_ids
     if (Array.isArray(ids)) {
       ownedIds.value = new Set(ids.map(Number))
@@ -106,11 +113,13 @@ async function buy(s) {
   try {
     const res = await purchaseSkin(s.id)
     if (res?.user?.code_coins != null) {
-      codeCoins.value = res.user.code_coins
+      characterStore.codeCoins = res.user.code_coins
     }
     ownedIds.value.add(s.id)
     emit('wallet-updated')
+    await characterStore.refresh()
     await equip(s.id)
+
   } catch (e) {
     const d = e?.response?.data
     msg.value = d?.message
@@ -130,6 +139,8 @@ async function equip(skinId) {
     const ch = await equipSkin(skinId)
     equippedId.value = ch.equipped_skin_id
     emit('wallet-updated')
+    await characterStore.refresh()
+
   } catch (e) {
     const d = e?.response?.data
     msg.value = d?.message || 'No se pudo equipar.'

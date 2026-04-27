@@ -121,6 +121,7 @@ async function submitRegister() {
 }
 </script>
 
+
 <style scoped>
 .auth-page {
   font-family: 'Press Start 2P', monospace;
