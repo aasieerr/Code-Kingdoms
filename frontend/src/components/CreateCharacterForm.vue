@@ -3,45 +3,52 @@
     class="create-root"
     :class="embedded ? 'create-root--inline' : 'create-root--modal'"
     role="dialog"
-    :aria-label="embedded ? 'Formulario crear personaje' : 'Crear personaje'"
   >
-    <form class="create-card" @submit.prevent="onSubmit">
+    <form class="create-form" @submit.prevent="onSubmit">
+
       <template v-if="!embedded">
-        <h1 class="title">Code Kingdoms</h1>
-        <p class="sub">Crea tu personaje (cuenta Laravel + API)</p>
+        <h1 class="create-form__title">FORJAR HÉROE</h1>
+        <p class="create-form__sub">ELIGE TU DESTINO EN EL REINO DEL CÓDIGO</p>
       </template>
-      <label class="field">
-        <span>Nombre</span>
-        <input v-model.trim="name" type="text" required maxlength="50" autocomplete="username" />
-      </label>
-      <label class="field">
-        <span>Reino</span>
-        <select v-model="id_kingdom" required>
+
+      <div class="field">
+        <label class="field__label">NOMBRE DEL HÉROE</label>
+        <input v-model.trim="name" type="text" required maxlength="50" autocomplete="username" class="field__input" />
+      </div>
+
+      <div class="field">
+        <label class="field__label">REINO</label>
+        <select v-model="id_kingdom" required class="field__input">
           <option v-for="k in kingdoms" :key="k.id_kingdom" :value="k.id_kingdom">
             {{ k.name }}
           </option>
         </select>
-      </label>
-      <label class="field">
-        <span>Raza</span>
-        <select v-model="id_race" required>
+      </div>
+
+      <div class="field">
+        <label class="field__label">RAZA</label>
+        <select v-model="id_race" required class="field__input">
           <option v-for="r in races" :key="r.id_race" :value="r.id_race">
             {{ r.name }}
           </option>
         </select>
-      </label>
-      <label class="field">
-        <span>Clase</span>
-        <select v-model="id_class" required>
+      </div>
+
+      <div class="field">
+        <label class="field__label">CLASE</label>
+        <select v-model="id_class" required class="field__input">
           <option v-for="c in classes" :key="c.id_class" :value="c.id_class">
             {{ c.name }}
           </option>
         </select>
-      </label>
-      <p v-if="err" class="err">{{ err }}</p>
-      <button class="btn" type="submit" :disabled="sending">
-        {{ sending ? 'Creando…' : submitLabel }}
+      </div>
+
+      <p v-if="err" class="create-form__err">{{ err }}</p>
+
+      <button class="create-form__btn" type="submit" :disabled="sending">
+        {{ sending ? 'FORJANDO...' : submitLabel }}
       </button>
+
     </form>
   </div>
 </template>
@@ -52,9 +59,8 @@ import api from '../api/axios'
 import { createCharacter } from '../api/character'
 
 const props = defineProps({
-  /** Modo embebido en el menú: sin capa a pantalla completa ni cabecera de marca. */
   embedded: { type: Boolean, default: false },
-  submitLabel: { type: String, default: 'Crear y entrar' },
+  submitLabel: { type: String, default: 'CREAR Y ENTRAR' },
 })
 
 const emit = defineEmits(['created'])
@@ -81,30 +87,18 @@ onMounted(async () => {
     if (races.value[0]) id_race.value = races.value[0].id_race
     if (classes.value[0]) id_class.value = classes.value[0].id_class
   } catch (e) {
-    err.value = e?.response?.data?.message ?? e?.message ?? 'No se han podido cargar reino/raza/clase.'
+    err.value = e?.response?.data?.message ?? e?.message ?? 'No se han podido cargar los datos.'
   }
 })
 
-watch(
-  [kingdoms, races, classes],
-  () => {
-    if (id_kingdom.value == null && kingdoms.value[0]) {
-      id_kingdom.value = kingdoms.value[0].id_kingdom
-    }
-    if (id_race.value == null && races.value[0]) {
-      id_race.value = races.value[0].id_race
-    }
-    if (id_class.value == null && classes.value[0]) {
-      id_class.value = classes.value[0].id_class
-    }
-  },
-  { deep: true },
-)
+watch([kingdoms, races, classes], () => {
+  if (id_kingdom.value == null && kingdoms.value[0]) id_kingdom.value = kingdoms.value[0].id_kingdom
+  if (id_race.value == null && races.value[0]) id_race.value = races.value[0].id_race
+  if (id_class.value == null && classes.value[0]) id_class.value = classes.value[0].id_class
+}, { deep: true })
 
 async function onSubmit() {
-  if (sending.value) {
-    return
-  }
+  if (sending.value) return
   err.value = null
   sending.value = true
   try {
@@ -123,7 +117,7 @@ async function onSubmit() {
     } else if (typeof data?.message === 'string') {
       err.value = data.message
     } else {
-      err.value = e?.message || 'Error al crear.'
+      err.value = e?.message || 'Error al crear el personaje.'
     }
   } finally {
     sending.value = false
@@ -132,6 +126,7 @@ async function onSubmit() {
 </script>
 
 <style scoped>
+/* Modal mode */
 .create-root--modal {
   position: fixed;
   inset: 0;
@@ -139,7 +134,7 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(12, 18, 10, 0.92);
+  background: rgba(11, 13, 23, 0.95);
 }
 .create-root--inline {
   position: static;
@@ -147,75 +142,95 @@ async function onSubmit() {
   display: block;
   background: transparent;
 }
-.create-card {
-  width: min(420px, 92vw);
-  padding: 1.4rem 1.25rem 1.5rem;
-  border: 5px solid #2b1f13;
-  background: linear-gradient(180deg, #4a3b28 0%, #2b2218 100%);
-  box-shadow: 0 0 0 4px #6b5538, 10px 12px 0 rgba(0, 0, 0, 0.4);
-  font-family: 'Press Start 2P', 'Courier New', monospace;
-  color: #f7ebd0;
+
+/* Form */
+.create-form {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1.2rem;
+  font-family: 'Press Start 2P', monospace;
+  color: #facc15;
 }
-.title {
-  font-size: 12px;
+.create-form__title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
   text-align: center;
-  margin: 0 0 4px;
-  color: #ffd7a0;
-  text-shadow: 2px 2px 0 #1a1a1a;
+  text-shadow: 3px 3px 0 #854d0e;
 }
-.sub {
-  font-size: 7px;
+.create-form__sub {
+  margin: 0 0 1rem;
+  font-size: 0.5rem;
+  text-align: center;
+  color: rgba(250, 204, 21, 0.4);
+  letter-spacing: 0.15em;
+}
+.create-form__err {
+  margin: 0;
+  padding: 0.75rem;
+  background: #7f1d1d;
+  border: 2px solid #ef4444;
+  color: white;
+  font-size: 0.5rem;
   line-height: 1.6;
-  margin: 0 0 8px;
-  text-align: center;
-  color: #b8a88a;
 }
+
+/* Fields */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 8px;
+  gap: 0.5rem;
 }
-.field span {
-  color: #c9b27a;
+.field__label {
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  color: rgba(250, 204, 21, 0.7);
 }
-input,
-select {
-  font: 10px 'Press Start 2P', monospace;
-  padding: 8px 6px;
-  background: #1a1510;
-  color: #f0e6d0;
-  border: 2px solid #1f1f1f;
+.field__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.9rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  border: 3px solid #854d0e;
+  background: #0b0d17;
+  color: #facc15;
+  appearance: none;
 }
-input:focus,
-select:focus {
-  outline: 2px solid #c98259;
+.field__input:focus {
+  outline: none;
+  border-color: #facc15;
 }
-.btn {
-  margin-top: 8px;
-  padding: 10px 8px;
-  font: 9px 'Press Start 2P', monospace;
-  text-transform: uppercase;
-  border: 3px solid #1f1f1f;
-  background: #5a8f4a;
-  color: #0f0f0f;
+.field__input option {
+  background: #0f172a;
+  color: #facc15;
+}
+
+/* Submit button */
+.create-form__btn {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.75rem;
   cursor: pointer;
-  box-shadow: 3px 4px 0 #1a1a1a;
+  border: 4px solid #facc15;
+  background: #ca8a04;
+  color: #fef9c3;
+  box-shadow: 4px 4px 0 #854d0e;
+  transition: all 0.1s;
 }
-.btn:hover:enabled {
-  background: #6b9e5a;
+.create-form__btn:hover:not(:disabled) {
+  background: #facc15;
+  color: #431407;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #854d0e;
 }
-.btn:disabled {
-  opacity: 0.65;
+.create-form__btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #854d0e;
+}
+.create-form__btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-}
-.err {
-  margin: 0;
-  font-size: 7px;
-  line-height: 1.5;
-  color: #e08070;
 }
 </style>

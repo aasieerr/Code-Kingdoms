@@ -1,63 +1,133 @@
 <template>
-  <div class="char-menu">
-    <header class="char-menu__header">
-      <div class="char-menu__brand">
-        <img class="char-menu__logo" src="/code-kingdoms-logo.png" alt="" width="64" height="64" />
-        <div>
-          <h1 class="char-menu__title">Code Kingdoms</h1>
-          <p v-if="authName" class="char-menu__user">Sesión: {{ authName }}</p>
-        </div>
+  <div class="char-page min-h-screen flex flex-col bg-[#0b0d17]" 
+    :class="{ 'is-zooming': isZooming }"
+    :style="{ 
+      fontFamily: '\'Press Start 2P\', monospace',
+      transformOrigin: zoomOrigin
+    }">
+    <AppHeader />
+
+    <!-- Background -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+      <div class="absolute inset-0 bg-gradient-to-r from-[#1e3a8a]/15 via-[#0b0d17] to-[#7f1d1d]/15"></div>
+      <div class="absolute inset-0 opacity-[0.04]"
+        style="background-image: linear-gradient(#facc15 1px, transparent 1px), linear-gradient(90deg, #facc15 1px, transparent 1px); background-size: 40px 40px;">
       </div>
-      <div class="char-menu__header-actions">
-        <button type="button" class="btn-ghost" @click="goGame" :disabled="!activeCharacterId">
-          Continuar
-        </button>
-        <button type="button" class="btn-logout" @click="logout">Cerrar sesión</button>
-      </div>
-    </header>
-
-    <p v-if="loadErr" class="char-menu__err">{{ loadErr }}</p>
-
-    <div v-else class="char-menu__grid">
-      <section class="char-menu__panel char-menu__panel--list" aria-labelledby="h-list">
-        <h2 id="h-list" class="char-menu__h2">Mis personajes</h2>
-        <p v-if="!loading && characters.length === 0" class="char-menu__empty">
-          Aún no tienes personajes. Crea uno en el panel de la derecha.
-        </p>
-        <ul v-else class="char-list">
-          <li
-            v-for="c in characters"
-            :key="c.id"
-            class="char-card"
-            :class="{ 'char-card--active': activeCharacterId === c.id }"
-          >
-            <div class="char-card__body">
-              <h3 class="char-card__name">{{ c.name }}</h3>
-              <p class="char-card__meta">
-                Nivel {{ c.level }} ·
-                {{ labelKingdom(c) }} ·
-                {{ labelRace(c) }} ·
-                {{ labelClass(c) }}
-              </p>
-            </div>
-            <div class="char-card__actions">
-              <button type="button" class="btn-play" @click="playAs(c)">Jugar</button>
-            </div>
-          </li>
-        </ul>
-        <p v-if="loading" class="char-menu__loading">Cargando…</p>
-      </section>
-
-      <section class="char-menu__panel char-menu__panel--create" aria-labelledby="h-create">
-        <h2 id="h-create" class="char-menu__h2">Crear personaje</h2>
-        <p class="char-menu__hint">Elige reino, raza, clase y nombre. Luego podrás entrar al mapa.</p>
-        <CreateCharacterForm
-          embedded
-          submit-label="Crear personaje"
-          @created="onCharacterCreated"
-        />
-      </section>
     </div>
+
+    <main class="relative z-10 flex-grow max-w-7xl mx-auto w-full px-6 py-12">
+
+      <!-- Page Header -->
+      <div class="mb-16 text-center">
+        <p class="text-[#facc15]/30 text-[8px] tracking-[0.5em] mb-4 animate-pulse">── REINO DE HÉROES ──</p>
+        <h1 class="text-[#facc15] text-4xl md:text-5xl lg:text-6xl" 
+          style="text-shadow: 6px 6px 0 #854d0e, 10px 10px 0 #431407; letter-spacing: -2px;">
+          MIS PERSONAJES
+        </h1>
+        <p v-if="authName" class="text-[#facc15]/50 text-[10px] mt-8 tracking-[0.2em] bg-[#facc15]/5 py-2 px-4 inline-block border-x-2 border-[#facc15]/20">
+          HÉROE: {{ authName.toUpperCase() }}
+        </p>
+      </div>
+
+      <!-- Error -->
+      <div v-if="loadErr" class="max-w-xl mx-auto mb-8 p-4 border-2 border-[#ef4444] bg-[#7f1d1d] text-white text-[8px] text-center">
+        {{ loadErr }}
+      </div>
+
+      <!-- Grid: Characters + Create Form -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        <!-- LEFT: Character List -->
+        <section class="panel">
+          <div class="panel__header">
+            <h2 class="text-[#facc15] text-[10px] tracking-widest">HÉROES FORJADOS</h2>
+          </div>
+          <div class="panel__body">
+            <p v-if="loading" class="text-[#facc15]/30 text-[8px] text-center py-8 animate-blink">
+              CARGANDO REGISTROS...
+            </p>
+            <p v-else-if="characters.length === 0" class="text-[#facc15]/30 text-[8px] text-center py-12 leading-7">
+              AÚN NO HAS FORJADO NINGÚN HÉROE.<br/>
+              CREA UNO PARA EMPEZAR TU VIAJE.
+            </p>
+            <ul v-else class="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <li
+                v-for="c in characters"
+                :key="c.id"
+                class="char-card"
+                :class="{ 'char-card--active': activeCharacterId === c.id }"
+              >
+                <div class="flex-1">
+                  <h3 class="text-[#facc15] text-[9px] mb-2 tracking-widest">{{ c.name.toUpperCase() }}</h3>
+                  <p class="text-[#facc15]/40 text-[7px] leading-6">
+                    LVL {{ c.level }} · {{ labelKingdom(c) }}<br/>
+                    {{ labelRace(c) }} · {{ labelClass(c) }}
+                  </p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button type="button" class="btn-play" @click="playAs($event, c)">
+                    ► JUGAR
+                  </button>
+                  <button type="button" class="btn-delete" @click="askDelete(c.id)">
+                    ✖ ELIMINAR
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- RIGHT: Create Character Form -->
+        <section class="panel">
+          <div class="panel__header">
+            <h2 class="text-[#facc15] text-[10px] tracking-widest">FORJAR HÉROE</h2>
+          </div>
+          <div class="panel__body">
+            <div v-if="characters.length >= 4" class="text-center py-4">
+              <p class="text-[#ef4444] text-[8px] leading-6 mb-4">LÍMITE DE HÉROES ALCANZADO (4/4)</p>
+              <p class="text-[#facc15]/40 text-[7px] leading-6">NO PUEDES FORJAR MÁS LEYENDAS POR AHORA.</p>
+            </div>
+            <template v-else>
+              <p class="text-[#facc15]/40 text-[7px] leading-6 mb-8">
+                ELIGE REINO, RAZA Y CLASE. TU LEYENDA EMPIEZA AQUÍ. ({{ characters.length }}/4)
+              </p>
+              <CreateCharacterForm
+                embedded
+                submit-label="CREAR HÉROE"
+                @created="onCharacterCreated"
+              />
+            </template>
+          </div>
+        </section>
+      </div>
+
+      <!-- Custom Confirmation Modal -->
+      <transition name="modal">
+        <div v-if="showConfirm" class="fixed inset-0 z-[100] flex items-center justify-center px-6">
+          <div class="absolute inset-0 bg-[#0b0d17]/90 backdrop-blur-sm"></div>
+          <div class="relative w-full max-w-md p-8 border-4 border-[#ef4444] bg-[#0f172a] shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+            <h3 class="text-[#ef4444] text-[12px] mb-6 tracking-widest text-center" style="text-shadow: 2px 2px 0 #450a0a;">
+              ⚠ ¿ELIMINAR HÉROE?
+            </h3>
+            <p class="text-[#facc15]/60 text-[8px] leading-7 text-center mb-10">
+              ESTA ACCIÓN ES IRREVERSIBLE. EL HÉROE SERÁ BORRADO DE LOS REGISTROS DEL REINO PARA SIEMPRE.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <button @click="confirmDelete" class="flex-1 py-4 bg-[#7f1d1d] text-white border-4 border-[#ef4444] text-[8px] hover:bg-[#ef4444] transition-colors">
+                SÍ, ELIMINAR
+              </button>
+              <button @click="showConfirm = false" class="flex-1 py-4 bg-[#1e293b] text-[#facc15] border-4 border-[#facc15]/20 text-[8px] hover:border-[#facc15] transition-colors">
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Zoom Fade Overlay -->
+      <div v-if="isZooming" class="fixed inset-0 z-[200] bg-[#0b0d17] animate-fade-to-black"></div>
+    </main>
+
+    <AppFooter />
   </div>
 </template>
 
@@ -65,9 +135,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { activeCharacterId, setActiveCharacterId } from '../gameState'
-import { fetchCharacters } from '../api/character'
+import { lastTransition, activeCharacterId, setActiveCharacterId } from '../gameState'
+import { fetchCharacters, deleteCharacter } from '../api/character'
 import CreateCharacterForm from '../components/CreateCharacterForm.vue'
+import AppHeader from '../components/AppHeader.vue'
+import AppFooter from '../components/AppFooter.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -76,13 +148,14 @@ const characters = ref([])
 const loading = ref(true)
 const loadErr = ref(null)
 
+const showConfirm = ref(false)
+const characterToDelete = ref(null)
+
 const authName = computed(
   () => authStore.user?.name || authStore.user?.username || authStore.user?.email || '',
 )
 
-onMounted(() => {
-  loadList()
-})
+onMounted(() => { loadList() })
 
 async function loadList() {
   loading.value = true
@@ -97,35 +170,58 @@ async function loadList() {
   }
 }
 
-function labelKingdom(c) {
-  return c.kingdom?.name ?? '—'
-}
-function labelRace(c) {
-  return c.race?.name ?? '—'
-}
-function labelClass(c) {
-  return c.character_class?.name ?? c.characterClass?.name ?? '—'
-}
+function labelKingdom(c) { return c.kingdom?.name ?? '—' }
+function labelRace(c) { return c.race?.name ?? '—' }
+function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
 
-function playAs(c) {
-  if (c?.id == null) {
-    return
-  }
+const isZooming = ref(false)
+const zoomOrigin = ref('center center')
+
+function playAs(event, c) {
+  if (c?.id == null) return
   setActiveCharacterId(c.id)
-  router.push({ name: 'Game' })
+  
+  // Calculate zoom origin from button position
+  if (event && event.currentTarget) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    zoomOrigin.value = `${x}px ${y}px`
+  }
+
+  lastTransition.value = 'menu-to-game'
+  isZooming.value = true
+  
+  // Navigate after zoom and fade
+  setTimeout(() => {
+    router.push({ name: 'Game' })
+  }, 900)
 }
 
-function goGame() {
-  if (activeCharacterId.value == null) {
-    return
+function askDelete(id) {
+  characterToDelete.value = id
+  showConfirm.value = true
+}
+
+async function confirmDelete() {
+  if (!characterToDelete.value) return
+  
+  try {
+    await deleteCharacter(characterToDelete.value)
+    if (activeCharacterId.value === characterToDelete.value) {
+      setActiveCharacterId(null)
+    }
+    await loadList()
+  } catch (e) {
+    alert('Error al eliminar el personaje.')
+  } finally {
+    showConfirm.value = false
+    characterToDelete.value = null
   }
-  router.push({ name: 'Game' })
 }
 
 async function onCharacterCreated(ch) {
-  if (ch?.id != null) {
-    setActiveCharacterId(ch.id)
-  }
+  if (ch?.id != null) setActiveCharacterId(ch.id)
   await loadList()
   router.push({ name: 'Game' })
 }
@@ -138,173 +234,152 @@ async function logout() {
 </script>
 
 <style scoped>
-.char-menu {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 1.25rem 1.5rem 2rem;
-  background:
-    linear-gradient(180deg, #1a2418 0%, #0d120c 100%);
-  font-family: 'Press Start 2P', 'Courier New', monospace;
-  color: #f0e6d0;
-}
-.char-menu__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 4px solid #2b1f13;
-  box-shadow: 0 4px 0 #0a0a0a;
-}
-.char-menu__brand {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-.char-menu__logo {
-  object-fit: contain;
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+.char-page {
   image-rendering: pixelated;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
-.char-menu__title {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #ffd7a0;
-  text-shadow: 2px 2px 0 #0d0d0d;
+
+/* Panel */
+.panel {
+  border: 4px solid #facc15;
+  background: #0f172a;
+  box-shadow: 8px 8px 0 #854d0e;
 }
-.char-menu__user {
-  margin: 0.4rem 0 0;
-  font-size: 6px;
-  line-height: 1.5;
-  color: #8faf88;
-  word-break: break-all;
+.panel__header {
+  padding: 1rem 1.5rem;
+  border-bottom: 3px solid #facc15;
+  background: rgba(250, 204, 21, 0.05);
 }
-.char-menu__header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.panel__body {
+  padding: 1.5rem;
 }
-.btn-ghost {
-  padding: 0.5rem 0.75rem;
-  font: 8px 'Press Start 2P', inherit;
-  border: 3px solid #1f1f1f;
-  background: #5a6f5a;
-  color: #f0f0e0;
-  cursor: pointer;
-}
-.btn-ghost:hover:not(:disabled) {
-  background: #6b8a6b;
-}
-.btn-ghost:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.btn-logout {
-  padding: 0.5rem 0.75rem;
-  font: 8px 'Press Start 2P', inherit;
-  border: 3px solid #1f1f1f;
-  background: #8f3b2c;
-  color: #f7ebd0;
-  cursor: pointer;
-}
-.btn-logout:hover {
-  background: #a24a3a;
-}
-.char-menu__err {
-  color: #e88878;
-  font-size: 8px;
-  line-height: 1.6;
-}
-.char-menu__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  align-items: start;
-}
-@media (max-width: 900px) {
-  .char-menu__grid {
-    grid-template-columns: 1fr;
-  }
-}
-.char-menu__panel {
-  border: 4px solid #2b1f13;
-  background: linear-gradient(180deg, #3d3225 0%, #252016 100%);
-  box-shadow: 0 0 0 3px #5c4a32, 8px 8px 0 rgba(0, 0, 0, 0.35);
-  padding: 1rem 0.9rem 1.1rem;
-  min-width: 0;
-}
-.char-menu__h2 {
-  margin: 0 0 0.6rem;
-  font-size: 9px;
-  color: #e8d4a8;
-  border-bottom: 2px solid #1f1f1f;
-  padding-bottom: 0.4rem;
-}
-.char-menu__empty,
-.char-menu__hint {
-  font-size: 6px;
-  line-height: 1.6;
-  color: #9a8f78;
-  margin: 0.5rem 0 0.75rem;
-}
-.char-menu__loading {
-  font-size: 7px;
-  color: #b0a88a;
-  margin: 0.5rem 0 0;
-}
-.char-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  max-height: min(60vh, 480px);
-  overflow-y: auto;
-}
+
+/* Character card */
 .char-card {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.55rem 0.5rem;
-  border: 3px solid #1a1510;
-  background: #1e1812;
-  transition: box-shadow 0.15s ease, border-color 0.15s;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 3px solid rgba(250, 204, 21, 0.15);
+  background: #0b0d17;
+  transition: border-color 0.2s;
+}
+.char-card:hover {
+  border-color: rgba(250, 204, 21, 0.4);
 }
 .char-card--active {
-  border-color: #5a8f4a;
-  box-shadow: 0 0 0 2px rgba(90, 143, 74, 0.4);
+  border-color: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
 }
-.char-card__name {
-  margin: 0;
-  font-size: 8px;
-  color: #f5e6c0;
-}
-.char-card__meta {
-  margin: 0;
-  font-size: 5.5px;
-  line-height: 1.7;
-  color: #8a7b68;
-}
-.char-card__actions {
-  display: flex;
-  justify-content: flex-end;
-}
+
+/* Buttons */
 .btn-play {
-  padding: 0.35rem 0.55rem;
-  font: 7px 'Press Start 2P', inherit;
-  border: 2px solid #0f0f0f;
-  background: #c9a24a;
-  color: #1a1208;
+  width: 120px;
+  padding: 0.6rem 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  border: 3px solid #facc15;
+  background: #ca8a04;
+  color: #fef9c3;
   cursor: pointer;
-  box-shadow: 2px 2px 0 #0a0a0a;
+  box-shadow: 3px 3px 0 #854d0e;
+  transition: all 0.1s;
+  text-align: center;
 }
 .btn-play:hover {
-  background: #d4b15a;
+  background: #facc15;
+  color: #431407;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #854d0e;
+}
+
+.btn-delete {
+  width: 123px;
+  padding: 0.5rem 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  border: 2px solid #ef4444;
+  background: #7f1d1d;
+  color: #fca5a5;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #450a0a;
+  transition: all 0.1s;
+  text-align: center;
+}
+.btn-delete:hover {
+  background: #ef4444;
+  color: white;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #450a0a;
+}
+
+/* Custom Scrollbar for the list */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0b0d17;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #854d0e;
+  border: 1px solid #facc15;
+}
+
+/* Blink */
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Modal Transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: translateY(-100px);
+}
+
+.modal-enter-to,
+.modal-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.modal-enter-active .absolute,
+.modal-leave-active .absolute {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from .absolute,
+.modal-leave-to .absolute {
+  opacity: 0;
+}
+
+/* Zoom & Fade Animations */
+.is-zooming {
+  animation: zoomInScreen 0.9s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  pointer-events: none;
+}
+
+.animate-fade-to-black {
+  animation: fadeToBlack 0.9s ease-in forwards;
+}
+
+@keyframes zoomInScreen {
+  0% { transform: scale(1); filter: blur(0); }
+  100% { transform: scale(4); filter: blur(10px); }
+}
+
+@keyframes fadeToBlack {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 </style>
