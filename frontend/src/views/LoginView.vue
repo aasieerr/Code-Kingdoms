@@ -16,24 +16,60 @@
         <p v-if="errorMsg" class="auth__err">{{ errorMsg }}</p>
 
         <form v-if="mode === 'login'" class="auth__form" @submit.prevent="submitLogin">
-          <label class="auth__label">EMAIL DE HÉROE</label>
-          <input v-model="loginEmail" type="email" class="auth__input" required autocomplete="email" />
-          <label class="auth__label">CONTRASEÑA ARCANO</label>
-          <input v-model="loginPassword" type="password" class="auth__input" required autocomplete="current-password" />
+          <div class="auth__field">
+            <label class="auth__label">EMAIL DE HÉROE</label>
+            <input v-model="loginEmail" type="email" class="auth__input" required autocomplete="email" placeholder="ejemplo@reino.com" />
+          </div>
+          
+          <div class="auth__field">
+            <label class="auth__label">CONTRASEÑA ARCANO</label>
+            <div class="auth__input-group">
+              <input v-model="loginPassword" :type="showLoginPass ? 'text' : 'password'" class="auth__input" required autocomplete="current-password" placeholder="••••••••" />
+              <button type="button" class="auth__pass-toggle" @click="showLoginPass = !showLoginPass">
+                <svg v-if="!showLoginPass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </button>
+            </div>
+          </div>
+
           <button type="submit" class="auth__btn" :disabled="busy">
             {{ busy ? 'CARGANDO...' : 'ENTRAR AL REINO' }}
           </button>
         </form>
 
         <form v-else class="auth__form" @submit.prevent="submitRegister">
-          <label class="auth__label">NOMBRE DEL HÉROE</label>
-          <input v-model="regName" type="text" class="auth__input" required maxlength="255" autocomplete="name" />
-          <label class="auth__label">EMAIL DE HÉROE</label>
-          <input v-model="regEmail" type="email" class="auth__input" required autocomplete="email" />
-          <label class="auth__label">CONTRASEÑA</label>
-          <input v-model="regPassword" type="password" class="auth__input" required autocomplete="new-password" />
-          <label class="auth__label">REPETIR CONTRASEÑA</label>
-          <input v-model="regPassword2" type="password" class="auth__input" required autocomplete="new-password" />
+          <div class="auth__field">
+            <label class="auth__label">NOMBRE DEL HÉROE</label>
+            <input v-model="regName" type="text" class="auth__input" required maxlength="255" autocomplete="name" placeholder="Tu nombre" />
+          </div>
+          
+          <div class="auth__field">
+            <label class="auth__label">EMAIL DE HÉROE</label>
+            <input v-model="regEmail" type="email" class="auth__input" required autocomplete="email" placeholder="tu@email.com" />
+          </div>
+          
+          <div class="auth__field">
+            <label class="auth__label">CONTRASEÑA</label>
+            <div class="auth__input-group">
+              <input v-model="regPassword" :type="showRegPass ? 'text' : 'password'" class="auth__input" required autocomplete="new-password" placeholder="••••••••" />
+              <button type="button" class="auth__pass-toggle" @click="showRegPass = !showRegPass">
+                <svg v-if="!showRegPass" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth__field">
+            <label class="auth__label">REPETIR CONTRASEÑA</label>
+            <div class="auth__input-group">
+              <input v-model="regPassword2" :type="showRegPass2 ? 'text' : 'password'" class="auth__input" required autocomplete="new-password" placeholder="••••••••" />
+              <button type="button" class="auth__pass-toggle" @click="showRegPass2 = !showRegPass2">
+                <svg v-if="!showRegPass2" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              </button>
+            </div>
+          </div>
+
           <button type="submit" class="auth__btn" :disabled="busy">
             {{ busy ? 'CARGANDO...' : 'REGISTRARSE' }}
           </button>
@@ -68,11 +104,14 @@ const errorMsg = ref('')
 
 const loginEmail = ref('')
 const loginPassword = ref('')
+const showLoginPass = ref(false)
 
 const regName = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
 const regPassword2 = ref('')
+const showRegPass = ref(false)
+const showRegPass2 = ref(false)
 
 function toggleMode() {
   mode.value = mode.value === 'login' ? 'register' : 'login'
@@ -174,7 +213,6 @@ async function submitRegister() {
 .auth__input {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 1.5rem;
   padding: 0.8rem 1rem;
   font-family: inherit;
   font-size: 0.6rem;
@@ -185,6 +223,28 @@ async function submitRegister() {
 .auth__input:focus {
   outline: none;
   border-color: #facc15;
+}
+.auth__field {
+  margin-bottom: 1.5rem;
+}
+.auth__input-group {
+  position: relative;
+}
+.auth__pass-toggle {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  user-select: none;
+  color: #facc15;
 }
 .auth__btn {
   width: 100%;
