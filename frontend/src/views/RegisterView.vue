@@ -172,6 +172,9 @@ async function submitRegister() {
   outline: none;
   border-color: #facc15;
 }
+.auth__input-group .auth__input {
+  padding-right: 3rem;
+}
 .auth__field {
   margin-bottom: 1.25rem;
 }
@@ -193,6 +196,7 @@ async function submitRegister() {
   padding: 0;
   user-select: none;
   color: #facc15;
+  z-index: 20;
 }
 .auth__btn {
   width: 100%;
