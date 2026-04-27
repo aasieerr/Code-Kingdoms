@@ -3,11 +3,16 @@
     style="border-bottom: 4px solid #facc15; background: #0b0d17; box-shadow: 0 4px 0 #854d0e;">
     
     <!-- Logo -->
-    <div class="flex items-center gap-4 cursor-pointer" @click="router.push('/')">
-      <img src="/code-kingdoms-logo.png" alt="logo" width="45" height="45">
-      <div class="flex flex-col gap-0.5 hidden sm:flex">
-        <span class="text-[#facc15] text-[9px] tracking-[0.2em]">CODE &</span>
-        <span class="text-[#facc15] text-[9px] tracking-[0.2em]">KINGDOMS</span>
+    <div class="flex items-center gap-4 cursor-pointer group" @click="router.push('/')">
+      <div class="relative">
+        <img src="/code-kingdoms-logo.png" alt="logo" width="60" height="60" 
+          class="logo-img transition-transform group-hover:scale-110 duration-300">
+        <!-- Subtle glow effect -->
+        <div class="absolute inset-0 bg-[#facc15]/20 blur-xl rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      </div>
+      <div class="flex flex-col gap-1 hidden sm:flex">
+        <span class="text-[#facc15] text-[10px] tracking-[0.25em] font-bold" style="text-shadow: 2px 2px 0 #854d0e;">CODE &</span>
+        <span class="text-[#facc15] text-[10px] tracking-[0.25em] font-bold" style="text-shadow: 2px 2px 0 #854d0e;">KINGDOMS</span>
       </div>
     </div>
 
@@ -50,6 +55,9 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+.logo-img {
+  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.3));
+}
 .nav-link {
   color: rgba(250, 204, 21, 0.6);
   text-decoration: none;

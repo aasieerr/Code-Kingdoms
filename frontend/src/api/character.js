@@ -70,3 +70,11 @@ export async function addCharacterGold(characterId, delta) {
   const { data } = await api.patch(`/characters/${characterId}`, { gold: next })
   return data
 }
+
+/**
+ * Elimina un personaje.
+ */
+export async function deleteCharacter(id) {
+  const { data } = await api.delete(`/characters/${id}`)
+  return data
+}

@@ -131,7 +131,7 @@ import { useCharacterStore } from './stores/character'
 
 const router        = useRouter()
 const worldEdgePx   = `${WORLD_EDGE}px`
-const isFading = ref(lastTransition.value === 'second-to-main')
+const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
 const startY   = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
 
 // Estado de paneles
@@ -252,7 +252,7 @@ function onSkinShopKey(e) {
 const navigating = ref(false)
 const portalCooldown = ref(true)
 
-// Entrada desde SecondView (transición)
+// Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
   
@@ -275,7 +275,6 @@ onMounted(async () => {
           locked.value = false
           moving.value = false
           lastTransition.value = null
-          // Mantener cooldown un poco más tras desbloquear
           setTimeout(() => { portalCooldown.value = false }, 500)
           return
         }
@@ -284,6 +283,17 @@ onMounted(async () => {
       }
       requestAnimationFrame(enterLoop)
     }, 100)
+  } else if (lastTransition.value === 'menu-to-game') {
+    // Transición desde el menú de personajes
+    isFading.value = true
+    locked.value = true
+    
+    setTimeout(() => {
+      isFading.value = false
+      locked.value = false
+      lastTransition.value = null
+      portalCooldown.value = false
+    }, 600)
   } else {
     isFading.value = false
     locked.value = false
@@ -426,7 +436,7 @@ onUnmounted(() => {
 /* Fade */
 .fade-overlay {
   position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-  background-color: black; opacity: 0; pointer-events: none;
+  background-color: #0b0d17; opacity: 0; pointer-events: none;
   transition: opacity .5s ease-in-out; z-index: 1000;
 }
 .fade-overlay.active { opacity: 1; }
