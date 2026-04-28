@@ -26,8 +26,8 @@ class NPCSeeder extends Seeder
             ],
             'tipo' => 'normal',
             'map' => 'MainGame',
-            'x' => 950,
-            'y' => 900,
+            'x' => 660,
+            'y' => 600,
         ]);
 
         \App\Models\NPC::create([
@@ -40,8 +40,8 @@ class NPCSeeder extends Seeder
             ],
             'tipo' => 'vendedor',
             'map' => 'MainGame',
-            'x' => 380,
-            'y' => 1240,
+            'x' => 180,
+            'y' => 740,
         ]);
 
         \App\Models\NPC::create([
@@ -54,8 +54,8 @@ class NPCSeeder extends Seeder
             ],
             'tipo' => 'normal',
             'map' => 'MainGame',
-            'x' => 1250,
-            'y' => 700,
+            'x' => 900,
+            'y' => 300,
         ]);
 
         \App\Models\NPC::create([
@@ -68,8 +68,8 @@ class NPCSeeder extends Seeder
             ],
             'tipo' => 'vendedor',
             'map' => 'MainGame',
-            'x' => 1350,
-            'y' => 1500,
+            'x' => 760,
+            'y' => 430,
         ]);
     }
 }

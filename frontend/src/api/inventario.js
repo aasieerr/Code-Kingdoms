@@ -8,21 +8,11 @@ export const myCharacterItems = ref([])
 export const isInventoryLoading = ref(false)
 export const lastInventoryError = ref(null)
 
-let isDataLoaded = false
+let lastLoadedCharacterId = null
 
 // Inventario cruzado para el UI (catálogo + posesiones)
 export const mergedInventoryItems = computed(() => {
-  return globalItems.value.map(catalogItem => {
-    const owned = myCharacterItems.value.find(ci => ci.item?.id_item === catalogItem.id_item)
-    if (owned) return owned
-    return {
-      id: null,
-      id_item: catalogItem.id_item,
-      quantity: ['weapon', 'armor'].includes(catalogItem.type) ? 1 : 0,
-      is_equipped: false,
-      item: catalogItem
-    }
-  })
+  return myCharacterItems.value
 })
 
 // Solo lo que tenemos equipado para el panel de equipo
@@ -31,24 +21,23 @@ export const equippedItems = computed(() => {
 })
 
 export async function fetchInventoryData(force = false) {
-  if (isDataLoaded && !force) return
+  const cid = await ensureActiveCharacterId()
+  if (lastLoadedCharacterId === cid && !force) return
   isInventoryLoading.value = true
   lastInventoryError.value = null
   try {
-    const id = await ensureActiveCharacterId()
-    if (id == null) {
-      isDataLoaded = false
+    if (cid == null) {
+      lastLoadedCharacterId = null
       isInventoryLoading.value = false
       return
     }
-    const cid = activeCharacterId.value
     const [resItems, resChar] = await Promise.all([
       api.get('/items'),
       api.get('/character-items', { params: { id_character: cid } })
     ])
     globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
     myCharacterItems.value = Array.isArray(resChar.data) ? resChar.data : []
-    isDataLoaded = true
+    lastLoadedCharacterId = cid
   } catch (err) {
     lastInventoryError.value = err?.response?.data?.message ?? 'Error de red.'
   } finally {

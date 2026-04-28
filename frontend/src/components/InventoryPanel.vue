@@ -4,15 +4,15 @@
     <div class="scanlines"></div>
 
     <header class="panel-header">
-      <div class="panel-tabs">
-        <button class="tab-btn active">INVENTARIO</button>
-        <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">EQUIPO</button>
+      <div class="panel-tabs" v-if="!isShop">
+        <button class="tab-btn active">Inventario</button>
+        <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
       </div>
-      <button class="close-btn" @click="$emit('close')">✖</button>
+      <h2 v-else>Tienda del Reino</h2>
+      <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
     <div class="panel-content">
-      <!-- LEFT: Categories & List -->
       <div class="inventory-main">
         <div class="inventory-header-actions">
           <div class="inventory-filters">
@@ -23,10 +23,9 @@
               :class="{ active: activeFilter === type.value }"
               @click="activeFilter = type.value"
             >
-              {{ type.label.toUpperCase() }}
+              {{ type.label }}
             </button>
           </div>
-          
           <div class="search-wrapper">
             <input 
               v-model="searchQuery" 
@@ -112,32 +111,32 @@
         </div>
 
         <div class="preview-actions">
-          <button 
-            v-if="selectedItem.id"
-            class="action-btn sell"
-            @click="handleSell(selectedItem)"
-            :disabled="busy"
-          >
-            VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
-          </button>
-          
           <button
-            v-else
+            v-if="isShop"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
             :disabled="busy"
           >
             COMPRAR ({{ selectedItem.item.price || 0 }} 🪙)
           </button>
-
-          <button 
-            v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
-            class="action-btn equip" 
-            @click="handleEquip(selectedItem)"
-            :disabled="busy"
-          >
-            {{ selectedItem.is_equipped ? 'DESEQUIPAR' : 'EQUIPAR' }}
-          </button>
+          <template v-else>
+            <button 
+              v-if="selectedItem.id && !selectedItem.is_equipped"
+              class="action-btn sell"
+              @click="handleSell(selectedItem)"
+              :disabled="busy"
+            >
+              VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
+            </button>
+            <button 
+              v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
+              class="action-btn equip" 
+              @click="handleEquip(selectedItem)"
+              :disabled="busy"
+            >
+              {{ selectedItem.is_equipped ? 'DESEQUIPAR' : 'EQUIPAR' }}
+            </button>
+          </template>
         </div>
       </aside>
       <div v-else class="preview-placeholder">
@@ -150,13 +149,21 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import {
-  mergedInventoryItems,
+  globalItems,
+  myCharacterItems,
   isInventoryLoading,
   lastInventoryError,
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
 import { purchaseItem, sellItem } from '../api/shop'
+
+const props = defineProps({
+  isShop: {
+    type: Boolean,
+    default: false
+  }
+})
 
 defineEmits(['close', 'switch-panel'])
 
@@ -180,10 +187,13 @@ const busy = ref(false)
 
 const loading = isInventoryLoading
 const error = lastInventoryError
-const items = mergedInventoryItems
 
 const filteredItems = computed(() => {
-  let list = items.value
+  const source = props.isShop 
+    ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+    : myCharacterItems.value
+
+  let list = source
   
   if (activeFilter.value !== 'all') {
     list = list.filter((ci) => ci.item?.type === activeFilter.value)
@@ -198,9 +208,9 @@ const filteredItems = computed(() => {
 })
 
 onMounted(async () => {
-  await fetchInventoryData()
-  if (!selectedItem.value && items.value.length > 0) {
-    selectedItem.value = items.value[0]
+  await fetchInventoryData(true)
+  if (!selectedItem.value && filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
   }
 })
 
@@ -223,7 +233,8 @@ async function handleEquip(ci) {
   try {
     if (!ci.is_equipped) {
       const mySlot = getSlot(ci.item)
-      const toUnequip = items.value.filter(x => x.is_equipped && x.id && x.id !== ci.id && getSlot(x.item) === mySlot)
+      const source = myCharacterItems.value
+      const toUnequip = source.filter(x => x.is_equipped && x.id && x.id !== ci.id && getSlot(x.item) === mySlot)
       for (const u of toUnequip) {
         await toggleEquipItem(u.id, false)
       }
@@ -236,7 +247,9 @@ async function handleEquip(ci) {
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      selectedItem.value = myCharacterItems.value.find(x => x.item?.id_item === currentIdItem)
+    }
   }
 }
 
@@ -250,7 +263,12 @@ async function handleBuy(item) {
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      const source = props.isShop 
+        ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+        : myCharacterItems.value
+      selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
+    }
   }
 }
 
@@ -264,7 +282,12 @@ async function handleSell(ci) {
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      const source = props.isShop 
+        ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+        : myCharacterItems.value
+      selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
+    }
   }
 }
 </script>

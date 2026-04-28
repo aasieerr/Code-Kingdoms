@@ -90,8 +90,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../api/axios'
 import { useAuthStore } from '../stores/auth'
+import { login, register } from '../api/auth'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 
@@ -119,14 +119,12 @@ function toggleMode() {
 }
 
 async function submitLogin() {
+  if (busy.value) return
   busy.value = true
   errorMsg.value = ''
   try {
-    const res = await api.post('/login', {
-      email: loginEmail.value,
-      password: loginPassword.value
-    })
-    authStore.setSession(res.data)
+    const data = await login(loginEmail.value, loginPassword.value)
+    authStore.setSession(data)
     router.push('/personajes')
   } catch (err) {
     errorMsg.value = err.response?.data?.message || 'Error al iniciar sesión'
@@ -136,21 +134,21 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
+  if (busy.value) return
   if (regPassword.value !== regPassword2.value) {
     errorMsg.value = 'Las contraseñas no coinciden'
     return
   }
-  
   busy.value = true
   errorMsg.value = ''
   try {
-    const res = await api.post('/register', {
+    const data = await register({
       name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
       password_confirmation: regPassword2.value
     })
-    authStore.setSession(res.data)
+    authStore.setSession(data)
     router.push('/personajes')
   } catch (err) {
     errorMsg.value = err.response?.data?.message || 'Error al registrarse'
@@ -159,7 +157,6 @@ async function submitRegister() {
   }
 }
 </script>
-
 
 <style scoped>
 .auth-page {

@@ -2,24 +2,25 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const MOVE_SPEED = 4
+const MOVE_SPEED = 3.2
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
-const BULLET_SPEED = 10
+const BULLET_SPEED = 8
 const BULLET_LIFETIME_MS = 2200
 const FIRE_INTERVAL_MS = 320
-const BULLET_DAMAGE = 16
+const BULLET_DAMAGE = 12
 const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
-const MAGNET_SPEED = 6
+const MAGNET_SPEED = 5
 
 
 /** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
 export function useArenaCombat(options = {}) {
   const startX = options.startX ?? WORLD / 2
   const startY = options.startY ?? WORLD / 2
+  const equippedWeapon = options.equippedWeapon ?? ref(null)
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -77,7 +78,7 @@ export function useArenaCombat(options = {}) {
         y: ey,
         hp,
         maxHp: hp,
-        speed: 1.05 + wave.value * 0.14,
+        speed: 3.4 + wave.value * 0.12,
       })
     }
     enemies.value = list
@@ -157,7 +158,22 @@ export function useArenaCombat(options = {}) {
       }
 
       const tgt = nearestEnemy(px, py)
-      if (tgt && now - lastFireAt >= FIRE_INTERVAL_MS) {
+
+      // Calcular intervalo y daño según el arma
+      let currentFireInterval = FIRE_INTERVAL_MS
+      let currentDamage = BULLET_DAMAGE
+
+      if (equippedWeapon.value) {
+        currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
+        const type = equippedWeapon.value.weaponType
+        if (type === 'daga') currentFireInterval = 180
+        else if (type === 'arco') currentFireInterval = 280
+        else if (type === 'varita') currentFireInterval = 320
+        else if (type === 'espada') currentFireInterval = 450
+        else if (type === 'hacha') currentFireInterval = 600
+      }
+
+      if (tgt && now - lastFireAt >= currentFireInterval) {
         lastFireAt = now
         const ecx = tgt.x + ENEMY_SIZE / 2
         const ecy = tgt.y + ENEMY_SIZE / 2
@@ -173,6 +189,7 @@ export function useArenaCombat(options = {}) {
             vx: (dx / len) * BULLET_SPEED,
             vy: (dy / len) * BULLET_SPEED,
             born: now,
+            damage: currentDamage // Guardamos el daño en la bala
           },
         ]
       }
@@ -205,13 +222,13 @@ export function useArenaCombat(options = {}) {
           continue
         }
         const e = elist[hitIndex]
-        const nh = e.hp - BULLET_DAMAGE
+        const nh = e.hp - (b.damage || BULLET_DAMAGE)
         if (nh <= 0) {
           newCoins.push({
             id: coinId++,
             x: e.x + 8,
             y: e.y + 8,
-            value: 2 + Math.floor(Math.random() * 4),
+            value: 2 + Math.floor(Math.random() * 2),
           })
           elist.splice(hitIndex, 1)
         } else {
@@ -297,6 +314,7 @@ export function useArenaCombat(options = {}) {
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    if (rafId) cancelAnimationFrame(rafId)
     rafId = requestAnimationFrame(tick)
     arenaRef.value?.focus()
   })

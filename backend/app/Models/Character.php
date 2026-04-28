@@ -46,4 +46,16 @@ class Character extends Model
     {
         return $this->belongsTo(CharacterClass::class, 'id_class');
     }
+
+    public function items()
+    {
+        return $this->belongsToMany(Item::class, 'character_items', 'id_character', 'id_item')
+            ->withPivot('quantity', 'is_equipped')
+            ->withTimestamps();
+    }
+
+    public function equippedItems()
+    {
+        return $this->items()->wherePivot('is_equipped', true);
+    }
 }

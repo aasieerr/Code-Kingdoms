@@ -11,7 +11,7 @@ export function useWasd(initialX = 280, initialY = 170) {
 
   const keys = { w: false, a: false, s: false, d: false }
   const SIZE = 40
-  const SPEED = 4
+  const SPEED = 2
   let rafId = null
 
   function onKeyDown(e) {
@@ -48,6 +48,7 @@ export function useWasd(initialX = 280, initialY = 170) {
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    if (rafId) cancelAnimationFrame(rafId)
     rafId = requestAnimationFrame(loop)
     arenaRef.value?.focus()
   })

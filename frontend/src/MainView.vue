@@ -84,7 +84,8 @@
 
     <!-- Panel inventario -->
     <InventoryPanel
-      v-show="showPanel === 'inventory'"
+      v-show="showPanel === 'inventory' || showPanel === 'shop'"
+      :is-shop="showPanel === 'shop'"
       @close="showPanel = null"
       @switch-panel="openPanel"
     />
@@ -118,7 +119,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="openPanel('inventory')"
+      @open-shop="openPanel('shop')"
     />
 
     <!-- Fade de transición -->
@@ -231,6 +232,19 @@ async function refreshWallet() {
   }
 }
 
+
+// Bloquear movimiento si hay paneles abiertos
+watch(
+  [showPanel, showMapPanel, showSkinShop, showMicropay, npcsManager.activeDialogueNpc],
+  ([p, m, s, mi, d]) => {
+    // Si hay algo abierto, bloqueamos. Si no, desbloqueamos (a menos que estemos en transición)
+    if (p || m || s || mi || d) {
+      locked.value = true
+    } else if (!isFading.value && !navigating.value) {
+      locked.value = false
+    }
+  }
+)
 
 // Observar NPCs para depuración
 watch(npcs, (list) => {

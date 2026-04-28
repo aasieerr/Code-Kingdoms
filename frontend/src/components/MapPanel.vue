@@ -149,186 +149,22 @@ function getNpcStyle(npc) {
   pointer-events: none;
 }
 
-.panel-header {
-  padding: 20px 30px;
-  background: #1e293b;
-  border-bottom: 4px solid #facc15;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 5;
+@keyframes marker-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(74, 144, 226, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 144, 226, 0); }
 }
 
-.coord-display {
-  font-size: 8px;
-  color: #facc15;
-  background: #0b0d17;
-  padding: 8px 16px;
-  border: 1px solid rgba(250, 204, 21, 0.3);
+.npc-dot.vendedor {
+  background: #f5a623;
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.8);
+  animation: marker-pulse-vendedor 2s infinite;
 }
 
-.tab-btn {
-  border: 4px solid #facc15;
-  background: #ca8a04;
-  color: #fef9c3;
-  padding: 12px 24px;
-  font-size: 8px;
-  font-family: inherit;
-  box-shadow: 4px 4px 0 #854d0e;
-}
-
-.close-btn {
-  width: 40px; height: 40px;
-  border: 4px solid #facc15; background: #991b1b; color: #fecaca;
-  cursor: pointer; font-family: inherit;
-  box-shadow: 4px 4px 0 #431407;
-}
-
-.map-layout {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.map-visual-container {
-  flex: 1;
-  padding: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0b0d17;
-}
-
-.pixel-map-premium {
-  width: 600px;
-  height: 450px;
-  position: relative;
-  background: #0b0d17;
-  border: 4px solid #facc15;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
-  overflow: hidden;
-}
-
-/* Blueprint Style Biomes */
-.blueprint-biome { position: absolute; border: 1px solid rgba(250, 204, 21, 0.1); }
-.b-forest { width: 45%; height: 50%; left: 0; top: 0; background: rgba(45, 90, 39, 0.1); }
-.b-water { width: 40%; height: 40%; right: 0; bottom: 0; background: rgba(30, 64, 175, 0.1); }
-.b-mountains { width: 30%; height: 35%; right: 5%; top: 5%; background: rgba(71, 85, 105, 0.1); clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
-
-.blueprint-road { position: absolute; background: rgba(250, 204, 21, 0.15); }
-.bh-road { width: 100%; height: 4px; top: 60%; }
-.bv-road { width: 4px; height: 100%; left: 45%; }
-
-.map-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(250, 204, 21, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(250, 204, 21, 0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
-  z-index: 2;
-}
-
-/* Antenna Design */
-.panel-antenna {
-  position: absolute;
-  top: -30px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  z-index: -1;
-}
-
-.antenna-pole {
-  width: 4px;
-  height: 34px;
-  background: #1e293b;
-  border: 1px solid #facc15;
-}
-
-.antenna-tip {
-  width: 10px;
-  height: 10px;
-  background: #facc15;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #facc15;
-  margin-bottom: -2px;
-}
-
-.landmark-name { 
-  font-size: 10px; /* Un poco más grande para sans-serif */
-  color: white; 
-  background: rgba(0,0,0,0.8); 
-  padding: 2px 6px; 
-  border: 1px solid rgba(250, 204, 21, 0.3); 
-  white-space: nowrap;
-  font-family: system-ui, -apple-system, sans-serif; /* Fuente moderna y clara */
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.player-pointer {
-  position: absolute;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: none; 
-  transform: translate(-50%, -100%);
-}
-
-.pointer-spacer {
-  height: 8px; /* Espacio entre el texto y la flecha */
-}
-
-.pointer-arrow {
-  width: 16px;
-  height: 16px;
-  background: #facc15;
-  clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
-  filter: drop-shadow(0 2px 4px black);
-}
-
-.pointer-label {
-  font-size: 11px;
-  color: #facc15;
-  text-shadow: 0 2px 4px black;
-  font-weight: 800;
-  font-family: system-ui, -apple-system, sans-serif; /* Consistencia con landmarks */
-}
-
-/* Landmarks */
-.landmark {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  z-index: 5;
-  transform: translate(-50%, -50%);
-}
-
-.landmark-pointer {
-  width: 8px;
-  height: 8px;
-  background: white;
-  clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
-  filter: drop-shadow(0 2px 2px black);
-}
-
-.color-village { background: #4ade80; }
-.color-ruins { background: #94a3b8; }
-.color-tower { background: #60a5fa; }
-.color-arena { background: #f87171; }
-
-.landmark-name { 
-  font-size: 5px; 
-  color: white; 
-  background: rgba(0,0,0,0.8); 
-  padding: 1px 4px; 
-  border: 1px solid rgba(255,255,255,0.2); 
-  white-space: nowrap;
+@keyframes marker-pulse-vendedor {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(245, 166, 35, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
 }
 
 .village { left: 15%; top: 65%; }

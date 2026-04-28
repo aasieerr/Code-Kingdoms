@@ -151,13 +151,14 @@
     <div v-if="phase === 'between'" class="premium-overlay">
       <div class="premium-modal victory">
         <div class="modal-shine"></div>
-        <h2 class="modal-title">¡RONDA COMPLETADA!</h2>
+        <h2 class="modal-title">¡RONDA {{ wave }} COMPLETADA!</h2>
         <div class="modal-body">
           <p class="reward-text">HAS RECOLECTADO <span>{{ sessionGold }}</span> MONEDAS DE ORO</p>
-          <p class="action-hint">PREPÁRATE PARA LA PRÓXIMA OLA DE ENEMIGOS</p>
+          <p class="action-hint">EQUIPA ÍTEMS EN EL PANEL O SIGUE LUCHANDO</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-continue" @click="startNextWave">CONTINUAR BATALLA</button>
+          <button type="button" class="btn-exit" @click="leaveArena">VOLVER AL REINO</button>
         </div>
       </div>
     </div>
@@ -248,6 +249,7 @@ const {
 } = useArenaCombat({
   startX: WORLD_EDGE / 2,
   startY,
+  equippedWeapon: computed(() => characterStore.equippedWeapon),
 })
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
@@ -268,6 +270,19 @@ function toggleMap() {
   showPanel.value = null
   showMapPanel.value = !showMapPanel.value
 }
+
+// Bloquear movimiento si hay paneles abiertos
+watch(
+  [showPanel, showMapPanel, showMicropay, phase],
+  ([p, m, mi, ph]) => {
+    // Si hay algo abierto o fase especial, bloqueamos.
+    if (p || m || mi || ph === 'between' || ph === 'gameover') {
+      locked.value = true
+    } else if (!isFading.value && !navigating.value) {
+      locked.value = false
+    }
+  }
+)
 
 function onArenaPanelHotkey(e) {
   if (!focused.value || locked.value) {
@@ -359,7 +374,7 @@ async function syncRunGoldOnce() {
 }
 
 async function leaveArena() {
-  if (locked.value || navigating.value) return
+  if (navigating.value) return
   navigating.value = true
   locked.value = true
   
@@ -428,7 +443,7 @@ watch([x, y], ([newX, newY]) => {
   
   const cx = WORLD / 2
   if (
-    phase.value !== 'gameover'
+    phase.value === 'idle'
     && newY <= 0
     && newX > cx - PORTAL_HALF_WIDTH
     && newX < cx + PORTAL_HALF_WIDTH
