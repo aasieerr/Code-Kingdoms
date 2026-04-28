@@ -169,25 +169,28 @@ export function useArenaCombat(options = {}) {
 
       if (equippedWeapon.value) {
         currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
-        const type = equippedWeapon.value.weaponType
-        if (type === 'daga') currentFireInterval = 250
-        else if (type === 'arco') currentFireInterval = 280
-        else if (type === 'varita') currentFireInterval = 320
-        else if (type === 'espada') currentFireInterval = 650
-        else if (type === 'hacha') currentFireInterval = 850
-
-        // Reducir daño melee un poco para equilibrar
-        if (MELEE_TYPES.includes(type)) {
-          currentDamage = Math.ceil(currentDamage * 0.75)
-        }
       }
 
       const tgt = nearestEnemy(px, py)
-      
-      // Mover detecciones arriba para el log
-      const wType = equippedWeapon.value?.weaponType
+
+      const wType = (equippedWeapon.value?.weaponType || '').toLowerCase()
+      const wName = (equippedWeapon.value?.name || '').toLowerCase()
+      // Fallback: si weaponType está vacío pero el nombre contiene el tipo
+      const effectiveType = wType || (wName.includes('arco') ? 'arco' : wName.includes('varita') ? 'varita' : wName.includes('daga') ? 'daga' : wName.includes('hacha') ? 'hacha' : wName.includes('espada') ? 'espada' : '')
       const charClass = (characterClass.value || '').toLowerCase()
       const isWarrior = charClass.includes('guerrero') || charClass.includes('warrior')
+
+      // Ajustar intervalo y daño según tipo efectivo del arma
+      if (effectiveType === 'daga') currentFireInterval = 250
+      else if (effectiveType === 'arco') currentFireInterval = 280
+      else if (effectiveType === 'varita') currentFireInterval = 320
+      else if (effectiveType === 'espada') currentFireInterval = 650
+      else if (effectiveType === 'hacha') currentFireInterval = 850
+
+      // Reducir daño melee un poco para equilibrar
+      if (MELEE_TYPES.includes(effectiveType)) {
+        currentDamage = Math.ceil(currentDamage * 0.75)
+      }
 
       if (tgt && now - lastFireAt >= currentFireInterval) {
         lastFireAt = now
@@ -198,7 +201,7 @@ export function useArenaCombat(options = {}) {
         const len = Math.hypot(dx, dy) || 1
         const angle = Math.atan2(dy, dx)
 
-        if (MELEE_TYPES.includes(wType) || (isWarrior && !wType)) {
+        if (MELEE_TYPES.includes(effectiveType) || (isWarrior && !equippedWeapon.value)) {
           // Ataque Melee
           slashes.value = [
             ...slashes.value,

@@ -39,12 +39,13 @@ export const useCharacterStore = defineStore('character', () => {
       spriteData.value = ch.sprite_data || null
       characterClass.value = ch.character_class?.name || ch.class?.name || (ch.id_class === 1 ? 'Guerrero' : '')
 
-      if (ch.equipped_weapon) {
-        const wi = ch.equipped_weapon
-        // Intentar varias rutas comunes según el merge/backend
-        const details = wi.item?.details || wi.weapon || {}
+      // El backend devuelve equipped_items[] desde la relación equippedItems
+      // Buscamos el arma equipada dentro del array
+      const equippedWeaponItem = (ch.equipped_items || []).find(i => i.type === 'weapon')
+      if (equippedWeaponItem) {
+        const details = equippedWeaponItem.weapon || equippedWeaponItem.details || {}
         equippedWeapon.value = {
-          name: wi.item?.name || wi.name || 'Arma',
+          name: equippedWeaponItem.name || 'Arma',
           damage: details.damage || 10,
           weaponType: (details.weapon_type || details.weaponType || '').toLowerCase()
         }
