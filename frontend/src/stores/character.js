@@ -7,6 +7,7 @@ export const useCharacterStore = defineStore('character', () => {
   const codeCoins = ref(0)
   const name = ref('')
   const equippedSkin = ref(null)
+  const spriteData = ref(null)
   const equippedWeapon = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -34,6 +35,7 @@ export const useCharacterStore = defineStore('character', () => {
       codeCoins.value = ch.code_coins ?? 0
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
+      spriteData.value = ch.sprite_data || null
 
       if (ch.equipped_weapon) {
         const weaponItem = ch.equipped_weapon
