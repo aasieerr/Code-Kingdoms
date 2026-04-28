@@ -19,6 +19,7 @@ class Character extends Model
         'mana',
         'gold',
         'equipped_skin_id',
+        'sprite_data',
     ];
 
     public function user(): BelongsTo

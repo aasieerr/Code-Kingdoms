@@ -38,6 +38,7 @@ class CharacterController extends Controller
             'health' => 'sometimes|integer|min:0',
             'mana' => 'sometimes|integer|min:0',
             'gold' => 'sometimes|integer|min:0',
+            'sprite_data' => 'sometimes|string',
         ]);
 
         $validated['id_user'] = (int) $request->user()->id;
