@@ -8,6 +8,8 @@
     @blur="focused = false"
   >
     <!-- Mundo de juego -->
+    <div class="scanlines"></div>
+    <div class="game-bg"></div>
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
       <div class="terrain grassland"></div>
@@ -20,12 +22,28 @@
       <div class="terrain ruins-zone"></div>
       <div
         class="player"
+        :class="{ 'is-moving': moving }"
         :style="{
           left: x + 'px',
           top: y + 'px',
-          background: moving ? colorMoving : colorStill,
         }"
-      />
+      >
+        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
+          <div class="mini-grid">
+            <div 
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+              :key="pIdx"
+              class="mini-grid__pixel"
+              :style="{ backgroundColor: color || 'transparent' }"
+            ></div>
+          </div>
+        </div>
+        <div 
+          v-else 
+          class="player__fallback"
+          :style="{ background: moving ? colorMoving : colorStill }"
+        ></div>
+      </div>
 
       <!-- NPCs -->
       <NpcSprite
@@ -50,7 +68,7 @@
     <WalletBar
       :gold="characterStore.gold"
       :code-coins="characterStore.codeCoins"
-      @open-micropay="showMicropay = true"
+      @open-micropay="showMicropay = !showMicropay"
     />
 
 
@@ -128,6 +146,20 @@ import MicropayModal  from './components/MicropayModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
 import { useCharacterStore } from './stores/character'
+
+function parseSprite(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(parsed) ? parsed : Array(256).fill('')
+  } catch {
+    return Array(256).fill('')
+  }
+}
+
+function isEmptySprite(data) {
+  const pixels = parseSprite(data)
+  return !pixels.some(p => p && p !== '')
+}
 
 
 const router        = useRouter()
@@ -220,8 +252,12 @@ watch(npcs, (list) => {
 })
 
 function openPanel(name) {
-  showMapPanel.value = false
-  showPanel.value = name
+  if (showPanel.value === name) {
+    showPanel.value = null
+  } else {
+    showPanel.value = name
+    showMapPanel.value = false
+  }
 }
 
 function toggleMap() {
@@ -355,8 +391,24 @@ onUnmounted(() => {
 <style scoped>
 .viewport {
   width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;
-  outline: none; overflow: hidden; background-color: #335b2f;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
+  outline: none; overflow: hidden; background-color: #0b0d17;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
+}
+
+.game-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
 }
 .world {
   position: absolute;
@@ -438,8 +490,46 @@ onUnmounted(() => {
 /* Jugador */
 .player {
   position: absolute; width: 40px; height: 40px;
-  border-radius: 6px; transition: background .1s;
-  box-shadow: 0 4px 15px rgba(0,0,0,.3); z-index: 2;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease-out;
+}
+
+.player.is-moving {
+  animation: walking 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes walking {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-2px) rotate(4deg); }
+}
+
+.player__fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0,0,0,.3);
+  transition: background .1s;
+}
+
+.player__sprite {
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  image-rendering: pixelated;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2.5px);
+  grid-template-rows: repeat(16, 2.5px);
+  width: 40px;
+  height: 40px;
+}
+
+.mini-grid__pixel {
+  width: 2.5px;
+  height: 2.5px;
 }
 /* Logo */
 .game-logo {

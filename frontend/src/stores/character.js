@@ -34,10 +34,9 @@ export const useCharacterStore = defineStore('character', () => {
       codeCoins.value = ch.code_coins ?? 0
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
-      
-      // Encontrar arma equipada
-      const weaponItem = ch.equipped_items?.find(i => i.type === 'weapon')
-      if (weaponItem && weaponItem.weapon) {
+
+      if (ch.equipped_weapon) {
+        const weaponItem = ch.equipped_weapon
         equippedWeapon.value = {
           name: weaponItem.name,
           damage: weaponItem.weapon.damage,
@@ -50,7 +49,6 @@ export const useCharacterStore = defineStore('character', () => {
       error.value = null
     } catch (err) {
       error.value = err.message
-      console.error('Error refreshing character store:', err)
     } finally {
       loading.value = false
     }
@@ -61,6 +59,7 @@ export const useCharacterStore = defineStore('character', () => {
     codeCoins,
     name,
     equippedSkin,
+    spriteData,
     equippedWeapon,
     loading,
     error,

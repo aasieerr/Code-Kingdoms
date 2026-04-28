@@ -7,6 +7,10 @@
     @focus="focused = true"
     @blur="focused = false"
   >
+    <!-- SCANLINES OVERLAY -->
+    <div class="scanlines"></div>
+    <div class="game-bg"></div>
+
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
       <div class="arena-floor"></div>
@@ -51,35 +55,88 @@
 
       <div
         class="player"
+        :class="{ 'is-moving': moving }"
         :style="{
           left: x + 'px',
           top: y + 'px',
-          background: moving ? colorMoving : colorStill,
         }"
-      />
+      >
+        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
+          <div class="mini-grid">
+            <div 
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+              :key="pIdx"
+              class="mini-grid__pixel"
+              :style="{ backgroundColor: color || 'transparent' }"
+            ></div>
+          </div>
+        </div>
+        <div 
+          v-else 
+          class="player__fallback"
+          :style="{ background: moving ? colorMoving : colorStill }"
+        ></div>
+      </div>
     </div>
 
-    <!-- HUD -->
-    <div class="arena-hud">
-      <p class="hud-line wave-line">Ronda {{ wave }}</p>
-      <p class="hud-line gold-line">
-        <span class="lbl">Run</span> {{ sessionGold }} 🪙
-        <span v-if="characterStore.gold !== null" class="wallet-rest"> · Banco {{ characterStore.gold }}</span>
-      </p>
-
-      <div class="hp-bar-outer">
-        <div class="hp-bar-inner" :style="{ width: playerHpPct + '%' }"></div>
+    <!-- PREMIUM ARENA HUD -->
+    <div class="premium-arena-hud">
+      <!-- Wave Info -->
+      <div class="hud-top-center">
+        <div class="wave-display">
+          <span class="wave-label">RONDA</span>
+          <span class="wave-number">{{ wave }}</span>
+        </div>
       </div>
-      <p v-if="phase === 'idle'" class="hud-hint hint-top">Norte — vuelve al reino</p>
-      <p class="hud-hint hint-keys">WASD · disparo automático · <kbd>I</kbd> inventario · <kbd>K</kbd> equipo · <kbd>M</kbd> mapa</p>
+
+      <!-- Player Stats (Left) -->
+      <div class="hud-stats-left">
+        <div class="gold-display">
+          <div class="gold-item current">
+            <span class="gold-icon">🪙</span>
+            <span class="gold-val">{{ sessionGold }}</span>
+            <span class="gold-lbl">RUN</span>
+          </div>
+          <div class="gold-item bank">
+            <span class="gold-icon">🏛️</span>
+            <span class="gold-val">{{ characterStore.gold }}</span>
+            <span class="gold-lbl">BANCO</span>
+          </div>
+        </div>
+
+        <div class="hp-container">
+          <div class="hp-label">SISTEMA VITAL</div>
+          <div class="hp-bar-frame">
+            <div class="hp-bar-fill" :style="{ width: playerHpPct + '%' }">
+              <div class="hp-glow"></div>
+            </div>
+          </div>
+          <div class="hp-numeric">{{ playerHp }} / {{ playerMaxHp }}</div>
+        </div>
+      </div>
+
+      <!-- Controls Hint (Bottom) -->
+      <div class="hud-bottom-hints">
+        <div class="hint-pill">
+          <span class="key">WASD</span> MOVIMIENTO
+        </div>
+        <div class="hint-pill">
+          <span class="key">I</span> MOCHILA
+        </div>
+        <div class="hint-pill">
+          <span class="key">K</span> EQUIPO
+        </div>
+        <div class="hint-pill">
+          <span class="key">M</span> MAPA
+        </div>
+      </div>
     </div>
 
     <WalletBar
       :gold="characterStore.gold + sessionGold"
       :code-coins="characterStore.codeCoins"
-      @open-micropay="showMicropay = true"
+      @open-micropay="showMicropay = !showMicropay"
     />
-
 
     <InventoryPanel
       v-show="showPanel === 'inventory'"
@@ -103,31 +160,37 @@
       @close="showMapPanel = false"
     />
 
-    <!-- Entre rondas -->
-    <div v-if="phase === 'between'" class="modal-overlay" @click.self>
-      <div class="modal-card">
-        <h2>Ronda {{ wave }} completada</h2>
-        <p>Tienes {{ sessionGold }} 🪙 esta run. Equipa ítems en el panel o sigue luchando.</p>
-        <div class="modal-actions">
-          <button type="button" class="btn-primary" @click="startNextWave">Siguiente ronda</button>
-          <button type="button" class="btn-secondary" @click="leaveArena">Volver al reino</button>
+    <!-- PREMIUM MODALS -->
+    <div v-if="phase === 'between'" class="premium-overlay">
+      <div class="premium-modal victory">
+        <div class="modal-shine"></div>
+        <h2 class="modal-title">¡RONDA {{ wave }} COMPLETADA!</h2>
+        <div class="modal-body">
+          <p class="reward-text">HAS RECOLECTADO <span>{{ sessionGold }}</span> MONEDAS DE ORO</p>
+          <p class="action-hint">EQUIPA ÍTEMS EN EL PANEL O SIGUE LUCHANDO</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-continue" @click="startNextWave">CONTINUAR BATALLA</button>
+          <button type="button" class="btn-exit" @click="leaveArena">VOLVER AL REINO</button>
         </div>
       </div>
     </div>
 
-    <!-- Game over -->
-    <div v-if="phase === 'gameover'" class="modal-overlay">
-      <div class="modal-card">
-        <h2>Derrota</h2>
-        <p>
-          Has llegado a la ronda {{ wave }} y reunido {{ sessionGold }} 🪙 en esta partida.
-        </p>
-        <button type="button" class="btn-primary" @click="leaveArena">Volver al reino</button>
+    <div v-if="phase === 'gameover'" class="premium-overlay">
+      <div class="premium-modal defeat">
+        <div class="modal-shine"></div>
+        <h2 class="modal-title">DERROTA EN COMBATE</h2>
+        <div class="modal-body">
+          <p class="summary">CAÍSTE EN LA RONDA <span>{{ wave }}</span></p>
+          <p class="reward-text">ORO ASEGURADO: <span>{{ sessionGold }}</span> 🪙</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-exit" @click="leaveArena">RETIRARSE AL REINO</button>
+        </div>
       </div>
     </div>
 
     <img class="game-logo" src="/code-kingdoms-logo.png" alt="Code Kingdoms logo" />
-
     <div class="fade-overlay" :class="{ active: isFading }"></div>
   </div>
 </template>
@@ -145,6 +208,20 @@ import MapPanel from './components/MapPanel.vue'
 import WalletBar from './components/WalletBar.vue'
 import MicropayModal from './components/MicropayModal.vue'
 import { useCharacterStore } from './stores/character'
+
+function parseSprite(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(parsed) ? parsed : Array(256).fill('')
+  } catch {
+    return Array(256).fill('')
+  }
+}
+
+function isEmptySprite(data) {
+  const pixels = parseSprite(data)
+  return !pixels.some(p => p && p !== '')
+}
 
 
 const router = useRouter()
@@ -195,8 +272,12 @@ if (lastTransition.value === 'main-to-second') {
 }
 
 function openPanel(name) {
-  showMapPanel.value = false
-  showPanel.value = name
+  if (showPanel.value === name) {
+    showPanel.value = null
+  } else {
+    showPanel.value = name
+    showMapPanel.value = false
+  }
 }
 
 function toggleMap() {
@@ -406,8 +487,24 @@ watch(phase, (p) => {
   left: 0;
   outline: none;
   overflow: hidden;
-  background-color: #1a2f18;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
+  background-color: #0b0d17;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
+}
+
+.game-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
 }
 
 .world {
@@ -442,10 +539,46 @@ watch(phase, (p) => {
   position: absolute;
   width: 40px;
   height: 40px;
-  border-radius: 6px;
-  transition: background 0.1s;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease-out;
+}
+
+.player.is-moving {
+  animation: walking 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes walking {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-2px) rotate(4deg); }
+}
+
+.player__fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  transition: background 0.1s;
+}
+
+.player__sprite {
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  image-rendering: pixelated;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2.5px);
+  grid-template-rows: repeat(16, 2.5px);
+  width: 40px;
+  height: 40px;
+}
+
+.mini-grid__pixel {
+  width: 2.5px;
+  height: 2.5px;
 }
 
 .enemy {
@@ -521,76 +654,205 @@ watch(phase, (p) => {
   }
 }
 
-.arena-hud {
+/* PREMIUM ARENA HUD */
+.premium-arena-hud {
   position: absolute;
-  top: 22px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  padding: 40px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.hud-top-center {
+  position: absolute;
+  top: 40px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 28;
-  text-align: center;
-  pointer-events: none;
-  text-shadow:
-    0 1px 0 #000,
-    1px 0 0 #000,
-    -1px 0 0 #000;
 }
 
-.hud-line {
-  margin: 0 0 6px;
-  font-size: 10px;
-  color: #fff8e1;
+.wave-display {
+  background: rgba(15, 23, 42, 0.9);
+  border: 4px solid #facc15;
+  padding: 15px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
 }
 
-.wave-line {
-  color: #c5e1a5;
-  letter-spacing: 1px;
+.wave-label { font-size: 8px; color: #facc15; opacity: 0.7; }
+.wave-number { font-size: 24px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+.hud-stats-left {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.gold-line {
-  font-size: 9px;
+.gold-display {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.wallet-rest {
-  opacity: 0.85;
-  font-size: 8px;
+.gold-item {
+  background: rgba(15, 23, 42, 0.8);
+  border-left: 4px solid #facc15;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.hp-bar-outer {
-  width: min(280px, 70vw);
-  height: 12px;
-  margin: 8px auto 0;
-  border: 3px solid #1a1a1a;
-  background: #0d1f0d;
-  border-radius: 2px;
+.gold-icon { font-size: 16px; }
+.gold-val { font-size: 12px; color: white; }
+.gold-lbl { font-size: 6px; color: #facc15; opacity: 0.6; }
+
+.hp-container {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.hp-bar-inner {
+.hp-label { font-size: 7px; color: #facc15; }
+.hp-bar-frame {
+  height: 20px;
+  background: #0b0d17;
+  border: 2px solid #334155;
+  padding: 2px;
+}
+
+.hp-bar-fill {
   height: 100%;
-  background: linear-gradient(180deg, #8bc34a, #558b2f);
-  border-radius: 0;
-  transition: width 0.12s linear;
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  position: relative;
+  transition: width 0.3s ease-out;
 }
 
-.hud-hint {
-  margin: 10px 0 0;
-  font-size: 7px;
-  color: #b0bec5;
+.hp-glow {
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0.2;
+  filter: blur(4px);
 }
 
-.hint-top {
-  color: #ffcc80;
+.hp-numeric { font-size: 7px; text-align: right; color: white; opacity: 0.6; }
+
+.hud-bottom-hints {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
 }
 
-.hud-hint kbd {
-  display: inline-block;
-  border: 2px solid #333;
-  background: #222;
-  color: #ffcc80;
-  padding: 1px 5px;
-  font-size: 7px;
+.hint-pill {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(250, 204, 21, 0.2);
+  padding: 8px 16px;
+  font-size: 6px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.key {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.1);
+  padding: 4px 6px;
+  border: 1px solid #facc15;
+}
+
+/* PREMIUM MODALS */
+.premium-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-modal {
+  width: 500px;
+  background: #0f172a;
+  border: 4px solid #facc15;
+  box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 0 100px rgba(250, 204, 21, 0.05);
+  position: relative;
+  overflow: hidden;
+  padding: 40px;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  animation: modal-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-enter {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.modal-shine {
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.modal-title {
+  font-size: 18px;
+  color: #facc15;
+  margin-bottom: 30px;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+}
+
+.modal-body {
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reward-text { font-size: 10px; color: #cbd5e1; }
+.reward-text span { color: #facc15; font-size: 14px; }
+
+.action-hint { font-size: 7px; color: #64748b; }
+
+.modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-continue, .btn-exit {
+  padding: 20px;
+  border: 4px solid #facc15;
+  background: #ca8a04;
+  color: white;
   font-family: inherit;
-  margin: 0 2px;
+  font-size: 10px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #854d0e;
+  transition: all 0.1s;
 }
+
+.btn-continue:active, .btn-exit:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #854d0e;
+}
+
+.btn-exit { background: #991b1b; border-color: #ef4444; box-shadow: 4px 4px 0 #450a0a; }
+.btn-exit:active { box-shadow: 2px 2px 0 #450a0a; }
 
 .game-logo {
   position: absolute;
@@ -617,70 +879,5 @@ watch(phase, (p) => {
 }
 .fade-overlay.active {
   opacity: 1;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(0, 0, 0, 0.72);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-}
-
-.modal-card {
-  max-width: 420px;
-  border: 5px solid #1f1f1f;
-  background: linear-gradient(180deg, #263238 0%, #1b2529 100%);
-  box-shadow: 0 0 0 4px #607d8b;
-  color: #eceff1;
-  padding: 22px 20px;
-  font-size: 10px;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.modal-card h2 {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: #c5e1a5;
-}
-
-.modal-card p {
-  margin: 0 0 16px;
-}
-
-.btn-primary {
-  border: 3px solid #1f1f1f;
-  background: #8bc34a;
-  color: #1b1b1b;
-  padding: 10px 18px;
-  font-size: 10px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.btn-primary:hover {
-  filter: brightness(1.08);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.btn-secondary {
-  border: 3px solid #1f1f1f;
-  background: #546e7a;
-  color: #ffffff;
-  padding: 10px 18px;
-  font-size: 10px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.btn-secondary:hover {
-  filter: brightness(1.15);
 }
 </style>
