@@ -5,7 +5,7 @@ const PLAYER_SIZE = 40
 const MOVE_SPEED = 7
 const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 110
-const MELEE_LIFETIME = 180
+const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
@@ -24,6 +24,7 @@ export function useArenaCombat(options = {}) {
   const startX = options.startX ?? WORLD / 2
   const startY = options.startY ?? WORLD / 2
   const equippedWeapon = options.equippedWeapon ?? ref(null)
+  const characterClass = options.characterClass ?? ref('')
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -193,7 +194,10 @@ export function useArenaCombat(options = {}) {
         const angle = Math.atan2(dy, dx)
 
         const wType = equippedWeapon.value?.weaponType
-        if (MELEE_TYPES.includes(wType)) {
+        const charClass = (characterClass.value || '').toLowerCase()
+        const isWarrior = charClass.includes('guerrero') || charClass.includes('warrior')
+
+        if (MELEE_TYPES.includes(wType) || (isWarrior && !wType)) {
           // Ataque Melee
           slashes.value = [
             ...slashes.value,

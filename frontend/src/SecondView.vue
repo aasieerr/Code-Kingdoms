@@ -264,6 +264,7 @@ const {
   startX: WORLD_EDGE / 2,
   startY,
   equippedWeapon: computed(() => characterStore.equippedWeapon),
+  characterClass: computed(() => characterStore.characterClass),
 })
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes

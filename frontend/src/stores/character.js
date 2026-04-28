@@ -8,6 +8,7 @@ export const useCharacterStore = defineStore('character', () => {
   const name = ref('')
   const equippedSkin = ref(null)
   const spriteData = ref(null)
+  const characterClass = ref('')
   const equippedWeapon = ref(null)
   const loading = ref(false)
   const error = ref(null)
@@ -36,13 +37,16 @@ export const useCharacterStore = defineStore('character', () => {
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
       spriteData.value = ch.sprite_data || null
+      characterClass.value = ch.character_class?.name || ch.class?.name || ''
 
       if (ch.equipped_weapon) {
-        const weaponItem = ch.equipped_weapon
+        const wi = ch.equipped_weapon
+        // Intentar varias rutas comunes según el merge/backend
+        const details = wi.item?.details || wi.weapon || {}
         equippedWeapon.value = {
-          name: weaponItem.name,
-          damage: weaponItem.weapon.damage,
-          weaponType: weaponItem.weapon.weapon_type
+          name: wi.item?.name || wi.name || 'Arma',
+          damage: details.damage || 10,
+          weaponType: (details.weapon_type || details.weaponType || '').toLowerCase()
         }
       } else {
         equippedWeapon.value = null
@@ -60,6 +64,7 @@ export const useCharacterStore = defineStore('character', () => {
     gold,
     codeCoins,
     name,
+    characterClass,
     equippedSkin,
     spriteData,
     equippedWeapon,
