@@ -93,7 +93,7 @@ function getStickman() {
   return s
 }
 
-const sprite = ref(getStickman())
+const sprite = ref(Array(256).fill(''))
 const kingdoms = ref([])
 const races = ref([])
 const classes = ref([])

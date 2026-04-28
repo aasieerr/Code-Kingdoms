@@ -11,7 +11,7 @@
             :style="{ backgroundColor: color || 'transparent' }"
           ></div>
         </div>
-        <div v-else class="hud-avatar-placeholder">?</div>
+        <div v-else class="hud-avatar-placeholder"></div>
         <!-- Scanline Overlay on Avatar -->
         <div class="avatar-scanlines"></div>
       </div>

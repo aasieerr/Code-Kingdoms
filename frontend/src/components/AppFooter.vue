@@ -1,5 +1,5 @@
 <template>
-  <footer class="relative z-40 px-8 pt-16 pb-10 mt-20 border-t-4 border-[#facc15] bg-[#0b0d17] shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
+  <footer class="app-footer relative z-40 px-8 pt-16 pb-10 mt-20 border-t-4 border-[#facc15] bg-[#0b0d17] shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
     
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 mb-16 text-left">
       <!-- Brand Section -->
