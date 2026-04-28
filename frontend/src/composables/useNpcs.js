@@ -18,11 +18,7 @@ export function useNpcs(mapName, playerX, playerY) {
       npcs.value = (Array.isArray(data) ? data : (data?.data || [])).map(npc => {
         let nx = Number(npc.x)
         let ny = Number(npc.y)
-        
-        // Si están fuera del mapa (1200px), los movemos al borde visible
-        if (nx > WORLD_EDGE - 60) nx = WORLD_EDGE - 100 + (nx % 40)
-        if (ny > WORLD_EDGE - 60) ny = WORLD_EDGE - 100 + (ny % 40)
-        
+        // Las coordenadas ahora vienen correctamente de la base de datos
         return { ...npc, x: nx, y: ny }
       })
 
