@@ -2,7 +2,7 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const MOVE_SPEED = 2
+const MOVE_SPEED = 3.2
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
@@ -78,7 +78,7 @@ export function useArenaCombat(options = {}) {
         y: ey,
         hp,
         maxHp: hp,
-        speed: 0.8 + wave.value * 0.1,
+        speed: 3.4 + wave.value * 0.12,
       })
     }
     enemies.value = list
@@ -314,6 +314,7 @@ export function useArenaCombat(options = {}) {
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    if (rafId) cancelAnimationFrame(rafId)
     rafId = requestAnimationFrame(tick)
     arenaRef.value?.focus()
   })

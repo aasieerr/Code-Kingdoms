@@ -48,6 +48,7 @@ export function useWasd(initialX = 280, initialY = 170) {
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    if (rafId) cancelAnimationFrame(rafId)
     rafId = requestAnimationFrame(loop)
     arenaRef.value?.focus()
   })

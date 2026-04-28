@@ -190,6 +190,19 @@ function toggleMap() {
   showMapPanel.value = !showMapPanel.value
 }
 
+// Bloquear movimiento si hay paneles abiertos
+watch(
+  [showPanel, showMapPanel, showMicropay, phase],
+  ([p, m, mi, ph]) => {
+    // Si hay algo abierto o fase especial, bloqueamos.
+    if (p || m || mi || ph === 'between' || ph === 'gameover') {
+      locked.value = true
+    } else if (!isFading.value && !navigating.value) {
+      locked.value = false
+    }
+  }
+)
+
 function onArenaPanelHotkey(e) {
   if (!focused.value || locked.value) {
     return
@@ -280,7 +293,7 @@ async function syncRunGoldOnce() {
 }
 
 async function leaveArena() {
-  if (locked.value || navigating.value) return
+  if (navigating.value) return
   navigating.value = true
   locked.value = true
   

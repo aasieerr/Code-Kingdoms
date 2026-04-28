@@ -1,10 +1,11 @@
 <template>
   <section class="character-panel" @click.stop>
     <header class="panel-header">
-      <div class="panel-tabs">
+      <div class="panel-tabs" v-if="!isShop">
         <button class="tab-btn active">Inventario</button>
         <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
       </div>
+      <h2 v-else>Tienda del Reino</h2>
       <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
@@ -54,8 +55,8 @@
             <p class="item-name">{{ ci.item.name }} <span v-if="ci.is_equipped">(E)</span></p>
             <p class="item-type">
               {{ labelsByType[ci.item.type] }} 
-              <span v-if="ci.id">· x{{ ci.quantity }}</span>
-              <span v-else>· {{ ci.item.price }} 🪙</span>
+              <span v-if="!isShop && ci.id">· x{{ ci.quantity }}</span>
+              <span v-if="isShop || !ci.id">· {{ ci.item.price }} 🪙</span>
             </p>
           </div>
         </li>
@@ -80,17 +81,9 @@
         </ul>
 
         <div class="item-actions">
-          <button 
-            v-if="selectedItem.id && !selectedItem.is_equipped"
-            class="action-btn sell"
-            @click="handleSell(selectedItem)"
-            :disabled="busy"
-          >
-            Vender ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
-          </button>
-          
+          <!-- Solo en la tienda se puede comprar -->
           <button
-            v-else
+            v-if="isShop"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
             :disabled="busy"
@@ -98,14 +91,26 @@
             Comprar ({{ selectedItem.item.price || 0 }} 🪙)
           </button>
 
-          <button 
-            v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
-            class="action-btn equip" 
-            @click="handleEquip(selectedItem)"
-            :disabled="busy"
-          >
-            {{ selectedItem.is_equipped ? 'Desequipar' : 'Equipar' }}
-          </button>
+          <!-- Solo en el inventario se puede vender o equipar -->
+          <template v-else>
+            <button 
+              v-if="selectedItem.id && !selectedItem.is_equipped"
+              class="action-btn sell"
+              @click="handleSell(selectedItem)"
+              :disabled="busy"
+            >
+              Vender ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
+            </button>
+            
+            <button 
+              v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
+              class="action-btn equip" 
+              @click="handleEquip(selectedItem)"
+              :disabled="busy"
+            >
+              {{ selectedItem.is_equipped ? 'Desequipar' : 'Equipar' }}
+            </button>
+          </template>
         </div>
       </article>
     </div>
@@ -115,13 +120,21 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import {
-  mergedInventoryItems,
+  globalItems,
+  myCharacterItems,
   isInventoryLoading,
   lastInventoryError,
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
 import { purchaseItem, sellItem } from '../api/shop'
+
+const props = defineProps({
+  isShop: {
+    type: Boolean,
+    default: false
+  }
+})
 
 defineEmits(['close', 'switch-panel'])
 
@@ -145,17 +158,20 @@ const busy = ref(false)
 // Se exponen directamente los refs globales al template
 const loading = isInventoryLoading
 const error = lastInventoryError
-const items = mergedInventoryItems
 
 const filteredItems = computed(() => {
-  if (activeFilter.value === 'all') return items.value
-  return items.value.filter((ci) => ci.item?.type === activeFilter.value)
+  const source = props.isShop 
+    ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+    : myCharacterItems.value
+
+  if (activeFilter.value === 'all') return source
+  return source.filter((ci) => ci.item?.type === activeFilter.value)
 })
 
 onMounted(async () => {
-  await fetchInventoryData()
-  if (!selectedItem.value && items.value.length > 0) {
-    selectedItem.value = items.value[0]
+  await fetchInventoryData(true)
+  if (!selectedItem.value && filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
   }
 })
 
