@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import html2canvas from 'html2canvas'
 import screenshotsApi from './api/screenshots'
 import { useAuthStore } from './stores/auth'
+import { useCharacterStore } from './stores/character'
 
 const isCapturing = ref(false)
 const lastCaptureTime = ref(0)
@@ -59,8 +60,9 @@ const takeScreenshot = async () => {
       }
     })
 
+    const characterStore = useCharacterStore()
     const imageData = canvas.toDataURL('image/png')
-    await screenshotsApi.save(imageData)
+    await screenshotsApi.save(imageData, characterStore.name)
     showNotification('¡Captura guardada!', 'success')
   } catch (error) {
     console.error('Error taking screenshot:', error)

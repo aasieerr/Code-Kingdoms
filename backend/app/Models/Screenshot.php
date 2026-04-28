@@ -11,6 +11,7 @@ class Screenshot extends Model
 
     protected $fillable = [
         'user_id',
+        'character_name',
         'image_path',
     ];
 

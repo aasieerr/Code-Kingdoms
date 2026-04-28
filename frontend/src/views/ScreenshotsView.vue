@@ -20,6 +20,16 @@
           TUS MOMENTOS ÉPICOS EN <span class="text-[#3b82f6]">CODE KINGDOMS</span>. PULSA <span class="text-white border border-white/20 px-2 py-0.5 rounded bg-white/5">F8</span> EN EL JUEGO PARA CAPTURAR MÁS.
         </p>
       </div>
+      
+      <!-- Filters Section -->
+      <div v-if="!loading && screenshots.length > 0" class="flex flex-wrap justify-center gap-4 mb-12">
+        <button v-for="char in uniqueCharacters" :key="char"
+                @click="selectCharacter(char)"
+                class="filter-btn"
+                :class="{ 'active': selectedCharacter === char }">
+          <span class="relative z-10">{{ char }}</span>
+        </button>
+      </div>
 
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-20 gap-6">
@@ -39,7 +49,7 @@
       <!-- Screenshots Grid -->
       <div v-else class="flex flex-col items-center gap-12">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-          <div v-for="(screenshot, index) in screenshots.slice(0, visibleCount)" :key="screenshot.id" 
+          <div v-for="(screenshot, index) in filteredScreenshots.slice(0, visibleCount)" :key="screenshot.id" 
             class="screenshot-card group relative p-3 bg-[#0f172a] border-4 border-[#facc15]/10 hover:border-[#facc15] transition-all duration-300"
             :style="{ animationDelay: (index * 50) + 'ms' }">
             
@@ -61,11 +71,15 @@
                 <span class="hidden group-hover/del:inline ml-1">ELIMINAR</span>
               </button>
             </div>
+            <!-- Character Tag -->
+            <div v-if="screenshot.character_name" class="absolute -top-3 left-4 bg-[#facc15] text-[#0b0d17] text-[7px] px-2 py-1 font-bold border-2 border-[#0b0d17] z-20">
+              {{ screenshot.character_name }}
+            </div>
           </div>
         </div>
 
         <!-- Load More Button -->
-        <button v-if="visibleCount < screenshots.length" 
+        <button v-if="visibleCount < filteredScreenshots.length" 
                 @click="loadMore"
                 class="load-more-btn group">
           <span class="relative z-10 flex items-center gap-4">
@@ -107,26 +121,50 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import screenshotsApi from '../api/screenshots'
+import { fetchCharacters } from '../api/character'
 
 const screenshots = ref([])
+const characters = ref([])
 const loading = ref(true)
 const selectedScreenshot = ref(null)
 const visibleCount = ref(6)
+const selectedCharacter = ref('Todos')
+
+const uniqueCharacters = computed(() => {
+  const names = characters.value.map(c => c.name)
+  return ['Todos', ...names]
+})
+
+const filteredScreenshots = computed(() => {
+  if (selectedCharacter.value === 'Todos') {
+    return screenshots.value
+  }
+  return screenshots.value.filter(s => s.character_name === selectedCharacter.value)
+})
 
 const loadMore = () => {
   visibleCount.value += 3
 }
 
+const selectCharacter = (char) => {
+  selectedCharacter.value = char
+  visibleCount.value = 6 // Reset pagination when filter changes
+}
+
 const fetchScreenshots = async () => {
   try {
-    const response = await screenshotsApi.getAll()
-    screenshots.value = response.data
+    const [scRes, charRes] = await Promise.all([
+      screenshotsApi.getAll(),
+      fetchCharacters()
+    ])
+    screenshots.value = scRes.data
+    characters.value = charRes
   } catch (error) {
-    console.error('Error fetching screenshots:', error)
+    console.error('Error fetching gallery data:', error)
   } finally {
     loading.value = false
   }
@@ -234,5 +272,32 @@ onMounted(fetchScreenshots)
 }
 .load-more-btn:hover .btn-shine {
   left: 100%;
+}
+
+.filter-btn {
+  background: rgba(250, 204, 21, 0.05);
+  color: #facc15;
+  border: 2px solid rgba(250, 204, 21, 0.2);
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.filter-btn:hover {
+  background: rgba(250, 204, 21, 0.1);
+  border-color: #facc15;
+}
+
+.filter-btn.active {
+  background: #facc15;
+  color: #0b0d17;
+  border-color: #facc15;
+  box-shadow: 4px 4px 0 #854d0e;
+  transform: translate(-2px, -2px);
 }
 </style>

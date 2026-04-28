@@ -48,6 +48,7 @@ class ScreenshotController extends Controller
 
         $screenshot = Screenshot::create([
             'user_id' => $request->user()->id,
+            'character_name' => $request->input('character_name'),
             'image_path' => $path,
         ]);
 
