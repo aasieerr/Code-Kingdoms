@@ -81,7 +81,7 @@
 
         <div class="item-actions">
           <button 
-            v-if="selectedItem.id"
+            v-if="selectedItem.id && !selectedItem.is_equipped"
             class="action-btn sell"
             @click="handleSell(selectedItem)"
             :disabled="busy"

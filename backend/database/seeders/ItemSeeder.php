@@ -32,7 +32,7 @@ class ItemSeeder extends Seeder
             [
                 'name' => 'Espada del Guerrero',
                 'description' => 'Espada legendaria forjada por los antiguos herreros.',
-                'damage' => 35,
+                'damage' => 22,
                 'weapon_type' => 'espada',
                 'durability' => 100,
                 'price' => 180,
@@ -40,7 +40,7 @@ class ItemSeeder extends Seeder
             [
                 'name' => 'Varita Arcana',
                 'description' => 'Varita imbuida con energía mágica pura.',
-                'damage' => 25,
+                'damage' => 15,
                 'weapon_type' => 'varita',
                 'durability' => 80,
                 'price' => 150,
@@ -48,7 +48,7 @@ class ItemSeeder extends Seeder
             [
                 'name' => 'Arco de Roble',
                 'description' => 'Arco preciso tallado en madera de roble antiguo.',
-                'damage' => 30,
+                'damage' => 18,
                 'weapon_type' => 'arco',
                 'durability' => 90,
                 'price' => 165,
@@ -56,7 +56,7 @@ class ItemSeeder extends Seeder
             [
                 'name' => 'Hacha de Batalla',
                 'description' => 'Hacha poderosa usada por guerreros bárbaros.',
-                'damage' => 40,
+                'damage' => 28,
                 'weapon_type' => 'hacha',
                 'durability' => 95,
                 'price' => 200,
@@ -64,7 +64,7 @@ class ItemSeeder extends Seeder
             [
                 'name' => 'Daga Asesina',
                 'description' => 'Daga ligera ideal para ataques furtivos.',
-                'damage' => 20,
+                'damage' => 12,
                 'weapon_type' => 'daga',
                 'durability' => 70,
                 'price' => 120,

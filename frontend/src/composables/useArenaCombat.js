@@ -2,18 +2,18 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const MOVE_SPEED = 4
+const MOVE_SPEED = 2
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
-const BULLET_SPEED = 10
+const BULLET_SPEED = 8
 const BULLET_LIFETIME_MS = 2200
 const FIRE_INTERVAL_MS = 320
-const BULLET_DAMAGE = 16
+const BULLET_DAMAGE = 12
 const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
-const MAGNET_SPEED = 6
+const MAGNET_SPEED = 5
 
 
 /** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
@@ -78,7 +78,7 @@ export function useArenaCombat(options = {}) {
         y: ey,
         hp,
         maxHp: hp,
-        speed: 1.05 + wave.value * 0.14,
+        speed: 0.8 + wave.value * 0.1,
       })
     }
     enemies.value = list
@@ -158,11 +158,11 @@ export function useArenaCombat(options = {}) {
       }
 
       const tgt = nearestEnemy(px, py)
-      
+
       // Calcular intervalo y daño según el arma
       let currentFireInterval = FIRE_INTERVAL_MS
       let currentDamage = BULLET_DAMAGE
-      
+
       if (equippedWeapon.value) {
         currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
         const type = equippedWeapon.value.weaponType
@@ -228,7 +228,7 @@ export function useArenaCombat(options = {}) {
             id: coinId++,
             x: e.x + 8,
             y: e.y + 8,
-            value: 2 + Math.floor(Math.random() * 4),
+            value: 2 + Math.floor(Math.random() * 2),
           })
           elist.splice(hitIndex, 1)
         } else {
