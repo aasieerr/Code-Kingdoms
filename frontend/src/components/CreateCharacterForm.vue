@@ -43,6 +43,10 @@
         </select>
       </div>
 
+      <div class="field mt-4">
+        <PixelArtEditor v-model="sprite" />
+      </div>
+
       <p v-if="err" class="create-form__err">{{ err }}</p>
 
       <button class="create-form__btn" type="submit" :disabled="sending">
@@ -57,6 +61,7 @@
 import { onMounted, ref, watch } from 'vue'
 import api from '../api/axios'
 import { createCharacter } from '../api/character'
+import PixelArtEditor from './PixelArtEditor.vue'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false },
@@ -69,6 +74,22 @@ const name = ref('')
 const id_kingdom = ref(null)
 const id_race = ref(null)
 const id_class = ref(null)
+
+function getStickman() {
+  const s = Array(256).fill('')
+  const c = '#ffffff'
+  const head = [36,37,38,39,51,56,67,72,84,85,86,87]
+  head.forEach(i => s[i] = c)
+  for(let i=6; i<=11; i++) s[i*16 + 7] = c;
+  for(let i=6; i<=11; i++) s[i*16 + 8] = c;
+  for(let i=4; i<=11; i++) s[8*16 + i] = c;
+  s[12*16+6]=c; s[12*16+9]=c;
+  s[13*16+5]=c; s[13*16+10]=c;
+  s[14*16+4]=c; s[14*16+11]=c;
+  return s
+}
+
+const sprite = ref(getStickman())
 const kingdoms = ref([])
 const races = ref([])
 const classes = ref([])
@@ -107,6 +128,7 @@ async function onSubmit() {
       id_kingdom: id_kingdom.value,
       id_race: id_race.value,
       id_class: id_class.value,
+      sprite_data: JSON.stringify(sprite.value)
     })
     emit('created', ch)
   } catch (e) {

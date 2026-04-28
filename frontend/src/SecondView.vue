@@ -38,12 +38,28 @@
 
       <div
         class="player"
+        :class="{ 'is-moving': moving }"
         :style="{
           left: x + 'px',
           top: y + 'px',
-          background: moving ? colorMoving : colorStill,
         }"
-      />
+      >
+        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
+          <div class="mini-grid">
+            <div 
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+              :key="pIdx"
+              class="mini-grid__pixel"
+              :style="{ backgroundColor: color || 'transparent' }"
+            ></div>
+          </div>
+        </div>
+        <div 
+          v-else 
+          class="player__fallback"
+          :style="{ background: moving ? colorMoving : colorStill }"
+        ></div>
+      </div>
     </div>
 
     <!-- HUD -->
@@ -129,6 +145,20 @@ import MapPanel from './components/MapPanel.vue'
 import WalletBar from './components/WalletBar.vue'
 import MicropayModal from './components/MicropayModal.vue'
 import { useCharacterStore } from './stores/character'
+
+function parseSprite(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(parsed) ? parsed : Array(256).fill('')
+  } catch {
+    return Array(256).fill('')
+  }
+}
+
+function isEmptySprite(data) {
+  const pixels = parseSprite(data)
+  return !pixels.some(p => p && p !== '')
+}
 
 
 const router = useRouter()
@@ -411,10 +441,46 @@ watch(phase, (p) => {
   position: absolute;
   width: 40px;
   height: 40px;
-  border-radius: 6px;
-  transition: background 0.1s;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease-out;
+}
+
+.player.is-moving {
+  animation: walking 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes walking {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-2px) rotate(4deg); }
+}
+
+.player__fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  transition: background 0.1s;
+}
+
+.player__sprite {
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  image-rendering: pixelated;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2.5px);
+  grid-template-rows: repeat(16, 2.5px);
+  width: 40px;
+  height: 40px;
+}
+
+.mini-grid__pixel {
+  width: 2.5px;
+  height: 2.5px;
 }
 
 .enemy {

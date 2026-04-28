@@ -56,6 +56,17 @@
                 class="char-card"
                 :class="{ 'char-card--active': activeCharacterId === c.id }"
               >
+                <div class="char-card__avatar">
+                  <div v-if="c.sprite_data && !isEmptySprite(c.sprite_data)" class="mini-grid">
+                    <div 
+                      v-for="(color, pIdx) in parseSprite(c.sprite_data)" 
+                      :key="pIdx"
+                      class="mini-grid__pixel"
+                      :style="{ backgroundColor: color || 'transparent' }"
+                    ></div>
+                  </div>
+                  <div v-else class="char-card__placeholder">?</div>
+                </div>
                 <div class="flex-1">
                   <h3 class="text-[#facc15] text-[9px] mb-2 tracking-widest">{{ c.name.toUpperCase() }}</h3>
                   <p class="text-[#facc15]/40 text-[7px] leading-6">
@@ -174,6 +185,20 @@ function labelKingdom(c) { return c.kingdom?.name ?? '—' }
 function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
 
+function parseSprite(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(parsed) ? parsed : Array(256).fill('')
+  } catch {
+    return Array(256).fill('')
+  }
+}
+
+function isEmptySprite(data) {
+  const pixels = parseSprite(data)
+  return !pixels.some(p => p && p !== '')
+}
+
 const isZooming = ref(false)
 const zoomOrigin = ref('center center')
 
@@ -271,6 +296,36 @@ async function logout() {
 .char-card--active {
   border-color: #facc15;
   box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+}
+
+.char-card__avatar {
+  width: 48px;
+  height: 48px;
+  background: #0f172a;
+  border: 2px solid #854d0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.char-card__placeholder {
+  font-size: 14px;
+  color: #854d0e;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2px);
+  grid-template-rows: repeat(16, 2px);
+  width: 32px;
+  height: 32px;
+}
+
+.mini-grid__pixel {
+  width: 2px;
+  height: 2px;
 }
 
 /* Buttons */
