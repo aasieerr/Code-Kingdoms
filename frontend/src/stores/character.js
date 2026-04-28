@@ -35,31 +35,34 @@ export const useCharacterStore = defineStore('character', () => {
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
 
-      equippedWeapon.value = {
-        name: weaponItem.name,
-        damage: weaponItem.weapon.damage,
-        weaponType: weaponItem.weapon.weapon_type
+      if (ch.equipped_weapon) {
+        const weaponItem = ch.equipped_weapon
+        equippedWeapon.value = {
+          name: weaponItem.name,
+          damage: weaponItem.weapon.damage,
+          weaponType: weaponItem.weapon.weapon_type
+        }
+      } else {
+        equippedWeapon.value = null
       }
-    } else {
-      equippedWeapon.value = null
-    }
 
-    error.value = null
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
+      error.value = null
+    } catch (err) {
+      error.value = err.message
+    } finally {
+      loading.value = false
+    }
   }
-}
 
   return {
-  gold,
-  codeCoins,
-  name,
-  equippedSkin,
-  spriteData,
-  equippedWeapon,
-  loading,
-  error,
-  refresh
-}
+    gold,
+    codeCoins,
+    name,
+    equippedSkin,
+    spriteData,
+    equippedWeapon,
+    loading,
+    error,
+    refresh
+  }
+})
