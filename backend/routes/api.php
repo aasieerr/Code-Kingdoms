@@ -57,4 +57,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/screenshots', [ScreenshotController::class, 'index']);
     Route::post('/screenshots', [ScreenshotController::class, 'store']);
+    Route::delete('/screenshots/{id}', [ScreenshotController::class, 'destroy']);
 });

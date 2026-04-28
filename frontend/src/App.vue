@@ -1,16 +1,19 @@
 <script setup>
 import { RouterView } from 'vue-router'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import html2canvas from 'html2canvas'
 import screenshotsApi from './api/screenshots'
 import { useAuthStore } from './stores/auth'
 
 const isCapturing = ref(false)
+const lastCaptureTime = ref(0)
 const notification = ref({ show: false, message: '', type: 'info' })
 
+let notificationTimeout = null
 const showNotification = (message, type = 'info') => {
+  if (notificationTimeout) clearTimeout(notificationTimeout)
   notification.value = { show: true, message, type }
-  setTimeout(() => {
+  notificationTimeout = setTimeout(() => {
     notification.value.show = false
   }, 3000)
 }
@@ -19,17 +22,40 @@ const takeScreenshot = async () => {
   const authStore = useAuthStore()
   if (!authStore.token) return
 
+  // Evitar múltiples capturas seguidas (cooldown de 2 segundos)
+  const now = Date.now()
+  if (now - lastCaptureTime.value < 2000) return
+  
   if (isCapturing.value) return
   isCapturing.value = true
+  lastCaptureTime.value = now
   showNotification('Capturando pantalla...', 'info')
 
   try {
     const canvas = await html2canvas(document.body, {
       useCORS: true,
       logging: false,
+      scale: 1, // Forzar escala 1 para evitar recortes o artefactos en pantallas de alta densidad
       ignoreElements: (element) => {
-        // Ignorar la notificación y el cursor personalizado si existe
-        return element.classList.contains('screenshot-notification')
+        // Lista de clases de interfaz que queremos ocultar en la foto
+        const uiClasses = [
+          'screenshot-notification',
+          'hud-panel',
+          'wallet-bar',
+          'game-logo',
+          'shop-hint',
+          'app-header',
+          'app-footer',
+          'inventory-panel',
+          'equipment-panel',
+          'map-panel',
+          'dialogue-overlay',
+          'skin-shop-overlay',
+          'micropay-overlay',
+          'click-shockwave',
+          'click-particle'
+        ]
+        return uiClasses.some(cls => element.classList.contains(cls))
       }
     })
 
@@ -44,21 +70,30 @@ const takeScreenshot = async () => {
   }
 }
 
-onMounted(() => {
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'F8') {
-      e.preventDefault()
-      takeScreenshot()
-    }
-  })
+const handleKeyDown = (e) => {
+  if (e.key === 'F8') {
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return
+    e.preventDefault()
+    takeScreenshot()
+  }
+}
 
-  window.addEventListener('mousedown', (e) => {
-    createShockwave(e.clientX, e.clientY)
-    const amount = 12
-    for (let i = 0; i < amount; i++) {
-      createParticle(e.clientX, e.clientY)
-    }
-  })
+const handleMouseDown = (e) => {
+  createShockwave(e.clientX, e.clientY)
+  const amount = 12
+  for (let i = 0; i < amount; i++) {
+    createParticle(e.clientX, e.clientY)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('mousedown', handleMouseDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('mousedown', handleMouseDown)
 })
 
 function createShockwave(x, y) {

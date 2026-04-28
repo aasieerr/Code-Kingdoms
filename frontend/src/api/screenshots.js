@@ -6,5 +6,8 @@ export default {
     },
     save(imageData) {
         return axios.post('/screenshots', { image: imageData });
+    },
+    delete(id) {
+        return axios.delete(`/screenshots/${id}`);
     }
 };
