@@ -1,40 +1,51 @@
 <template>
-  <nav class="relative z-50 flex items-center justify-between px-6 py-4"
-    style="border-bottom: 4px solid #facc15; background: #0b0d17; box-shadow: 0 4px 0 #854d0e;">
+  <nav class="relative z-[100] flex items-center justify-between px-8 py-5 border-b-4 border-[#facc15] bg-[#0b0d17] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
     
-    <!-- Logo -->
-    <div class="flex items-center gap-4 cursor-pointer group" @click="router.push('/')">
+    <!-- Logo Section -->
+    <div class="flex items-center gap-6 cursor-pointer group" @click="router.push('/')">
       <div class="relative">
-        <img src="/code-kingdoms-logo.png" alt="logo" width="60" height="60" 
-          class="logo-img transition-transform group-hover:scale-110 duration-300">
-        <!-- Subtle glow effect -->
-        <div class="absolute inset-0 bg-[#facc15]/20 blur-xl rounded-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="logo-frame">
+          <img src="/code-kingdoms-logo.png" alt="logo" width="64" height="64" 
+            class="logo-img transition-all group-hover:scale-110 group-hover:rotate-3 duration-300">
+        </div>
+        <!-- Logo Glow -->
+        <div class="absolute inset-0 bg-[#facc15]/20 blur-2xl rounded-full -z-10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
       </div>
-      <div class="flex flex-col gap-1 hidden sm:flex">
-        <span class="text-[#facc15] text-[10px] tracking-[0.25em] font-bold" style="text-shadow: 2px 2px 0 #854d0e;">CODE &</span>
-        <span class="text-[#facc15] text-[10px] tracking-[0.25em] font-bold" style="text-shadow: 2px 2px 0 #854d0e;">KINGDOMS</span>
+      <div class="flex flex-col gap-1 hidden lg:flex">
+        <span class="text-[#facc15] text-[12px] tracking-[0.3em] font-bold title-glow">CODE &</span>
+        <span class="text-[#facc15] text-[12px] tracking-[0.3em] font-bold title-glow">KINGDOMS</span>
       </div>
     </div>
 
-    <!-- Nav links -->
-    <div class="hidden md:flex items-center gap-10 text-[8px]">
-      <router-link to="/" class="nav-link" :class="{ 'active': route.path === '/' }">INICIO</router-link>
-      <router-link to="/comunidad" class="nav-link" :class="{ 'active': route.path === '/comunidad' }">COMUNIDAD</router-link>
+    <!-- Navigation Links -->
+    <div class="hidden md:flex items-center gap-12">
+      <router-link to="/" class="nav-item" :class="{ 'active': route.path === '/' }">
+        <span class="nav-dot"></span> INICIO
+      </router-link>
+      <router-link to="/comunidad" class="nav-item" :class="{ 'active': route.path === '/comunidad' }">
+        <span class="nav-dot"></span> COMUNIDAD
+      </router-link>
     </div>
 
-    <!-- Auth Group -->
-    <div class="flex items-center gap-3">
+    <!-- User Actions -->
+    <div class="flex items-center gap-6">
       <template v-if="!authStore.token">
-        <router-link to="/login" class="login-link hidden sm:inline-block">LOGIN</router-link>
-        <button @click="router.push('/register')" class="pixel-btn-gold text-[8px] px-5 py-2">
-          REGISTRARSE
+        <button @click="router.push('/login')" class="text-[#facc15]/60 hover:text-[#facc15] text-[8px] tracking-widest transition-colors hidden sm:block">
+          ENTRAR
+        </button>
+        <button @click="router.push('/register')" class="header-btn-gold">
+          ÚNETE AL REINO
         </button>
       </template>
       <template v-else>
-        <router-link to="/personajes" class="login-link hidden sm:inline-block">MIS HÉROES</router-link>
-        <button @click="handleLogout" class="pixel-btn-red text-[8px] px-5 py-2">
-          LOGOUT
-        </button>
+        <div class="flex items-center gap-6">
+          <router-link to="/personajes" class="text-[#facc15]/60 hover:text-[#facc15] text-[8px] tracking-widest transition-colors hidden sm:block" :class="{ '!text-[#facc15]': route.path === '/personajes' }">
+            MIS HÉROES
+          </router-link>
+          <button @click="handleLogout" class="header-btn-red">
+            SALIR
+          </button>
+        </div>
       </template>
     </div>
   </nav>
@@ -55,66 +66,91 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-.logo-img {
-  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.3));
-}
-.nav-link {
-  color: rgba(250, 204, 21, 0.6);
-  text-decoration: none;
-  transition: all 0.2s;
-  letter-spacing: 0.1em;
-}
-.nav-link:hover {
-  color: #facc15;
-}
-.nav-link.active {
-  color: #facc15;
-  border-bottom: 2px solid #facc15;
-  padding-bottom: 4px;
-}
-
-.login-link {
-  color: rgba(250, 204, 21, 0.7);
-  text-decoration: none;
-  font-size: 8px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+.logo-frame {
+  padding: 4px;
   border: 2px solid rgba(250, 204, 21, 0.3);
-  padding: 8px 20px;
-  transition: all 0.2s;
-  font-family: 'Press Start 2P', monospace;
-  display: inline-block;
-}
-.login-link:hover {
-  color: #facc15;
-  border-color: #facc15;
+  background: #0f172a;
+  position: relative;
 }
 
-.pixel-btn-gold {
+.logo-img {
+  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.4));
+}
+
+.title-glow {
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.3), 2px 2px 0 #854d0e;
+}
+
+.nav-item {
+  color: rgba(250, 204, 21, 0.5);
+  text-decoration: none;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-item:hover {
+  color: #facc15;
+  transform: translateY(-2px);
+}
+
+.nav-item.active {
+  color: #facc15;
+}
+
+.nav-dot {
+  width: 4px;
+  height: 4px;
+  background: #facc15;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.nav-item.active .nav-dot,
+.nav-item:hover .nav-dot {
+  opacity: 1;
+  box-shadow: 0 0 8px #facc15;
+}
+
+.header-btn-gold {
   background: #ca8a04;
   color: #fef9c3;
   border: 3px solid #facc15;
-  box-shadow: 3px 3px 0 #854d0e;
-  cursor: pointer;
+  padding: 10px 20px;
   font-family: 'Press Start 2P', monospace;
-}
-.pixel-btn-gold:hover {
-  background: #facc15;
-  color: #431407;
-  transform: translate(-1px, -1px);
+  font-size: 8px;
   box-shadow: 4px 4px 0 #854d0e;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.pixel-btn-red {
-  background: #7f1d1d;
-  color: #f87171;
-  border: 3px solid #ef4444;
-  box-shadow: 3px 3px 0 #7f1d1d;
-  cursor: pointer;
-  font-family: 'Press Start 2P', monospace;
+.header-btn-gold:hover {
+  background: #facc15;
+  color: #431407;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #854d0e;
 }
-.pixel-btn-red:hover {
+
+.header-btn-red {
+  background: #991b1b;
+  color: #fecaca;
+  border: 3px solid #ef4444;
+  padding: 10px 20px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  box-shadow: 4px 4px 0 #450a0a;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.header-btn-red:hover {
   background: #ef4444;
   color: white;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #450a0a;
 }
 </style>

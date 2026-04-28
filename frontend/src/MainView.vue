@@ -8,6 +8,8 @@
     @blur="focused = false"
   >
     <!-- Mundo de juego -->
+    <div class="scanlines"></div>
+    <div class="game-bg"></div>
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
       <div class="terrain grassland"></div>
@@ -66,7 +68,7 @@
     <WalletBar
       :gold="characterStore.gold"
       :code-coins="characterStore.codeCoins"
-      @open-micropay="showMicropay = true"
+      @open-micropay="showMicropay = !showMicropay"
     />
 
 
@@ -236,8 +238,12 @@ watch(npcs, (list) => {
 })
 
 function openPanel(name) {
-  showMapPanel.value = false
-  showPanel.value = name
+  if (showPanel.value === name) {
+    showPanel.value = null
+  } else {
+    showPanel.value = name
+    showMapPanel.value = false
+  }
 }
 
 function toggleMap() {
@@ -371,8 +377,24 @@ onUnmounted(() => {
 <style scoped>
 .viewport {
   width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;
-  outline: none; overflow: hidden; background-color: #335b2f;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
+  outline: none; overflow: hidden; background-color: #0b0d17;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
+}
+
+.game-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
 }
 .world {
   position: absolute;

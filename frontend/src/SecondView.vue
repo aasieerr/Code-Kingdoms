@@ -7,6 +7,10 @@
     @focus="focused = true"
     @blur="focused = false"
   >
+    <!-- SCANLINES OVERLAY -->
+    <div class="scanlines"></div>
+    <div class="game-bg"></div>
+
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
       <div class="arena-floor"></div>
@@ -80,7 +84,7 @@
     <WalletBar
       :gold="characterStore.gold + sessionGold"
       :code-coins="characterStore.codeCoins"
-      @open-micropay="showMicropay = true"
+      @open-micropay="showMicropay = !showMicropay"
     />
 
 
@@ -207,8 +211,12 @@ if (lastTransition.value === 'main-to-second') {
 }
 
 function openPanel(name) {
-  showMapPanel.value = false
-  showPanel.value = name
+  if (showPanel.value === name) {
+    showPanel.value = null
+  } else {
+    showPanel.value = name
+    showMapPanel.value = false
+  }
 }
 
 function toggleMap() {
@@ -405,8 +413,24 @@ watch(phase, (p) => {
   left: 0;
   outline: none;
   overflow: hidden;
-  background-color: #1a2f18;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
+  background-color: #0b0d17;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
+}
+
+.game-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
 }
 
 .world {
@@ -537,58 +561,62 @@ watch(phase, (p) => {
 
 .arena-hud {
   position: absolute;
-  top: 22px;
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 28;
-  text-align: center;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   pointer-events: none;
-  text-shadow:
-    0 1px 0 #000,
-    1px 0 0 #000,
-    -1px 0 0 #000;
 }
 
 .hud-line {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 10px;
-  color: #fff8e1;
-}
-
-.wave-line {
-  color: #c5e1a5;
+  font-family: 'Press Start 2P', monospace;
+  color: #facc15;
+  text-shadow: 2px 2px 0 #431407;
   letter-spacing: 1px;
 }
 
-.gold-line {
-  font-size: 9px;
+.wave-line {
+  background: rgba(11, 13, 23, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 6px 16px;
+  border: 2px solid #854d0e;
+  box-shadow: 0 0 0 1px #facc15;
 }
 
-.wallet-rest {
-  opacity: 0.85;
+.gold-line {
   font-size: 8px;
+  opacity: 0.9;
 }
 
 .hp-bar-outer {
-  width: min(280px, 70vw);
-  height: 12px;
-  margin: 8px auto 0;
-  border: 3px solid #1a1a1a;
-  background: #0d1f0d;
-  border-radius: 2px;
+  width: 320px;
+  height: 16px;
+  border: 3px solid #854d0e;
+  background: #0b0d17;
+  box-shadow: 0 0 0 1px #facc15, 0 4px 10px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
 }
 
 .hp-bar-inner {
   height: 100%;
-  background: linear-gradient(180deg, #8bc34a, #558b2f);
-  border-radius: 0;
-  transition: width 0.12s linear;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  transition: width 0.3s ease-out;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
 }
 
 .hud-hint {
-  margin: 10px 0 0;
+  margin: 0;
   font-size: 7px;
-  color: #b0bec5;
+  color: #fef9c3;
+  opacity: 0.6;
+  text-shadow: 1px 1px 0 #000;
 }
 
 .hint-top {

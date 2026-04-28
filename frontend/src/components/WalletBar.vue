@@ -1,25 +1,21 @@
 <template>
   <div class="wallet-bar" @click.stop>
-    <!-- Fila 1: oro -->
-    <span class="cell icon-wrap" title="Oro (en juego)">
-      <span class="icon-gold" aria-hidden="true">🪙</span>
-    </span>
-    <span class="cell amt" title="Oro (en juego)">{{ gold ?? '—' }}</span>
-    <span class="cell action-spacer" aria-hidden="true" />
-
-    <!-- Fila 2: CodeCoins -->
-    <span class="cell icon-wrap" title="CodeCoins (micropagos)">
-      <span class="icon-cc" aria-hidden="true">◆</span>
-    </span>
-    <span class="cell amt amt-cc" title="CodeCoins (micropagos)">{{ codeCoins ?? '—' }}</span>
-    <button
-      type="button"
-      class="cell cc-plus"
-      title="Obtener CodeCoins (micropagos)"
-      @click="$emit('open-micropay')"
-    >
-      <span class="cc-plus-txt" aria-hidden="true">+</span>
-    </button>
+    <div class="wallet-item">
+      <span class="wallet-icon gold">🪙</span>
+      <span class="wallet-val">{{ gold ?? 0 }}</span>
+    </div>
+    
+    <div class="wallet-divider"></div>
+    
+    <div class="wallet-item">
+      <span class="wallet-icon cc">◆</span>
+      <span class="wallet-val cc">{{ codeCoins ?? 0 }}</span>
+      <button
+        type="button"
+        class="wallet-plus"
+        @click="$emit('open-micropay')"
+      >+</button>
+    </div>
   </div>
 </template>
 
@@ -28,122 +24,101 @@ defineProps({
   gold: { type: [Number, String], default: null },
   codeCoins: { type: [Number, String], default: null },
 })
-
 defineEmits(['open-micropay'])
 </script>
 
 <style scoped>
-/* Grid: icono + cantidad juntos; 3ª col [+]. Alineado vertical con el logo (18px + mitad 108px ≈ centro) */
 .wallet-bar {
   position: absolute;
-  /* Logo: top 18px, height 108px — centramos este bloque con el logo */
-  top: 40px;
-  right: 138px;
-  z-index: 29;
-  display: grid;
-  grid-template-columns: 24px minmax(0, max-content) 24px;
-  grid-template-rows: auto auto;
-  align-items: center;
-  /* icono y cantidad juntos; poca separación hasta el + */
-  column-gap: 4px;
-  row-gap: 6px;
-  padding: 0 4px 0 0;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
-  background: none;
-  border: none;
-  box-shadow: none;
-}
-
-.cell {
-  min-width: 0;
-}
-
-/* Columna 1: icono pegado a la columna de cantidad */
-.icon-wrap {
+  top: 24px;
+  right: 140px;
+  z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-.icon-gold {
-  font-size: 16px;
-  line-height: 1;
-  display: block;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
-}
-.icon-cc {
-  font-size: 14px;
-  line-height: 1;
-  display: block;
-  color: #d1c4e9;
-  text-shadow: 0 0 6px rgba(123, 31, 162, 0.45);
+  gap: 12px;
+  padding: 12px 24px;
+  background: #0f172a;
+  border: 4px solid #facc15;
+  box-shadow: 6px 6px 0 #854d0e, 0 10px 20px rgba(0,0,0,0.5);
+  font-family: 'Press Start 2P', monospace;
+  animation: float-bar 4s ease-in-out infinite;
 }
 
-/* Columna 2: cantidades alineadas; “grosor” con trazo + sombra (pixel font) */
-.amt {
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #fff8e1;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  -webkit-text-stroke: 0.45px rgba(0, 0, 0, 0.9);
-  paint-order: stroke fill;
-  text-shadow:
-    0 1px 0 #0d0d0d,
-    1px 0 0 #0d0d0d,
-    -1px 0 0 #0d0d0d,
-    0 -1px 0 #0d0d0d,
-    0 2px 3px rgba(0, 0, 0, 0.85);
-}
-.amt-cc {
-  color: #f3e5f5;
-  -webkit-text-stroke: 0.45px rgba(40, 20, 60, 0.95);
-  text-shadow:
-    0 1px 0 #1a0a24,
-    1px 0 0 #1a0a24,
-    -1px 0 0 #1a0a24,
-    0 -1px 0 #1a0a24,
-    0 2px 3px rgba(0, 0, 0, 0.85);
+@keyframes float-bar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
-/* Columna 3: celda vacía (oro) = mismo ancho que el botón + */
-.action-spacer {
-  width: 24px;
-  height: 24px;
-  box-sizing: border-box;
+.wallet-bar::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(250, 204, 21, 0.2);
   pointer-events: none;
 }
-.cc-plus {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: transparent;
-  color: #e1bee7;
-  cursor: pointer;
+
+.wallet-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wallet-icon {
+  font-size: 14px;
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5));
+  transition: transform 0.3s ease;
+}
+
+.wallet-item:hover .wallet-icon {
+  transform: scale(1.2) rotate(10deg);
+}
+
+.wallet-icon.gold { color: #facc15; filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); }
+.wallet-icon.cc { color: #a855f7; filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4)); }
+
+.wallet-val {
+  font-size: 9px;
+  color: #fef9c3;
+  text-shadow: 2px 2px 0 #431407;
+}
+
+.wallet-val.cc {
+  color: #e9d5ff;
+}
+
+.wallet-divider {
+  width: 2px;
+  height: 20px;
+  background: rgba(250, 204, 21, 0.2);
+}
+
+.wallet-plus {
+  margin-left: 4px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-  font: inherit;
-  border-radius: 4px;
-}
-.cc-plus-txt {
-  font-size: 16px;
-  font-weight: bold;
+  background: #a855f7;
+  border: 3px solid #fef9c3;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #4c1d95;
+  font-family: inherit;
+  padding: 0;
   line-height: 1;
-  text-shadow: 0 1px 2px #000;
+  transition: all 0.1s;
 }
-.cc-plus:hover {
-  color: #fff;
-  text-shadow: 0 0 8px rgba(225, 190, 231, 0.8);
+
+.wallet-plus:hover {
+  background: #c084fc;
+  transform: scale(1.1);
+  box-shadow: 4px 4px 0 #4c1d95;
 }
-.cc-plus:focus-visible {
-  outline: 2px solid #b39ddb;
-  outline-offset: 2px;
+
+.wallet-plus:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 0 #4c1d95;
 }
 </style>
