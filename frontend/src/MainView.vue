@@ -84,7 +84,7 @@
 
     <!-- Panel inventario -->
     <InventoryPanel
-      v-show="showPanel === 'inventory' || showPanel === 'shop'"
+      v-if="showPanel === 'inventory' || showPanel === 'shop'"
       :is-shop="showPanel === 'shop'"
       @close="showPanel = null"
       @switch-panel="openPanel"
@@ -119,7 +119,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="openPanel('shop')"
+      @open-shop="npcsManager.activeDialogueNpc.value = null; openPanel('shop')"
     />
 
     <!-- Fade de transición -->

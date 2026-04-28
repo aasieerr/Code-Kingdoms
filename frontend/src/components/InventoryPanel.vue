@@ -84,13 +84,14 @@
 
       <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
-        <div class="preview-header">
+        <div class="preview-header" style="display: flex; align-items: center; gap: 16px;">
           <div class="sprite-display">
             <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
-            <div class="display-glow"></div>
           </div>
-          <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
-          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+          <div>
+            <h3 class="preview-title" style="margin-bottom: 6px;">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <p class="preview-desc" style="margin: 0;">{{ selectedItem.item.description }}</p>
+          </div>
         </div>
 
         <div class="preview-stats">
@@ -115,13 +116,12 @@
         </div>
 
         <div class="preview-actions">
-          <!-- BOTÓN DE COMPRA (Ahora basado en si el objeto no tiene ID de inventario) -->
+          <!-- BOTÓN DE COMPRA: visible cuando estamos en modo tienda -->
           <button
-            v-if="!selectedItem.id"
+            v-if="isShop"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
             :disabled="busy || (characterStore.gold < (selectedItem.item?.price || 0))"
-            style="display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 999; background: #ca8a04; border: 4px solid #facc15;"
           >
             {{ (characterStore.gold < (selectedItem.item?.price || 0)) ? 'FALTA ORO' : `COMPRAR AHORA (${selectedItem.item?.price || 0} 🪙)` }}
           </button>
@@ -200,11 +200,12 @@ const error = lastInventoryError
 
 // Refrescar datos al cambiar entre inventario y tienda
 watch(() => props.isShop, async () => {
+  // Resetear selección ANTES de cargar para evitar que un item con id real
+  // quede seleccionado mientras llegan los datos de la tienda
+  selectedItem.value = null
   await fetchInventoryData(true)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
-  } else {
-    selectedItem.value = null
   }
 })
 
@@ -228,8 +229,9 @@ const filteredItems = computed(() => {
 })
 
 onMounted(async () => {
+  selectedItem.value = null
   await fetchInventoryData(true)
-  if (!selectedItem.value && filteredItems.value.length > 0) {
+  if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }
 })
@@ -540,11 +542,12 @@ async function handleSell(ci) {
 /* Preview Section */
 .item-preview {
   width: 360px;
-  padding: 30px;
+  padding: 20px;
   background: #1e293b;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  overflow-y: auto;
 }
 
 .preview-placeholder {
@@ -558,8 +561,8 @@ async function handleSell(ci) {
 }
 
 .sprite-display {
-  width: 100%;
-  aspect-ratio: 1;
+  width: 80px;
+  height: 80px;
   background: #0b0d17;
   border: 4px solid #facc15;
   box-shadow: 4px 4px 0 #854d0e;
@@ -567,10 +570,10 @@ async function handleSell(ci) {
   align-items: center;
   justify-content: center;
   position: relative;
-  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
-.display-icon { font-size: 80px; z-index: 1; }
+.display-icon { font-size: 40px; z-index: 1; }
 .display-glow {
   position: absolute;
   inset: 20%;
@@ -587,7 +590,7 @@ async function handleSell(ci) {
 .stats-list li { font-size: 8px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(250, 204, 21, 0.1); padding-bottom: 4px; }
 .stat-val { color: #facc15; }
 
-.preview-actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+.preview-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; flex-shrink: 0; }
 
 .action-btn {
   padding: 16px;
