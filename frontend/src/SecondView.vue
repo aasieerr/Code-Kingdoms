@@ -620,18 +620,18 @@ watch(phase, (p) => {
   transform: translate(-50%, -50%) rotate(var(--angle));
 }
 .slash-effect {
-  width: 170px;
-  height: 170px;
-  border: 10px solid transparent;
-  border-top: 10px solid #fff;
+  width: 220px;
+  height: 220px;
+  border: 12px solid transparent;
+  border-top: 12px solid #ffffff;
   border-radius: 50%;
-  filter: drop-shadow(0 0 15px #fff);
-  animation: slash-anim 0.22s ease-out forwards;
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
+  animation: slash-anim 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 @keyframes slash-anim {
-  0% { transform: rotate(-60deg) scale(0.6); opacity: 0; }
-  25% { opacity: 1; }
-  100% { transform: rotate(60deg) scale(1.1); opacity: 0; }
+  0% { transform: rotate(-70deg) scale(0.7); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: rotate(70deg) scale(1.1); opacity: 0; }
 }
 
 .coin-pickup {

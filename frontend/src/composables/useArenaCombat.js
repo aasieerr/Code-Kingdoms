@@ -4,7 +4,7 @@ import { WORLD_EDGE as WORLD } from '../constants/world'
 const PLAYER_SIZE = 40
 const MOVE_SPEED = 7
 const MELEE_TYPES = ['daga', 'espada', 'hacha']
-const MELEE_RANGE = 110
+const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
@@ -162,8 +162,6 @@ export function useArenaCombat(options = {}) {
         }
       }
 
-      const tgt = nearestEnemy(px, py)
-
       // Calcular intervalo y daño según el arma
       let currentFireInterval = FIRE_INTERVAL_MS
       let currentDamage = BULLET_DAMAGE
@@ -184,6 +182,13 @@ export function useArenaCombat(options = {}) {
         }
       }
 
+      const tgt = nearestEnemy(px, py)
+      
+      // Mover detecciones arriba para el log
+      const wType = equippedWeapon.value?.weaponType
+      const charClass = (characterClass.value || '').toLowerCase()
+      const isWarrior = charClass.includes('guerrero') || charClass.includes('warrior')
+
       if (tgt && now - lastFireAt >= currentFireInterval) {
         lastFireAt = now
         const ecx = tgt.x + ENEMY_SIZE / 2
@@ -192,10 +197,6 @@ export function useArenaCombat(options = {}) {
         let dy = ecy - pcy
         const len = Math.hypot(dx, dy) || 1
         const angle = Math.atan2(dy, dx)
-
-        const wType = equippedWeapon.value?.weaponType
-        const charClass = (characterClass.value || '').toLowerCase()
-        const isWarrior = charClass.includes('guerrero') || charClass.includes('warrior')
 
         if (MELEE_TYPES.includes(wType) || (isWarrior && !wType)) {
           // Ataque Melee
@@ -225,8 +226,8 @@ export function useArenaCombat(options = {}) {
             // Normalizar a [0, PI]
             if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff
 
-            // Solo dañar si está en rango Y dentro de un arco de ~100 grados
-            if (dist < MELEE_RANGE && angleDiff < Math.PI / 1.8) {
+            // Solo dañar si está en rango Y dentro de un arco de ~120 grados
+            if (dist < MELEE_RANGE && angleDiff < Math.PI / 1.5) {
               const nh = e.hp - currentDamage
               if (nh <= 0) {
                 newCoins.push({

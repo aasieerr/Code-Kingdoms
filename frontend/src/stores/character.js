@@ -37,7 +37,7 @@ export const useCharacterStore = defineStore('character', () => {
       name.value = ch.name
       equippedSkin.value = ch.equipped_skin
       spriteData.value = ch.sprite_data || null
-      characterClass.value = ch.character_class?.name || ch.class?.name || ''
+      characterClass.value = ch.character_class?.name || ch.class?.name || (ch.id_class === 1 ? 'Guerrero' : '')
 
       if (ch.equipped_weapon) {
         const wi = ch.equipped_weapon
