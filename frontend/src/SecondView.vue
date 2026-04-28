@@ -19,7 +19,8 @@
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :style="{ left: e.x + 'px', top: e.y + 'px', width: ENEMY_SIZE + 'px', height: ENEMY_SIZE + 'px' }"
+        :class="{ 'boss-enemy': e.type === 'boss' || e.type === 'miniboss' }"
+        :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
         <span class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
       </div>
@@ -37,6 +38,13 @@
         v-for="b in bullets"
         :key="b.id"
         class="bullet"
+        :style="{ left: b.x + 'px', top: b.y + 'px' }"
+      />
+      
+      <div
+        v-for="b in enemyBullets"
+        :key="b.id"
+        class="enemy-bullet"
         :style="{ left: b.x + 'px', top: b.y + 'px' }"
       />
 
@@ -162,7 +170,7 @@
 
     <!-- PREMIUM MODALS -->
     <div v-if="phase === 'between'" class="premium-overlay">
-      <div class="premium-modal victory">
+      <div class="premium-modal victory-wave">
         <div class="modal-shine"></div>
         <h2 class="modal-title">¡RONDA {{ wave }} COMPLETADA!</h2>
         <div class="modal-body">
@@ -172,6 +180,24 @@
         <div class="modal-footer">
           <button type="button" class="btn-continue" @click="startNextWave">CONTINUAR BATALLA</button>
           <button type="button" class="btn-exit" @click="leaveArena">VOLVER AL REINO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINAL VICTORY MODAL -->
+    <div v-if="phase === 'victory' && showVictoryModal" class="premium-overlay">
+      <div class="premium-modal final-victory">
+        <div class="modal-shine"></div>
+        <div class="victory-crown">👑</div>
+        <h2 class="modal-title">¡VICTORIA ABSOLUTA!</h2>
+        <div class="modal-body">
+          <p class="summary">HAS SUPERADO TODAS LAS OLEADAS</p>
+          <p class="reward-text">ORO TOTAL CONSEGUIDO: <span>{{ sessionGold }}</span> 🪙</p>
+          <p class="congrats">ERES EL VERDADERO REY DE LA ARENA</p>
+        </div>
+        <div class="modal-footer flex flex-col gap-4">
+          <button type="button" class="btn-exit-gold" @click="leaveArena">VOLVER COMO UN HÉROE</button>
+          <button type="button" class="btn-explore" @click="showVictoryModal = false">SEGUIR EXPLORANDO</button>
         </div>
       </div>
     </div>
@@ -238,6 +264,7 @@ const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
 const navigating = ref(false)
 const portalCooldown = ref(true)
+const showVictoryModal = ref(true)
 
 
 const {
@@ -256,6 +283,7 @@ const {
   sessionGold,
   enemies,
   bullets,
+  enemyBullets,
   coins,
   slashes,
   startNextWave,
@@ -265,6 +293,10 @@ const {
   startY,
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
+  onVictory: () => {
+    showVictoryModal.value = true
+    syncRunGoldOnce()
+  }
 })
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
@@ -288,10 +320,10 @@ function toggleMap() {
 
 // Bloquear movimiento si hay paneles abiertos
 watch(
-  [showPanel, showMapPanel, showMicropay, phase],
-  ([p, m, mi, ph]) => {
-    // Si hay algo abierto o fase especial, bloqueamos.
-    if (p || m || mi || ph === 'between' || ph === 'gameover') {
+  [showPanel, showMapPanel, showMicropay, phase, showVictoryModal],
+  ([p, m, mi, ph, svm]) => {
+    const isVictoryBlocking = ph === 'victory' && svm
+    if (p || m || mi || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -473,7 +505,7 @@ onBeforeUnmount(() => {
 })
 
 watch(phase, (p) => {
-  if (p === 'gameover') {
+  if (p === 'gameover' || p === 'victory') {
     syncRunGoldOnce()
   }
 })
@@ -611,6 +643,36 @@ watch(phase, (p) => {
   background: #ffeb3b;
   box-shadow: 0 0 8px #ff9800;
   z-index: 4;
+}
+
+.enemy-bullet {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #f44336;
+  box-shadow: 0 0 12px #b71c1c, 0 0 4px #fff;
+  z-index: 4;
+  border: 2px solid #fff;
+}
+
+.boss-enemy {
+  background: linear-gradient(145deg, #4a1518, #1a0505) !important;
+  border: 4px solid #facc15 !important;
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(0,0,0,0.8) !important;
+}
+
+.boss-enemy::after {
+  content: '⚠';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: #facc15;
+  opacity: 0.5;
 }
 
 .slash-container {
@@ -796,6 +858,72 @@ watch(phase, (p) => {
   text-align: center;
   font-family: 'Press Start 2P', monospace;
   animation: modal-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.victory-crown {
+  font-size: 60px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 20px rgba(250, 204, 21, 0.6));
+  animation: crown-float 2s ease-in-out infinite;
+}
+
+@keyframes crown-float {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+.final-victory {
+  border-color: #facc15;
+  background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+  box-shadow: 0 0 100px rgba(250, 204, 21, 0.3);
+}
+
+.final-victory .modal-title {
+  color: #facc15;
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.congrats {
+  font-size: 8px;
+  color: #facc15;
+  margin-top: 20px;
+  letter-spacing: 2px;
+}
+
+.btn-exit-gold {
+  background: #facc15;
+  color: #0b0d17;
+  border: 4px solid #854d0e;
+  padding: 20px 40px;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 6px 6px 0 #854d0e;
+}
+
+.btn-exit-gold:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #854d0e;
+  background: white;
+}
+
+.btn-explore {
+  background: transparent;
+  color: #94a3b8;
+  border: 2px solid #334155;
+  padding: 12px 20px;
+  font-family: inherit;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-explore:hover {
+  color: white;
+  border-color: white;
+  background: rgba(255,255,255,0.05);
 }
 
 @keyframes modal-enter {

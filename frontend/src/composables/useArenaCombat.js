@@ -45,6 +45,7 @@ export function useArenaCombat(options = {}) {
 
   const enemies = shallowRef([])
   const bullets = shallowRef([])
+  const enemyBullets = shallowRef([])
   const coins = shallowRef([])
   const slashes = shallowRef([])
 
@@ -59,6 +60,40 @@ export function useArenaCombat(options = {}) {
     const n = Math.min(42, 4 + wave.value * 2)
     const list = []
     const pad = 80
+
+    // Boss check
+    if (wave.value === 5) {
+      // Mini Boss
+      const hp = 500 + wave.value * 50
+      list.push({
+        id: enemyId++,
+        x: WORLD / 2 - 40,
+        y: pad,
+        hp,
+        maxHp: hp,
+        speed: 1.5,
+        size: 80,
+        type: 'miniboss',
+        fireInterval: 4000,
+        lastFireAt: performance.now() + 1000 // Delay first shot
+      })
+    } else if (wave.value === 10) {
+      // Big Boss
+      const hp = 1500 + wave.value * 100
+      list.push({
+        id: enemyId++,
+        x: WORLD / 2 - 60,
+        y: pad,
+        hp,
+        maxHp: hp,
+        speed: 1.2,
+        size: 120,
+        type: 'boss',
+        fireInterval: 4000,
+        lastFireAt: performance.now() + 1000
+      })
+    }
+
     for (let i = 0; i < n; i++) {
       const edge = Math.floor(Math.random() * 4)
       let ex
@@ -76,14 +111,16 @@ export function useArenaCombat(options = {}) {
         ex = pad
         ey = Math.random() * (WORLD - pad * 2) + pad
       }
-      const hp = 16 + wave.value * 7
+      const hp = 20 + wave.value * 15
       list.push({
         id: enemyId++,
         x: ex,
         y: ey,
         hp,
         maxHp: hp,
-        speed: 3.4 + wave.value * 0.12,
+        speed: 3.5 + wave.value * 0.2,
+        size: ENEMY_SIZE,
+        type: 'normal'
       })
     }
     enemies.value = list
@@ -95,8 +132,9 @@ export function useArenaCombat(options = {}) {
     const pcx = px + PLAYER_SIZE / 2
     const pcy = py + PLAYER_SIZE / 2
     for (const e of enemies.value) {
-      const ecx = e.x + ENEMY_SIZE / 2
-      const ecy = e.y + ENEMY_SIZE / 2
+      const esize = e.size || ENEMY_SIZE
+      const ecx = e.x + esize / 2
+      const ecy = e.y + esize / 2
       const dx = ecx - pcx
       const dy = ecy - pcy
       const d = dx * dx + dy * dy
@@ -136,8 +174,9 @@ export function useArenaCombat(options = {}) {
       const pcy = py + PLAYER_SIZE / 2
 
       let elist = enemies.value.map((e) => {
-        const ecx = e.x + ENEMY_SIZE / 2
-        const ecy = e.y + ENEMY_SIZE / 2
+        const esize = e.size || ENEMY_SIZE
+        const ecx = e.x + esize / 2
+        const ecy = e.y + esize / 2
         let dx = pcx - ecx
         let dy = pcy - ecy
         const len = Math.hypot(dx, dy) || 1
@@ -145,17 +184,57 @@ export function useArenaCombat(options = {}) {
         dy /= len
         let nx = e.x + dx * e.speed
         let ny = e.y + dy * e.speed
-        nx = Math.max(0, Math.min(WORLD - ENEMY_SIZE, nx))
-        ny = Math.max(0, Math.min(WORLD - ENEMY_SIZE, ny))
+        nx = Math.max(0, Math.min(WORLD - esize, nx))
+        ny = Math.max(0, Math.min(WORLD - esize, ny))
+        
+        // Enemy firing logic
+        if (e.fireInterval && now - e.lastFireAt > e.fireInterval) {
+          e.lastFireAt = now
+          const fireX = e.x + esize / 2
+          const fireY = e.y + esize / 2
+          const fdx = pcx - fireX
+          const fdy = pcy - fireY
+          const flen = Math.hypot(fdx, fdy) || 1
+          const fAngle = Math.atan2(fdy, fdx)
+          
+          const newEBullets = []
+          if (e.type === 'boss') {
+            // 3 projectiles spread
+            for (let i = -1; i <= 1; i++) {
+              const ang = fAngle + i * 0.25
+              newEBullets.push({
+                id: bulletId++,
+                x: fireX,
+                y: fireY,
+                vx: Math.cos(ang) * 5,
+                vy: Math.sin(ang) * 5,
+                born: now
+              })
+            }
+          } else {
+            // Single projectile
+            newEBullets.push({
+              id: bulletId++,
+              x: fireX,
+              y: fireY,
+              vx: (fdx / flen) * 5,
+              vy: (fdy / flen) * 5,
+              born: now
+            })
+          }
+          enemyBullets.value = [...enemyBullets.value, ...newEBullets]
+        }
+
         return { ...e, x: nx, y: ny }
       })
       enemies.value = elist
 
       for (const e of elist) {
-        const ecx = e.x + ENEMY_SIZE / 2
-        const ecy = e.y + ENEMY_SIZE / 2
+        const esize = e.size || ENEMY_SIZE
+        const ecx = e.x + esize / 2
+        const ecy = e.y + esize / 2
         const dist = Math.hypot(ecx - pcx, ecy - pcy)
-        if (dist < 30 && now - lastContactAt > CONTACT_COOLDOWN_MS) {
+        if (dist < (esize / 2 + 10) && now - lastContactAt > CONTACT_COOLDOWN_MS) {
           playerHp.value = Math.max(0, playerHp.value - CONTACT_DAMAGE)
           lastContactAt = now
           break
@@ -218,8 +297,9 @@ export function useArenaCombat(options = {}) {
           let changed = false
           for (let i = elist.length - 1; i >= 0; i--) {
             const e = elist[i]
-            const e_ecx = e.x + ENEMY_SIZE / 2
-            const e_ecy = e.y + ENEMY_SIZE / 2
+            const esize = e.size || ENEMY_SIZE
+            const e_ecx = e.x + esize / 2
+            const e_ecy = e.y + esize / 2
             const dist = Math.hypot(e_ecx - pcx, e_ecy - pcy)
             
             // Ángulo entre jugador y este enemigo específico
@@ -287,9 +367,10 @@ export function useArenaCombat(options = {}) {
         let hitIndex = -1
         for (let i = 0; i < elist.length; i++) {
           const e = elist[i]
-          const ecx = e.x + ENEMY_SIZE / 2
-          const ecy = e.y + ENEMY_SIZE / 2
-          if (Math.hypot(b.x - ecx, b.y - ecy) < ENEMY_HIT_R + 6) {
+          const esize = e.size || ENEMY_SIZE
+          const ecx = e.x + esize / 2
+          const ecy = e.y + esize / 2
+          if (Math.hypot(b.x - ecx, b.y - ecy) < (esize / 2 + 6)) {
             hitIndex = i
             break
           }
@@ -315,6 +396,28 @@ export function useArenaCombat(options = {}) {
 
       bullets.value = keptBullets
       enemies.value = elist
+
+      // Enemy Bullets logic
+      const movedE = enemyBullets.value
+        .map((b) => ({
+          ...b,
+          x: b.x + b.vx,
+          y: b.y + b.vy,
+        }))
+        .filter((b) => now - b.born < 4000) // Longer lifetime for boss bullets
+        .filter((b) => b.x >= -100 && b.x <= WORLD + 100 && b.y >= -100 && b.y <= WORLD + 100)
+
+      const keptEBullets = []
+      for (const b of movedE) {
+        const dist = Math.hypot(b.x - pcx, b.y - pcy)
+        if (dist < 25) { // Hit player
+          playerHp.value = Math.max(0, playerHp.value - 15)
+          // No push to keptEBullets = bullet disappears
+        } else {
+          keptEBullets.push(b)
+        }
+      }
+      enemyBullets.value = keptEBullets
 
       coins.value = newCoins
         .map((c) => {
@@ -347,7 +450,16 @@ export function useArenaCombat(options = {}) {
       if (playerHp.value <= 0) {
         phase.value = 'gameover'
       } else if (enemies.value.length === 0 && phase.value === 'fighting') {
-        phase.value = 'between'
+        if (wave.value >= 10) {
+          phase.value = 'victory'
+          enemies.value = []
+          bullets.value = []
+          enemyBullets.value = []
+          // Auto-sync gold on victory so they don't lose it if they stay walking
+          options.onVictory?.()
+        } else {
+          phase.value = 'between'
+        }
       }
     }
 
@@ -419,6 +531,7 @@ export function useArenaCombat(options = {}) {
     sessionGold,
     enemies,
     bullets,
+    enemyBullets,
     coins,
     slashes,
     startNextWave,
