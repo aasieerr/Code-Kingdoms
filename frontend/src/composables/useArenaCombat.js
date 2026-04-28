@@ -2,7 +2,10 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const MOVE_SPEED = 3.2
+const MOVE_SPEED = 7
+const MELEE_TYPES = ['daga', 'espada', 'hacha']
+const MELEE_RANGE = 110
+const MELEE_LIFETIME = 180
 const COIN_PICKUP_R = 52
 const CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
@@ -42,6 +45,7 @@ export function useArenaCombat(options = {}) {
   const enemies = shallowRef([])
   const bullets = shallowRef([])
   const coins = shallowRef([])
+  const slashes = shallowRef([])
 
   let enemyId = 1
   let bulletId = 1
@@ -162,15 +166,21 @@ export function useArenaCombat(options = {}) {
       // Calcular intervalo y daño según el arma
       let currentFireInterval = FIRE_INTERVAL_MS
       let currentDamage = BULLET_DAMAGE
+      const newCoins = [...coins.value]
 
       if (equippedWeapon.value) {
         currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
         const type = equippedWeapon.value.weaponType
-        if (type === 'daga') currentFireInterval = 180
+        if (type === 'daga') currentFireInterval = 250
         else if (type === 'arco') currentFireInterval = 280
         else if (type === 'varita') currentFireInterval = 320
-        else if (type === 'espada') currentFireInterval = 450
-        else if (type === 'hacha') currentFireInterval = 600
+        else if (type === 'espada') currentFireInterval = 650
+        else if (type === 'hacha') currentFireInterval = 850
+
+        // Reducir daño melee un poco para equilibrar
+        if (MELEE_TYPES.includes(type)) {
+          currentDamage = Math.ceil(currentDamage * 0.75)
+        }
       }
 
       if (tgt && now - lastFireAt >= currentFireInterval) {
@@ -180,18 +190,78 @@ export function useArenaCombat(options = {}) {
         let dx = ecx - pcx
         let dy = ecy - pcy
         const len = Math.hypot(dx, dy) || 1
-        bullets.value = [
-          ...bullets.value,
-          {
-            id: bulletId++,
-            x: pcx,
-            y: pcy,
-            vx: (dx / len) * BULLET_SPEED,
-            vy: (dy / len) * BULLET_SPEED,
-            born: now,
-            damage: currentDamage // Guardamos el daño en la bala
-          },
-        ]
+        const angle = Math.atan2(dy, dx)
+
+        const wType = equippedWeapon.value?.weaponType
+        if (MELEE_TYPES.includes(wType)) {
+          // Ataque Melee
+          slashes.value = [
+            ...slashes.value,
+            {
+              id: bulletId++, // Reusamos ID counter
+              x: pcx + Math.cos(angle) * 25,
+              y: pcy + Math.sin(angle) * 25,
+              angle: angle,
+              born: now
+            }
+          ]
+
+          // Daño en área melee
+          let changed = false
+          for (let i = elist.length - 1; i >= 0; i--) {
+            const e = elist[i]
+            const e_ecx = e.x + ENEMY_SIZE / 2
+            const e_ecy = e.y + ENEMY_SIZE / 2
+            const dist = Math.hypot(e_ecx - pcx, e_ecy - pcy)
+            
+            // Ángulo entre jugador y este enemigo específico
+            const angleToEnemy = Math.atan2(e_ecy - pcy, e_ecx - pcx)
+            // Diferencia angular con la dirección del ataque
+            let angleDiff = Math.abs(angleToEnemy - angle)
+            // Normalizar a [0, PI]
+            if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff
+
+            // Solo dañar si está en rango Y dentro de un arco de ~100 grados
+            if (dist < MELEE_RANGE && angleDiff < Math.PI / 1.8) {
+              const nh = e.hp - currentDamage
+              if (nh <= 0) {
+                newCoins.push({
+                  id: coinId++,
+                  x: e.x + 8,
+                  y: e.y + 8,
+                  value: 2 + Math.floor(Math.random() * 2),
+                })
+                elist.splice(i, 1)
+              } else {
+                elist[i] = { ...e, hp: nh }
+              }
+              changed = true
+            }
+          }
+          if (changed) enemies.value = elist
+        } else {
+          // Ataque a Distancia
+          bullets.value = [
+            ...bullets.value,
+            {
+              id: bulletId++,
+              x: pcx,
+              y: pcy,
+              vx: (dx / len) * BULLET_SPEED,
+              vy: (dy / len) * BULLET_SPEED,
+              born: now,
+              damage: currentDamage
+            },
+          ]
+        }
+      }
+
+      // Limpiar slashes antiguos
+      if (slashes.value.length > 0) {
+        const filteredSlashes = slashes.value.filter(s => now - s.born < MELEE_LIFETIME)
+        if (filteredSlashes.length !== slashes.value.length) {
+          slashes.value = filteredSlashes
+        }
       }
 
       const moved = bullets.value
@@ -203,7 +273,6 @@ export function useArenaCombat(options = {}) {
         .filter((b) => now - b.born < BULLET_LIFETIME_MS)
         .filter((b) => b.x >= -40 && b.x <= WORLD + 40 && b.y >= -40 && b.y <= WORLD + 40)
 
-      const newCoins = [...coins.value]
       const keptBullets = []
 
       for (const b of moved) {
@@ -343,6 +412,7 @@ export function useArenaCombat(options = {}) {
     enemies,
     bullets,
     coins,
+    slashes,
     startNextWave,
     beginFirstWave,
   }

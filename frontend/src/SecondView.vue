@@ -37,6 +37,19 @@
       />
 
       <div
+        v-for="s in slashes"
+        :key="s.id"
+        class="slash-container"
+        :style="{
+          left: s.x + 'px',
+          top: s.y + 'px',
+          '--angle': (s.angle + Math.PI / 2) + 'rad'
+        }"
+      >
+        <div class="slash-effect"></div>
+      </div>
+
+      <div
         class="player"
         :style="{
           left: x + 'px',
@@ -167,6 +180,7 @@ const {
   enemies,
   bullets,
   coins,
+  slashes,
   startNextWave,
   beginFirstWave,
 } = useArenaCombat({
@@ -463,6 +477,27 @@ watch(phase, (p) => {
   background: #ffeb3b;
   box-shadow: 0 0 8px #ff9800;
   z-index: 4;
+}
+
+.slash-container {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--angle));
+}
+.slash-effect {
+  width: 170px;
+  height: 170px;
+  border: 10px solid transparent;
+  border-top: 10px solid #fff;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 15px #fff);
+  animation: slash-anim 0.22s ease-out forwards;
+}
+@keyframes slash-anim {
+  0% { transform: rotate(-60deg) scale(0.6); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: rotate(60deg) scale(1.1); opacity: 0; }
 }
 
 .coin-pickup {
