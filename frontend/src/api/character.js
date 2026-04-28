@@ -18,6 +18,7 @@ export async function createCharacter(payload) {
     id_kingdom: payload.id_kingdom,
     id_race: payload.id_race,
     id_class: payload.id_class,
+    sprite_data: payload.sprite_data,
   })
   return data
 }
