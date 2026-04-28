@@ -9,6 +9,10 @@
         <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
       </div>
       <h2 v-else>Tienda del Reino</h2>
+      <div class="header-gold">
+        <span class="gold-icon">🪙</span>
+        <span class="gold-amount">{{ characterStore.gold }}</span>
+      </div>
       <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
@@ -111,17 +115,20 @@
         </div>
 
         <div class="preview-actions">
+          <!-- BOTÓN DE COMPRA (Ahora basado en si el objeto no tiene ID de inventario) -->
           <button
-            v-if="isShop"
+            v-if="!selectedItem.id"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
-            :disabled="busy"
+            :disabled="busy || (characterStore.gold < (selectedItem.item?.price || 0))"
+            style="display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 999; background: #ca8a04; border: 4px solid #facc15;"
           >
-            COMPRAR ({{ selectedItem.item.price || 0 }} 🪙)
+            {{ (characterStore.gold < (selectedItem.item?.price || 0)) ? 'FALTA ORO' : `COMPRAR AHORA (${selectedItem.item?.price || 0} 🪙)` }}
           </button>
-          <template v-else>
+
+          <div v-else class="inventory-actions">
             <button 
-              v-if="selectedItem.id && !selectedItem.is_equipped"
+              v-if="!selectedItem.is_equipped"
               class="action-btn sell"
               @click="handleSell(selectedItem)"
               :disabled="busy"
@@ -129,14 +136,14 @@
               VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
             </button>
             <button 
-              v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
+              v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
               class="action-btn equip" 
               @click="handleEquip(selectedItem)"
               :disabled="busy"
             >
               {{ selectedItem.is_equipped ? 'DESEQUIPAR' : 'EQUIPAR' }}
             </button>
-          </template>
+          </div>
         </div>
       </aside>
       <div v-else class="preview-placeholder">
@@ -147,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
   globalItems,
   myCharacterItems,
@@ -157,6 +164,9 @@ import {
   toggleEquipItem
 } from '../api/inventario'
 import { purchaseItem, sellItem } from '../api/shop'
+import { useCharacterStore } from '../stores/character'
+
+const characterStore = useCharacterStore()
 
 const props = defineProps({
   isShop: {
@@ -187,6 +197,16 @@ const busy = ref(false)
 
 const loading = isInventoryLoading
 const error = lastInventoryError
+
+// Refrescar datos al cambiar entre inventario y tienda
+watch(() => props.isShop, async () => {
+  await fetchInventoryData(true)
+  if (filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
+  } else {
+    selectedItem.value = null
+  }
+})
 
 const filteredItems = computed(() => {
   const source = props.isShop 
@@ -242,6 +262,7 @@ async function handleEquip(ci) {
     } else {
       await toggleEquipItem(ci.id, false)
     }
+    await characterStore.refresh() // Refrescar para que SecondView detecte el cambio de arma inmediatamente
   } catch (err) {
     console.error("Error al equipar/desequipar", err)
   } finally {
@@ -258,6 +279,7 @@ async function handleBuy(item) {
   busy.value = true
   try {
     await purchaseItem(item.id_item)
+    await characterStore.refresh() // Refrescar oro tras compra
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al comprar')
   } finally {
@@ -277,6 +299,7 @@ async function handleSell(ci) {
   busy.value = true
   try {
     await sellItem(ci.id)
+    await characterStore.refresh() // Refrescar oro tras venta
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al vender')
   } finally {
@@ -363,6 +386,21 @@ async function handleSell(ci) {
   font-family: inherit;
   box-shadow: 4px 4px 0 #431407;
 }
+
+.header-gold {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0b0d17;
+  padding: 8px 16px;
+  border: 2px solid #facc15;
+  border-radius: 4px;
+}
+.gold-amount {
+  font-size: 10px;
+  color: #facc15;
+}
+
 
 /* Content Layout */
 .panel-content {

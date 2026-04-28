@@ -14,7 +14,11 @@
       </div>
 
       <div class="dialogue-footer">
-        <button v-if="npc.tipo === 'vendedor' && !isTyping" class="shop-btn" @click="$emit('open-shop')">
+        <button 
+          v-if="['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
+          class="shop-btn" 
+          @click="$emit('open-shop')"
+        >
           Comerciar
         </button>
         <button class="next-btn" @click="nextDialogue">
@@ -36,7 +40,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'open-shop'])
 
 const currentIndex = ref(0)
 const displayedText = ref('')
