@@ -131,16 +131,31 @@ function getNpcStyle(npc) {
 
 .npc-marker {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1.5px solid #000;
+  border: 2px solid #fff;
   background: #4a90e2;
-  z-index: 1;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  z-index: 10;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.8);
+  animation: marker-pulse 2s infinite;
+}
+
+@keyframes marker-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(74, 144, 226, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 144, 226, 0); }
 }
 
 .npc-marker.vendedor {
   background: #f5a623;
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.8);
+  animation: marker-pulse-vendedor 2s infinite;
+}
+
+@keyframes marker-pulse-vendedor {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(245, 166, 35, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
 }
 </style>
