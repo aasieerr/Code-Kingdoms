@@ -11,6 +11,7 @@ use App\Http\Controllers\NPCController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SkillController;
+use App\Http\Controllers\ScreenshotController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (contenido del juego / registro)
@@ -53,4 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/characters/{id}', [CharacterController::class, 'update']);
     Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
     Route::delete('/character-items/{id}', [CharacterItemController::class, 'destroy']);
+
+    Route::get('/screenshots', [ScreenshotController::class, 'index']);
+    Route::post('/screenshots', [ScreenshotController::class, 'store']);
 });

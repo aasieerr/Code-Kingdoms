@@ -25,6 +25,9 @@
       <router-link to="/comunidad" class="nav-item" :class="{ 'active': route.path === '/comunidad' }">
         <span class="nav-dot"></span> COMUNIDAD
       </router-link>
+      <router-link to="/capturas" class="nav-item" :class="{ 'active': route.path === '/capturas' }">
+        <span class="nav-dot"></span> CAPTURAS
+      </router-link>
     </div>
 
     <!-- User Actions -->
