@@ -18,6 +18,9 @@ class Character extends Model
         'health',
         'mana',
         'gold',
+        'arena_section',
+        'arena_wave',
+        'arena_in_progress',
         'equipped_skin_id',
         'sprite_data',
     ];

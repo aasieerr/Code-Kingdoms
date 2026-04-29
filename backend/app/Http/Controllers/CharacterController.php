@@ -144,6 +144,9 @@ class CharacterController extends Controller
             'health' => 'sometimes|integer|min:0',
             'mana' => 'sometimes|integer|min:0',
             'gold' => 'sometimes|integer|min:0',
+            'arena_section' => 'sometimes|integer|min:1|max:8',
+            'arena_wave' => 'sometimes|integer|min:1|max:20',
+            'arena_in_progress' => 'sometimes|boolean',
         ]);
         $data = $request->all();
         unset($data['id_user']);

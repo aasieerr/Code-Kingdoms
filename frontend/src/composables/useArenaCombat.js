@@ -1,5 +1,5 @@
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
-import { WORLD_EDGE as WORLD } from '../constants/world'
+import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
 const MOVE_SPEED = 7
@@ -7,7 +7,7 @@ const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
-const CONTACT_DAMAGE = 10
+const BASE_CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
 const BULLET_SPEED = 8
 const BULLET_LIFETIME_MS = 2200
@@ -17,14 +17,45 @@ const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
 const MAGNET_SPEED = 5
+const TOTAL_SECTIONS = 8
+const INTERMEDIATE_SECTIONS = 6
+const WAVES_PER_SECTION = 20
+
+const JAVA_ROUTE_STEPS = ['BAJAR', 'IZQUIERDA', 'BAJAR', 'DERECHA']
+const PHP_ROUTE_STEPS = ['SUBIR', 'DERECHA', 'SUBIR', 'IZQUIERDA']
+
+function resolveOptionValue(option, fallback = '') {
+  if (option && typeof option === 'object' && 'value' in option) {
+    return option.value ?? fallback
+  }
+  return option ?? fallback
+}
+
+function normalizeKingdomName(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function isPhpKingdom(value) {
+  const normalized = normalizeKingdomName(value)
+  return normalized.includes('php') || normalized.includes('peachepe') || normalized === '1'
+}
 
 
 /** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
 export function useArenaCombat(options = {}) {
-  const startX = options.startX ?? WORLD / 2
-  const startY = options.startY ?? WORLD / 2
+  const WORLD_W = Number.isFinite(options.worldWidth)
+    ? Number(options.worldWidth)
+    : (Number.isFinite(options.worldSize) ? Number(options.worldSize) : BASE_WORLD)
+  const WORLD_H = Number.isFinite(options.worldHeight)
+    ? Number(options.worldHeight)
+    : (Number.isFinite(options.worldSize) ? Number(options.worldSize) : BASE_WORLD)
+  const startX = options.startX ?? WORLD_W / 2
+  const startY = options.startY ?? WORLD_H / 2
   const equippedWeapon = options.equippedWeapon ?? ref(null)
   const characterClass = options.characterClass ?? ref('')
+  const debugImmortal = options.debugImmortal === true
+  const debugMaxDamage = options.debugMaxDamage === true
+  const debugDamage = Number.isFinite(options.debugDamage) ? Number(options.debugDamage) : 99999
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -36,6 +67,12 @@ export function useArenaCombat(options = {}) {
   const keys = { w: false, a: false, s: false, d: false }
 
   const wave = ref(1)
+  const section = ref(1)
+  const sectionWave = ref(1)
+  const routeInstruction = ref('INICIO')
+  const startKingdom = ref('Java')
+  const targetKingdom = ref('PHP')
+  const enemyFaction = ref('php')
   /** idle (sin run aún) | fighting | between | gameover */
   const phase = ref('idle')
   const playerHp = ref(100)
@@ -56,42 +93,59 @@ export function useArenaCombat(options = {}) {
   let lastContactAt = 0
   let rafId = null
 
+  function resolveRouteContext() {
+    const kingdomRaw = resolveOptionValue(options.startKingdom, startKingdom.value)
+    const isPhpStart = isPhpKingdom(kingdomRaw)
+    startKingdom.value = isPhpStart ? 'PHP' : 'Java'
+    targetKingdom.value = isPhpStart ? 'Java' : 'PHP'
+    enemyFaction.value = isPhpStart ? 'java' : 'php'
+    const pattern = isPhpStart ? PHP_ROUTE_STEPS : JAVA_ROUTE_STEPS
+    const idx = (section.value - 2) % pattern.length
+    routeInstruction.value = section.value <= 1 ? 'SALIDA DEL REINO' : section.value >= TOTAL_SECTIONS ? 'TRONO ENEMIGO' : pattern[idx]
+    return { isPhpStart, pattern }
+  }
+
   function spawnWave() {
-    const n = Math.min(42, 4 + wave.value * 2)
+    resolveRouteContext()
+    const sectionFactor = section.value - 1
+    const waveFactor = (sectionWave.value - 1) / WAVES_PER_SECTION
+    const intensity = sectionFactor + waveFactor
+    const n = Math.min(56, 6 + sectionFactor * 3 + sectionWave.value)
     const list = []
     const pad = 80
 
-    // Boss check
-    if (wave.value === 5) {
-      // Mini Boss
-      const hp = 500 + wave.value * 50
+    const isFinalBossSection = section.value >= TOTAL_SECTIONS
+    if (isFinalBossSection) {
+      const hp = 2200 + sectionFactor * 350
       list.push({
         id: enemyId++,
-        x: WORLD / 2 - 40,
+        x: WORLD_W / 2 - 40,
         y: pad,
         hp,
         maxHp: hp,
-        speed: 1.5,
-        size: 80,
-        type: 'miniboss',
-        fireInterval: 4000,
-        lastFireAt: performance.now() + 1000 // Delay first shot
-      })
-    } else if (wave.value === 10) {
-      // Big Boss
-      const hp = 1500 + wave.value * 100
-      list.push({
-        id: enemyId++,
-        x: WORLD / 2 - 60,
-        y: pad,
-        hp,
-        maxHp: hp,
-        speed: 1.2,
-        size: 120,
+        speed: 1.35,
+        size: 132,
         type: 'boss',
-        fireInterval: 4000,
-        lastFireAt: performance.now() + 1000
+        fireInterval: 1600,
+        lastFireAt: performance.now() + 1100,
       })
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * 2 * i) / 6
+        list.push({
+          id: enemyId++,
+          x: WORLD_W / 2 + Math.cos(angle) * 180,
+          y: WORLD_H / 2 + Math.sin(angle) * 180,
+          hp: 130 + sectionFactor * 26,
+          maxHp: 130 + sectionFactor * 26,
+          speed: 2.4 + waveFactor,
+          size: ENEMY_SIZE,
+          type: i % 2 === 0 ? 'ranger' : 'mage',
+          fireInterval: i % 2 === 0 ? 1900 : 2400,
+          lastFireAt: performance.now() + 300 + i * 140,
+        })
+      }
+      enemies.value = list
+      return
     }
 
     for (let i = 0; i < n; i++) {
@@ -99,28 +153,33 @@ export function useArenaCombat(options = {}) {
       let ex
       let ey
       if (edge === 0) {
-        ex = Math.random() * (WORLD - pad * 2) + pad
+        ex = Math.random() * (WORLD_W - pad * 2) + pad
         ey = pad
       } else if (edge === 1) {
-        ex = WORLD - pad
-        ey = Math.random() * (WORLD - pad * 2) + pad
+        ex = WORLD_W - pad
+        ey = Math.random() * (WORLD_H - pad * 2) + pad
       } else if (edge === 2) {
-        ex = Math.random() * (WORLD - pad * 2) + pad
-        ey = WORLD - pad
+        ex = Math.random() * (WORLD_W - pad * 2) + pad
+        ey = WORLD_H - pad
       } else {
         ex = pad
-        ey = Math.random() * (WORLD - pad * 2) + pad
+        ey = Math.random() * (WORLD_H - pad * 2) + pad
       }
-      const hp = 20 + wave.value * 15
+      const roll = Math.random()
+      const type = roll < 0.55 ? 'melee' : roll < 0.8 ? 'ranger' : 'mage'
+      const hpBase = type === 'melee' ? 34 : type === 'ranger' ? 30 : 26
+      const speedBase = type === 'melee' ? 3.7 : type === 'ranger' ? 2.6 : 2.2
       list.push({
         id: enemyId++,
         x: ex,
         y: ey,
-        hp,
-        maxHp: hp,
-        speed: 3.5 + wave.value * 0.2,
+        hp: Math.round(hpBase + intensity * 22),
+        maxHp: Math.round(hpBase + intensity * 22),
+        speed: speedBase + sectionFactor * 0.16 + waveFactor * 0.5,
         size: ENEMY_SIZE,
-        type: 'normal'
+        type,
+        fireInterval: type === 'melee' ? null : type === 'ranger' ? 1800 - sectionFactor * 55 : 2400 - sectionFactor * 45,
+        lastFireAt: performance.now() + Math.random() * 1200,
       })
     }
     enemies.value = list
@@ -150,8 +209,8 @@ export function useArenaCombat(options = {}) {
     const now = performance.now()
 
     if (!locked.value && arenaRef.value) {
-      const W = WORLD - PLAYER_SIZE
-      const H = WORLD - PLAYER_SIZE
+      const W = WORLD_W - PLAYER_SIZE
+      const H = WORLD_H - PLAYER_SIZE
       if (keys.w) {
         y.value = Math.max(0, y.value - MOVE_SPEED)
       }
@@ -184,8 +243,8 @@ export function useArenaCombat(options = {}) {
         dy /= len
         let nx = e.x + dx * e.speed
         let ny = e.y + dy * e.speed
-        nx = Math.max(0, Math.min(WORLD - esize, nx))
-        ny = Math.max(0, Math.min(WORLD - esize, ny))
+        nx = Math.max(0, Math.min(WORLD_W - esize, nx))
+        ny = Math.max(0, Math.min(WORLD_H - esize, ny))
         
         // Enemy firing logic
         if (e.fireInterval && now - e.lastFireAt > e.fireInterval) {
@@ -198,7 +257,7 @@ export function useArenaCombat(options = {}) {
           const fAngle = Math.atan2(fdy, fdx)
           
           const newEBullets = []
-          if (e.type === 'boss') {
+          if (e.type === 'boss' || e.type === 'mage') {
             // 3 projectiles spread
             for (let i = -1; i <= 1; i++) {
               const ang = fAngle + i * 0.25
@@ -206,9 +265,12 @@ export function useArenaCombat(options = {}) {
                 id: bulletId++,
                 x: fireX,
                 y: fireY,
-                vx: Math.cos(ang) * 5,
-                vy: Math.sin(ang) * 5,
-                born: now
+                vx: Math.cos(ang) * (e.type === 'boss' ? 5.2 : 4.4),
+                vy: Math.sin(ang) * (e.type === 'boss' ? 5.2 : 4.4),
+                born: now,
+                damage: e.type === 'boss' ? 24 : 17,
+                faction: enemyFaction.value,
+                symbol: enemyFaction.value === 'java' ? '☕' : '</>',
               })
             }
           } else {
@@ -217,9 +279,12 @@ export function useArenaCombat(options = {}) {
               id: bulletId++,
               x: fireX,
               y: fireY,
-              vx: (fdx / flen) * 5,
-              vy: (fdy / flen) * 5,
-              born: now
+              vx: (fdx / flen) * 4.8,
+              vy: (fdy / flen) * 4.8,
+              born: now,
+              damage: 14,
+              faction: enemyFaction.value,
+              symbol: enemyFaction.value === 'java' ? '☕' : '{}',
             })
           }
           enemyBullets.value = [...enemyBullets.value, ...newEBullets]
@@ -235,7 +300,10 @@ export function useArenaCombat(options = {}) {
         const ecy = e.y + esize / 2
         const dist = Math.hypot(ecx - pcx, ecy - pcy)
         if (dist < (esize / 2 + 10) && now - lastContactAt > CONTACT_COOLDOWN_MS) {
-          playerHp.value = Math.max(0, playerHp.value - CONTACT_DAMAGE)
+          const sectionContactDamage = BASE_CONTACT_DAMAGE + (section.value - 1) * 2
+          if (!debugImmortal) {
+            playerHp.value = Math.max(0, playerHp.value - sectionContactDamage)
+          }
           lastContactAt = now
           break
         }
@@ -270,11 +338,15 @@ export function useArenaCombat(options = {}) {
       if (MELEE_TYPES.includes(effectiveType)) {
         currentDamage = Math.ceil(currentDamage * 0.75)
       }
+      if (debugMaxDamage) {
+        currentDamage = debugDamage
+      }
 
       if (tgt && now - lastFireAt >= currentFireInterval) {
         lastFireAt = now
-        const ecx = tgt.x + ENEMY_SIZE / 2
-        const ecy = tgt.y + ENEMY_SIZE / 2
+        const tSize = tgt.size || ENEMY_SIZE
+        const ecx = tgt.x + tSize / 2
+        const ecy = tgt.y + tSize / 2
         let dx = ecx - pcx
         let dy = ecy - pcy
         const len = Math.hypot(dx, dy) || 1
@@ -359,7 +431,7 @@ export function useArenaCombat(options = {}) {
           y: b.y + b.vy,
         }))
         .filter((b) => now - b.born < BULLET_LIFETIME_MS)
-        .filter((b) => b.x >= -40 && b.x <= WORLD + 40 && b.y >= -40 && b.y <= WORLD + 40)
+        .filter((b) => b.x >= -40 && b.x <= WORLD_W + 40 && b.y >= -40 && b.y <= WORLD_H + 40)
 
       const keptBullets = []
 
@@ -405,13 +477,15 @@ export function useArenaCombat(options = {}) {
           y: b.y + b.vy,
         }))
         .filter((b) => now - b.born < 4000) // Longer lifetime for boss bullets
-        .filter((b) => b.x >= -100 && b.x <= WORLD + 100 && b.y >= -100 && b.y <= WORLD + 100)
+        .filter((b) => b.x >= -100 && b.x <= WORLD_W + 100 && b.y >= -100 && b.y <= WORLD_H + 100)
 
       const keptEBullets = []
       for (const b of movedE) {
         const dist = Math.hypot(b.x - pcx, b.y - pcy)
         if (dist < 25) { // Hit player
-          playerHp.value = Math.max(0, playerHp.value - 15)
+          if (!debugImmortal) {
+            playerHp.value = Math.max(0, playerHp.value - (b.damage || 15))
+          }
           // No push to keptEBullets = bullet disappears
         } else {
           keptEBullets.push(b)
@@ -450,12 +524,11 @@ export function useArenaCombat(options = {}) {
       if (playerHp.value <= 0) {
         phase.value = 'gameover'
       } else if (enemies.value.length === 0 && phase.value === 'fighting') {
-        if (wave.value >= 10) {
+        if (section.value >= TOTAL_SECTIONS) {
           phase.value = 'victory'
           enemies.value = []
           bullets.value = []
           enemyBullets.value = []
-          // Auto-sync gold on victory so they don't lose it if they stay walking
           options.onVictory?.()
         } else {
           phase.value = 'between'
@@ -467,7 +540,14 @@ export function useArenaCombat(options = {}) {
   }
 
   function startNextWave() {
-    wave.value += 1
+    if (sectionWave.value >= WAVES_PER_SECTION) {
+      section.value = Math.min(TOTAL_SECTIONS, section.value + 1)
+      sectionWave.value = 1
+    } else {
+      sectionWave.value += 1
+    }
+    wave.value = sectionWave.value
+    resolveRouteContext()
     playerHp.value = Math.min(
       playerMaxHp.value,
       playerHp.value + Math.floor(playerMaxHp.value * 0.12)
@@ -477,6 +557,21 @@ export function useArenaCombat(options = {}) {
   }
 
   function beginFirstWave() {
+    section.value = 1
+    sectionWave.value = 1
+    wave.value = 1
+    resolveRouteContext()
+    phase.value = 'fighting'
+    spawnWave()
+  }
+
+  function resumeAt(sectionValue, waveValue) {
+    const safeSection = Math.min(TOTAL_SECTIONS, Math.max(1, Number(sectionValue) || 1))
+    const safeWave = Math.min(WAVES_PER_SECTION, Math.max(1, Number(waveValue) || 1))
+    section.value = safeSection
+    sectionWave.value = safeWave
+    wave.value = safeWave
+    resolveRouteContext()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -522,9 +617,20 @@ export function useArenaCombat(options = {}) {
     moving,
     locked,
     PLAYER_SIZE,
-    WORLD,
+    WORLD: WORLD_W,
+    WORLD_W,
+    WORLD_H,
     ENEMY_SIZE,
     wave,
+    section,
+    sectionWave,
+    routeInstruction,
+    startKingdom,
+    targetKingdom,
+    enemyFaction,
+    TOTAL_SECTIONS,
+    INTERMEDIATE_SECTIONS,
+    WAVES_PER_SECTION,
     phase,
     playerHp,
     playerMaxHp,
@@ -536,5 +642,6 @@ export function useArenaCombat(options = {}) {
     slashes,
     startNextWave,
     beginFirstWave,
+    resumeAt,
   }
 }
