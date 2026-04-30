@@ -321,6 +321,7 @@ const {
   startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
+  characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
   debugImmortal: true,
   debugMaxDamage: true,
   debugDamage: 99999,
@@ -388,12 +389,12 @@ function toggleMap() {
   showMapPanel.value = !showMapPanel.value
 }
 
-// Bloquear movimiento si hay paneles abiertos
+// Bloquear movimiento solo en estados críticos (no al abrir paneles/mapa).
 watch(
   [showPanel, showMapPanel, showMicropay, phase, showVictoryModal],
   ([p, m, mi, ph, svm]) => {
     const isVictoryBlocking = ph === 'victory' && svm
-    if (p || m || mi || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
+    if (mi || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -402,7 +403,8 @@ watch(
 )
 
 function onArenaPanelHotkey(e) {
-  if (!focused.value || locked.value) {
+  const phaseBlocksUi = phase.value === 'between' || phase.value === 'gameover' || (phase.value === 'victory' && showVictoryModal.value)
+  if (!focused.value || isFading.value || navigating.value || phaseBlocksUi) {
     return
   }
   if (showMicropay.value) {
