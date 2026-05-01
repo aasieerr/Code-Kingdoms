@@ -19,7 +19,8 @@
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :style="{ left: e.x + 'px', top: e.y + 'px', width: ENEMY_SIZE + 'px', height: ENEMY_SIZE + 'px' }"
+        :class="[enemyFactionClass, { 'boss-enemy': e.type === 'boss' || e.type === 'miniboss' }]"
+        :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
         <span class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
       </div>
@@ -39,6 +40,16 @@
         class="bullet"
         :style="{ left: b.x + 'px', top: b.y + 'px' }"
       />
+      
+      <div
+        v-for="b in enemyBullets"
+        :key="b.id"
+        class="enemy-bullet"
+        :class="b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'"
+        :style="{ left: b.x + 'px', top: b.y + 'px' }"
+      >
+        {{ b.symbol }}
+      </div>
 
       <div
         v-for="s in slashes"
@@ -84,8 +95,9 @@
       <!-- Wave Info -->
       <div class="hud-top-center">
         <div class="wave-display">
-          <span class="wave-label">RONDA</span>
-          <span class="wave-number">{{ wave }}</span>
+          <span class="wave-label">SECCIÓN {{ section }} / {{ TOTAL_SECTIONS }}</span>
+          <span class="wave-number">{{ sectionWave }} / {{ WAVES_PER_SECTION }}</span>
+          <span class="route-label">{{ startKingdom }} → {{ targetKingdom }} · {{ routeInstruction }}</span>
         </div>
       </div>
 
@@ -162,10 +174,11 @@
 
     <!-- PREMIUM MODALS -->
     <div v-if="phase === 'between'" class="premium-overlay">
-      <div class="premium-modal victory">
+      <div class="premium-modal victory-wave">
         <div class="modal-shine"></div>
-        <h2 class="modal-title">¡RONDA {{ wave }} COMPLETADA!</h2>
+        <h2 class="modal-title">OLEADA {{ sectionWave }} / {{ WAVES_PER_SECTION }} COMPLETADA</h2>
         <div class="modal-body">
+          <p class="summary">SECCIÓN ACTUAL: <span>{{ section }}</span> / {{ TOTAL_SECTIONS }}</p>
           <p class="reward-text">HAS RECOLECTADO <span>{{ sessionGold }}</span> MONEDAS DE ORO</p>
           <p class="action-hint">EQUIPA ÍTEMS EN EL PANEL O SIGUE LUCHANDO</p>
         </div>
@@ -176,12 +189,30 @@
       </div>
     </div>
 
+    <!-- FINAL VICTORY MODAL -->
+    <div v-if="phase === 'victory' && showVictoryModal" class="premium-overlay">
+      <div class="premium-modal final-victory">
+        <div class="modal-shine"></div>
+        <div class="victory-crown">👑</div>
+        <h2 class="modal-title">¡VICTORIA ABSOLUTA!</h2>
+        <div class="modal-body">
+          <p class="summary">HAS CONQUISTADO EL REINO {{ targetKingdom }}</p>
+          <p class="reward-text">ORO TOTAL CONSEGUIDO: <span>{{ sessionGold }}</span> 🪙</p>
+          <p class="congrats">ERES EL VERDADERO REY DE LA ARENA</p>
+        </div>
+        <div class="modal-footer flex flex-col gap-4">
+          <button type="button" class="btn-exit-gold" @click="leaveArena">VOLVER COMO UN HÉROE</button>
+          <button type="button" class="btn-explore" @click="showVictoryModal = false">SEGUIR EXPLORANDO</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="phase === 'gameover'" class="premium-overlay">
       <div class="premium-modal defeat">
         <div class="modal-shine"></div>
         <h2 class="modal-title">DERROTA EN COMBATE</h2>
         <div class="modal-body">
-          <p class="summary">CAÍSTE EN LA RONDA <span>{{ wave }}</span></p>
+          <p class="summary">CAÍSTE EN LA SECCIÓN <span>{{ section }}</span>, OLEADA <span>{{ sectionWave }}</span></p>
           <p class="reward-text">ORO ASEGURADO: <span>{{ sessionGold }}</span> 🪙</p>
         </div>
         <div class="modal-footer">
@@ -200,8 +231,9 @@ import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useArenaCombat } from './composables/useArenaCombat'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
-import { lastTransition, activeCharacterId } from './gameState'
-import { ensureActiveCharacterId, fetchCharacter, addCharacterGold } from './api/character'
+import { lastTransition } from './gameState'
+import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
+import api from './api/axios'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel from './components/MapPanel.vue'
@@ -225,9 +257,12 @@ function isEmptySprite(data) {
 
 
 const router = useRouter()
-const worldEdgePx = `${WORLD_EDGE}px`
+const ARENA_WORLD_WIDTH = 1700
+const ARENA_WORLD_HEIGHT = WORLD_EDGE
+const worldWidthPx = `${ARENA_WORLD_WIDTH}px`
+const worldHeightPx = `${ARENA_WORLD_HEIGHT}px`
 const isFading = ref(lastTransition.value === 'main-to-second')
-const startY = lastTransition.value === 'main-to-second' ? -50 : WORLD_EDGE / 2
+const startY = ref(lastTransition.value === 'main-to-second' ? -50 : ARENA_WORLD_HEIGHT / 2)
 
 const showPanel = ref(null)
 const showMapPanel = ref(false)
@@ -238,6 +273,14 @@ const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
 const navigating = ref(false)
 const portalCooldown = ref(true)
+const showVictoryModal = ref(true)
+const arenaCharacterId = ref(null)
+const progressHydrated = ref(false)
+
+function isPhpKingdomSelected() {
+  const kName = String(characterStore.kingdomName || '').toLowerCase()
+  return kName.includes('php') || kName.includes('peachepe') || Number(characterStore.kingdomId) === 1
+}
 
 
 const {
@@ -247,25 +290,85 @@ const {
   focused,
   moving,
   locked,
-  WORLD,
+  WORLD_W,
+  WORLD_H,
   ENEMY_SIZE,
-  wave,
+  section,
+  sectionWave,
+  routeInstruction,
+  startKingdom,
+  targetKingdom,
+  enemyFaction,
+  TOTAL_SECTIONS,
+  WAVES_PER_SECTION,
   phase,
   playerHp,
   playerMaxHp,
   sessionGold,
   enemies,
   bullets,
+  enemyBullets,
   coins,
   slashes,
   startNextWave,
   beginFirstWave,
+  resumeAt,
 } = useArenaCombat({
-  startX: WORLD_EDGE / 2,
-  startY,
+  worldWidth: ARENA_WORLD_WIDTH,
+  worldHeight: ARENA_WORLD_HEIGHT,
+  startX: ARENA_WORLD_WIDTH / 2,
+  startY: startY.value,
+  startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
+  characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
+  debugImmortal: true,
+  debugMaxDamage: true,
+  debugDamage: 99999,
+  onVictory: () => {
+    showVictoryModal.value = true
+    syncRunGoldOnce()
+  }
 })
+
+let lastSavedProgressKey = ''
+
+function progressSnapshotForSave() {
+  let nextSection = section.value
+  let nextWave = sectionWave.value
+  if (phase.value === 'between') {
+    if (nextWave >= WAVES_PER_SECTION) {
+      nextSection = Math.min(TOTAL_SECTIONS, nextSection + 1)
+      nextWave = 1
+    } else {
+      nextWave += 1
+    }
+  }
+  const inProgress = phase.value === 'fighting' || phase.value === 'between'
+  if (!inProgress) {
+    nextSection = 1
+    nextWave = 1
+  }
+  return { arena_section: nextSection, arena_wave: nextWave, arena_in_progress: inProgress }
+}
+
+async function saveArenaProgress(force = false) {
+  try {
+    const id = arenaCharacterId.value
+    if (!id) return
+    if (!force && !progressHydrated.value) return
+    const payload = progressSnapshotForSave()
+    const key = `${payload.arena_section}:${payload.arena_wave}:${payload.arena_in_progress ? 1 : 0}`
+    if (!force && key === lastSavedProgressKey) return
+    await api.patch(`/characters/${id}`, payload)
+    characterStore.arenaSection = payload.arena_section
+    characterStore.arenaWave = payload.arena_wave
+    characterStore.arenaInProgress = payload.arena_in_progress
+    lastSavedProgressKey = key
+  } catch (err) {
+    console.error('No se pudo guardar progreso de arena:', err)
+  }
+}
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
 if (lastTransition.value === 'main-to-second') {
@@ -286,12 +389,12 @@ function toggleMap() {
   showMapPanel.value = !showMapPanel.value
 }
 
-// Bloquear movimiento si hay paneles abiertos
+// Bloquear movimiento solo en estados críticos (no al abrir paneles/mapa).
 watch(
-  [showPanel, showMapPanel, showMicropay, phase],
-  ([p, m, mi, ph]) => {
-    // Si hay algo abierto o fase especial, bloqueamos.
-    if (p || m || mi || ph === 'between' || ph === 'gameover') {
+  [showPanel, showMapPanel, showMicropay, phase, showVictoryModal],
+  ([p, m, mi, ph, svm]) => {
+    const isVictoryBlocking = ph === 'victory' && svm
+    if (mi || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -300,7 +403,8 @@ watch(
 )
 
 function onArenaPanelHotkey(e) {
-  if (!focused.value || locked.value) {
+  const phaseBlocksUi = phase.value === 'between' || phase.value === 'gameover' || (phase.value === 'victory' && showVictoryModal.value)
+  if (!focused.value || isFading.value || navigating.value || phaseBlocksUi) {
     return
   }
   if (showMicropay.value) {
@@ -334,6 +438,10 @@ const playerHpPct = computed(() => {
   return Math.min(100, Math.round((100 * playerHp.value) / max))
 })
 
+const enemyFactionClass = computed(() =>
+  enemyFaction.value === 'java' ? 'enemy--java' : 'enemy--php'
+)
+
 function hpBarPct(e) {
   return Math.max(8, Math.round((100 * e.hp) / (e.maxHp || 1)))
 }
@@ -347,8 +455,8 @@ const cameraTransform = computed(() => {
   const cy = window.innerHeight / 2
   const halfViewW = cx / zoom
   const halfViewH = cy / zoom
-  const targetX = Math.max(halfViewW, Math.min(x.value + 20, WORLD - halfViewW))
-  const targetY = Math.max(halfViewH, Math.min(y.value + 20, WORLD - halfViewH))
+  const targetX = Math.max(halfViewW, Math.min(x.value + 20, WORLD_W - halfViewW))
+  const targetY = Math.max(halfViewH, Math.min(y.value + 20, WORLD_H - halfViewH))
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
 
@@ -374,7 +482,7 @@ async function syncRunGoldOnce() {
     return
   }
   try {
-    const id = await ensureActiveCharacterId()
+    const id = arenaCharacterId.value
     if (id != null) {
       sessionSynced = true
       await addCharacterGold(id, delta)
@@ -394,6 +502,7 @@ async function leaveArena() {
   locked.value = true
   
   try {
+    await saveArenaProgress(true)
     await syncRunGoldOnce()
   } catch (err) {
     console.error("Fallo final de sync:", err)
@@ -412,9 +521,25 @@ async function leaveArena() {
 
 onMounted(async () => {
   window.addEventListener('keydown', onArenaPanelHotkey)
+  window.addEventListener('beforeunload', saveArenaProgress, { capture: true })
   
   try {
+    arenaCharacterId.value = await ensureActiveCharacterId()
+    const arenaCharacter = arenaCharacterId.value != null
+      ? await fetchCharacter(arenaCharacterId.value)
+      : null
     await refreshWallet()
+    if (arenaCharacter) {
+      characterStore.arenaSection = Number(arenaCharacter.arena_section ?? 1) || 1
+      characterStore.arenaWave = Number(arenaCharacter.arena_wave ?? 1) || 1
+      characterStore.arenaInProgress = Boolean(arenaCharacter.arena_in_progress)
+    }
+    const isPhpKingdom = isPhpKingdomSelected()
+    startY.value = isPhpKingdom ? ARENA_WORLD_HEIGHT - 140 : 120
+    if (lastTransition.value !== 'main-to-second') {
+      y.value = startY.value
+      x.value = ARENA_WORLD_WIDTH / 2
+    }
   } catch (err) {
     console.error("Error inicial en SecondView:", err)
   }
@@ -423,12 +548,17 @@ onMounted(async () => {
     locked.value = true
     moving.value = true
     isFading.value = true
+    const isPhpKingdom = isPhpKingdomSelected()
+    y.value = isPhpKingdom ? ARENA_WORLD_HEIGHT + 50 : -50
     
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        // Mover hasta y=180 para alejarnos bien del portal superior (y<=0)
-        if (y.value >= 180) {
+        // Java entra desde arriba. PHP entra desde abajo.
+        const reachedTarget = isPhpKingdom
+          ? y.value <= ARENA_WORLD_HEIGHT - 180
+          : y.value >= 180
+        if (reachedTarget) {
           locked.value = false
           moving.value = false
           lastTransition.value = null
@@ -436,11 +566,18 @@ onMounted(async () => {
           setTimeout(() => { portalCooldown.value = false }, 500)
           // Retrasar inicio de combate
           setTimeout(() => {
-            if (phase.value === 'idle') beginFirstWave()
+            if (phase.value === 'idle') {
+              if (characterStore.arenaInProgress) {
+                resumeAt(characterStore.arenaSection, characterStore.arenaWave)
+              } else {
+                beginFirstWave()
+              }
+              progressHydrated.value = true
+            }
           }, 400)
           return
         }
-        y.value += 5
+        y.value += isPhpKingdom ? -5 : 5
         requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
@@ -449,14 +586,21 @@ onMounted(async () => {
     isFading.value = false
     locked.value = false
     portalCooldown.value = false
-    if (phase.value === 'idle') beginFirstWave()
+    if (phase.value === 'idle') {
+      if (characterStore.arenaInProgress) {
+        resumeAt(characterStore.arenaSection, characterStore.arenaWave)
+      } else {
+        beginFirstWave()
+      }
+      progressHydrated.value = true
+    }
   }
 })
 
 watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
   
-  const cx = WORLD / 2
+  const cx = WORLD_W / 2
   if (
     phase.value === 'idle'
     && newY <= 0
@@ -469,13 +613,20 @@ watch([x, y], ([newX, newY]) => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onArenaPanelHotkey)
+  window.removeEventListener('beforeunload', saveArenaProgress, { capture: true })
+  saveArenaProgress(true)
   syncRunGoldOnce()
 })
 
 watch(phase, (p) => {
-  if (p === 'gameover') {
+  if (p === 'gameover' || p === 'victory') {
+    saveArenaProgress(true)
     syncRunGoldOnce()
   }
+})
+
+watch([section, sectionWave, phase], () => {
+  saveArenaProgress(false)
 })
 </script>
 
@@ -488,7 +639,7 @@ watch(phase, (p) => {
   left: 0;
   outline: none;
   overflow: hidden;
-  background-color: #0b0d17;
+  background-color: #2f3440;
   font-family: 'Press Start 2P', monospace;
 }
 
@@ -505,13 +656,15 @@ watch(phase, (p) => {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(180deg, #4b5563 0%, #374151 100%);
 }
 
 .world {
   position: absolute;
-  width: v-bind(worldEdgePx);
-  height: v-bind(worldEdgePx);
+  width: v-bind(worldWidthPx);
+  height: v-bind(worldHeightPx);
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -586,10 +739,18 @@ watch(phase, (p) => {
   position: absolute;
   z-index: 3;
   border-radius: 4px;
-  background: linear-gradient(145deg, #7c2525, #4a1518);
-  border: 2px solid #2a0a0c;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+
+.enemy--java {
+  background: linear-gradient(145deg, #f4a340, #cf6d1e);
+  border: 2px solid #6a2e0c;
+}
+
+.enemy--php {
+  background: linear-gradient(145deg, #6ea8ff, #2d5ebd);
+  border: 2px solid #173a7f;
 }
 
 .enemy-hp {
@@ -597,8 +758,15 @@ watch(phase, (p) => {
   bottom: 0;
   left: 0;
   height: 4px;
-  background: #c62828;
   display: block;
+}
+
+.enemy--java .enemy-hp {
+  background: #ff7b00;
+}
+
+.enemy--php .enemy-hp {
+  background: #1e88e5;
 }
 
 .bullet {
@@ -611,6 +779,48 @@ watch(phase, (p) => {
   background: #ffeb3b;
   box-shadow: 0 0 8px #ff9800;
   z-index: 4;
+}
+
+.enemy-bullet {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
+  z-index: 4;
+  border: 2px solid #fff;
+}
+
+.enemy-bullet--java {
+  background: #ff8f00;
+  box-shadow: 0 0 12px #e65100, 0 0 4px #fff;
+}
+
+.enemy-bullet--php {
+  background: #1e88e5;
+  box-shadow: 0 0 12px #0d47a1, 0 0 4px #fff;
+}
+
+.boss-enemy {
+  border: 4px solid #facc15 !important;
+  box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(0,0,0,0.8) !important;
+}
+
+.boss-enemy::after {
+  content: '⚠';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: #facc15;
+  opacity: 0.5;
 }
 
 .slash-container {
@@ -683,8 +893,9 @@ watch(phase, (p) => {
   box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
 }
 
-.wave-label { font-size: 8px; color: #facc15; opacity: 0.7; }
-.wave-number { font-size: 24px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.wave-label { font-size: 8px; color: #facc15; opacity: 0.8; }
+.wave-number { font-size: 22px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.route-label { font-size: 7px; color: #a7f3d0; letter-spacing: 0.08em; }
 
 .hud-stats-left {
   position: absolute;
@@ -796,6 +1007,72 @@ watch(phase, (p) => {
   text-align: center;
   font-family: 'Press Start 2P', monospace;
   animation: modal-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.victory-crown {
+  font-size: 60px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 20px rgba(250, 204, 21, 0.6));
+  animation: crown-float 2s ease-in-out infinite;
+}
+
+@keyframes crown-float {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+.final-victory {
+  border-color: #facc15;
+  background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+  box-shadow: 0 0 100px rgba(250, 204, 21, 0.3);
+}
+
+.final-victory .modal-title {
+  color: #facc15;
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.congrats {
+  font-size: 8px;
+  color: #facc15;
+  margin-top: 20px;
+  letter-spacing: 2px;
+}
+
+.btn-exit-gold {
+  background: #facc15;
+  color: #0b0d17;
+  border: 4px solid #854d0e;
+  padding: 20px 40px;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 6px 6px 0 #854d0e;
+}
+
+.btn-exit-gold:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #854d0e;
+  background: white;
+}
+
+.btn-explore {
+  background: transparent;
+  color: #94a3b8;
+  border: 2px solid #334155;
+  padding: 12px 20px;
+  font-family: inherit;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-explore:hover {
+  color: white;
+  border-color: white;
+  background: rgba(255,255,255,0.05);
 }
 
 @keyframes modal-enter {
