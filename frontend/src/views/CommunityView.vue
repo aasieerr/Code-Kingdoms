@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#0b0d17] text-white flex flex-col" style="font-family: 'Press Start 2P', monospace; image-rendering: pixelated;">
+  <div class="pixel-page min-h-screen flex flex-col">
     <AppHeader />
     
     <!-- Scanlines overlay -->
@@ -20,7 +20,7 @@
           EL LUGAR DONDE LOS HÉROES DE <span class="text-[#3b82f6]">PHP</span> Y <span class="text-[#ef4444]">JAVA</span> COMPARTEN SUS CONQUISTAS Y CRÓNICAS.
         </p>
         
-        <button class="mt-12 pixel-btn-gold text-[10px] px-12 py-5 group overflow-hidden relative">
+        <button class="mt-12 btn-pixel-gold text-[10px] px-12 py-5 group overflow-hidden relative">
           <span class="relative z-10">+ SUBIR CAPTURA</span>
           <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform"></div>
         </button>
@@ -196,21 +196,6 @@ function loadMore() {
 </script>
 
 <style scoped>
-.pixel-btn-gold {
-  background: #ca8a04;
-  color: #fef9c3;
-  border: 4px solid #facc15;
-  box-shadow: 4px 4px 0 #854d0e;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-.pixel-btn-gold:hover {
-  background: #facc15;
-  color: #431407;
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 #854d0e;
-}
 
 .post-card {
   opacity: 0;

@@ -7,8 +7,7 @@
     @focus="focused = true"
     @blur="focused = false"
   >
-    <!-- Mundo de juego -->
-    <div class="scanlines"></div>
+    <div class="game-scanlines"></div>
     <div class="game-bg"></div>
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
@@ -23,23 +22,20 @@
       <div
         class="player"
         :class="{ 'is-moving': moving }"
-        :style="{
-          left: x + 'px',
-          top: y + 'px',
-        }"
+        :style="{ left: x + 'px', top: y + 'px' }"
       >
         <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
           <div class="mini-grid">
-            <div 
-              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+            <div
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
               :key="pIdx"
               class="mini-grid__pixel"
               :style="{ backgroundColor: color || 'transparent' }"
             ></div>
           </div>
         </div>
-        <div 
-          v-else 
+        <div
+          v-else
           class="player__fallback"
           :style="{ background: moving ? colorMoving : colorStill }"
         ></div>
@@ -55,14 +51,10 @@
       />
     </div>
 
-    <p
-      v-if="inSkinShopZone && !showSkinShop && !showMicropay"
-      class="shop-hint"
-    >
+    <p v-if="inSkinShopZone && !showSkinShop && !showMicropay" class="shop-hint">
       Pulsa <kbd>E</kbd> — Apariencia
     </p>
 
-    <!-- Logo -->
     <img class="game-logo" src="/code-kingdoms-logo.png" alt="Code Kingdoms logo" />
 
     <WalletBar
@@ -71,8 +63,6 @@
       @open-micropay="showMicropay = !showMicropay"
     />
 
-
-    <!-- HUD -->
     <HudPanel
       :map-open="showMapPanel"
       @open-inventory="openPanel('inventory')"
@@ -82,7 +72,6 @@
       @logout="handleLogout"
     />
 
-    <!-- Panel inventario -->
     <InventoryPanel
       v-show="showPanel === 'inventory' || showPanel === 'shop'"
       :is-shop="showPanel === 'shop'"
@@ -90,7 +79,6 @@
       @switch-panel="openPanel"
     />
 
-    <!-- Panel equipo -->
     <EquipmentPanel
       v-show="showPanel === 'equipment'"
       @close="showPanel = null"
@@ -105,7 +93,6 @@
 
     <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
 
-    <!-- Mapa -->
     <MapPanel
       v-if="showMapPanel"
       :player-x="x"
@@ -114,7 +101,6 @@
       @close="showMapPanel = false"
     />
 
-    <!-- Diálogos NPC -->
     <DialogueModal
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
@@ -122,7 +108,6 @@
       @open-shop="openPanel('shop')"
     />
 
-    <!-- Fade de transición -->
     <div class="fade-overlay" :class="{ active: isFading }"></div>
   </div>
 </template>
@@ -134,8 +119,9 @@ import { useWasd } from './components/controlChar'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
 import { lastTransition, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
-import { ensureActiveCharacterId, fetchCharacter } from './api/character'
+import { useCharacterStore } from './stores/character'
 import { useNpcs } from './composables/useNpcs'
+import { parseSprite, isEmptySprite } from './utils/sprite'
 import HudPanel       from './components/HudPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
@@ -145,99 +131,55 @@ import SkinShopPanel  from './components/SkinShopPanel.vue'
 import MicropayModal  from './components/MicropayModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
-import { useCharacterStore } from './stores/character'
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
-
 
 const router        = useRouter()
 const worldEdgePx   = `${WORLD_EDGE}px`
-const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
-const startY   = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
+const isFading      = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
+const startY        = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
 
-// Estado de paneles
-const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
+const showPanel    = ref(null)
 const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
-const authStore = useAuthStore()
+
+const authStore      = useAuthStore()
 const characterStore = useCharacterStore()
+const colorStill     = ref('#e94560')
+const colorMoving    = ref('#f5a623')
 
-// Monedero y apariencia
-
-const colorStill = ref('#e94560')
-const colorMoving = ref('#f5a623')
-
-
-// Movimiento del personaje
 const { arenaRef, x, y, focused, moving, locked } = useWasd(WORLD_EDGE / 2, startY)
 
-// Bloquear inmediatamente si venimos de otra escena para evitar rebotes
-if (lastTransition.value === 'second-to-main') {
-  locked.value = true
-}
+if (lastTransition.value === 'second-to-main') locked.value = true
 
-// NPCs
 const npcsManager = useNpcs('MainGame', x, y)
-const {
-  npcs,
-  loadNpcs,
-  getIsNear,
-  openDialogue
-} = npcsManager
+const { npcs, getIsNear, openDialogue } = npcsManager
 
-/** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
 const SKIN_SHOP = { x: 138, y: 678, w: 180, h: 132, pad: 24 }
 const inSkinShopZone = computed(() => {
-  const ax = x.value
-  const ay = y.value
-  const p = SKIN_SHOP.pad
-  return (
-    ax >= SKIN_SHOP.x - p
-    && ax <= SKIN_SHOP.x + SKIN_SHOP.w + p
-    && ay >= SKIN_SHOP.y - p
-    && ay <= SKIN_SHOP.y + SKIN_SHOP.h + p
-  )
+  const ax = x.value; const ay = y.value; const p = SKIN_SHOP.pad
+  return ax >= SKIN_SHOP.x - p && ax <= SKIN_SHOP.x + SKIN_SHOP.w + p
+      && ay >= SKIN_SHOP.y - p && ay <= SKIN_SHOP.y + SKIN_SHOP.h + p
 })
 
-// Cámara centrada en el jugador
 const cameraTransform = computed(() => {
-  const zoom      = 2
-  const cx        = window.innerWidth / 2
-  const cy        = window.innerHeight / 2
-  const halfW     = cx / zoom
-  const halfH     = cy / zoom
-  const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_EDGE - halfW))
-  const targetY   = Math.max(halfH, Math.min(y.value + 20, WORLD_EDGE - halfH))
+  const zoom = 2; const cx = window.innerWidth / 2; const cy = window.innerHeight / 2
+  const halfW = cx / zoom; const halfH = cy / zoom
+  const targetX = Math.max(halfW, Math.min(x.value + 20, WORLD_EDGE - halfW))
+  const targetY = Math.max(halfH, Math.min(y.value + 20, WORLD_EDGE - halfH))
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
 
 async function refreshWallet() {
   await characterStore.refresh()
   if (characterStore.equippedSkin) {
-    colorStill.value = characterStore.equippedSkin.color_still
+    colorStill.value  = characterStore.equippedSkin.color_still
     colorMoving.value = characterStore.equippedSkin.color_moving
   }
 }
 
-
-// Bloquear movimiento si hay paneles abiertos
 watch(
   [showPanel, showMapPanel, showSkinShop, showMicropay, npcsManager.activeDialogueNpc],
   ([p, m, s, mi, d]) => {
-    // Si hay algo abierto, bloqueamos. Si no, desbloqueamos (a menos que estemos en transición)
     if (p || m || s || mi || d) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
@@ -246,29 +188,19 @@ watch(
   }
 )
 
-// Observar NPCs para depuración
 watch(npcs, (list) => {
-  console.log(`NPCs cargados en ${npcsManager.mapName || 'mapa'}: ${list.length}`, list)
+  console.log(`NPCs cargados: ${list.length}`, list)
 })
 
 function openPanel(name) {
-  if (showPanel.value === name) {
-    showPanel.value = null
-  } else {
-    showPanel.value = name
-    showMapPanel.value = false
-  }
+  showPanel.value  = showPanel.value === name ? null : name
+  if (showPanel.value) showMapPanel.value = false
 }
-
 function toggleMap() {
-  showPanel.value = null
+  showPanel.value  = null
   showMapPanel.value = !showMapPanel.value
 }
-
-function goCharacterMenu() {
-  router.push({ name: 'CharacterMenu' })
-}
-
+function goCharacterMenu() { router.push({ name: 'CharacterMenu' }) }
 async function handleLogout() {
   setActiveCharacterId(null)
   await authStore.logout()
@@ -276,140 +208,75 @@ async function handleLogout() {
 }
 
 function onSkinShopKey(e) {
-  if (e.key.toLowerCase() !== 'e') {
-    return
-  }
-  if (showSkinShop.value || showMicropay.value) {
-    return
-  }
-  if (showMapPanel.value || showPanel.value) {
-    return
-  }
+  if (e.key.toLowerCase() !== 'e') return
+  if (showSkinShop.value || showMicropay.value || showMapPanel.value || showPanel.value) return
   if (!inSkinShopZone.value) {
-    // Check for NPCs
     const nearNpc = npcs.value.find(n => getIsNear(n))
-    if (nearNpc) {
-      e.preventDefault()
-      openDialogue(nearNpc)
-      return
-    }
+    if (nearNpc) { e.preventDefault(); openDialogue(nearNpc) }
     return
   }
   e.preventDefault()
   showSkinShop.value = true
 }
 
-const navigating = ref(false)
+const navigating    = ref(false)
 const portalCooldown = ref(true)
 
-// Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
-  
-  try {
-    await refreshWallet()
-  } catch (err) {
-    console.error("Error inicial en MainView:", err)
-  }
+  try { await refreshWallet() } catch (err) { console.error('Error inicial en MainView:', err) }
 
   if (lastTransition.value === 'second-to-main') {
-    locked.value = true
-    moving.value = true
-    isFading.value = true
-    
-    // Pequeña espera para asegurar que el componente se asiente
+    locked.value = true; moving.value = true; isFading.value = true
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
         if (y.value <= WORLD_EDGE - 180) {
-          locked.value = false
-          moving.value = false
+          locked.value = false; moving.value = false
           lastTransition.value = null
           setTimeout(() => { portalCooldown.value = false }, 500)
           return
         }
-        y.value -= 5
-        requestAnimationFrame(enterLoop)
+        y.value -= 5; requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
     }, 100)
   } else if (lastTransition.value === 'menu-to-game') {
-    // Transición desde el menú de personajes
-    isFading.value = true
-    locked.value = true
-    
+    isFading.value = true; locked.value = true
     setTimeout(() => {
-      isFading.value = false
-      locked.value = false
-      lastTransition.value = null
-      portalCooldown.value = false
+      isFading.value = false; locked.value = false
+      lastTransition.value = null; portalCooldown.value = false
     }, 600)
   } else {
-    isFading.value = false
-    locked.value = false
-    portalCooldown.value = false
+    isFading.value = false; locked.value = false; portalCooldown.value = false
   }
 })
 
-// Salida hacia SecondView (caminar al borde inferior)
 watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
-  
-  const PLAYER = 40
-  const cx = WORLD_EDGE / 2
-  if (
-    newY >= WORLD_EDGE - PLAYER
-    && newX > cx - PORTAL_HALF_WIDTH
-    && newX < cx + PORTAL_HALF_WIDTH
-  ) {
-    navigating.value = true
-    locked.value = true
-    moving.value = true
-    isFading.value = true
-    
+  const PLAYER = 40; const cx = WORLD_EDGE / 2
+  if (newY >= WORLD_EDGE - PLAYER && newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH) {
+    navigating.value = true; locked.value = true; moving.value = true; isFading.value = true
     const exitLoop = () => {
       y.value += 5
       if (y.value >= WORLD_EDGE + 80) {
         lastTransition.value = 'main-to-second'
-        router.push({ name: 'SecondGame' }).catch(() => {
-          navigating.value = false
-          locked.value = false
-        })
-      } else {
-        requestAnimationFrame(exitLoop)
-      }
+        router.push({ name: 'SecondGame' }).catch(() => { navigating.value = false; locked.value = false })
+      } else { requestAnimationFrame(exitLoop) }
     }
     requestAnimationFrame(exitLoop)
   }
 })
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', onSkinShopKey)
-})
+onUnmounted(() => { window.removeEventListener('keydown', onSkinShopKey) })
 </script>
 
+<style>
+@import './styles/game-world.css';
+</style>
+
 <style scoped>
-.viewport {
-  width: 100vw; height: 100vh; position: fixed; top: 0; left: 0;
-  outline: none; overflow: hidden; background-color: #0b0d17;
-  font-family: 'Press Start 2P', monospace;
-}
-
-.scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1000;
-  opacity: 0.04;
-  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
-}
-
-.game-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
-}
+/* .world must stay here because it uses v-bind() */
 .world {
   position: absolute;
   width: v-bind(worldEdgePx);
@@ -417,14 +284,8 @@ onUnmounted(() => {
   transform-origin: 0 0;
   will-change: transform;
 }
-.grid {
-  position: absolute; width: 100%; height: 100%;
-  background-image:
-    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-  background-size: 50px 50px; z-index: 1;
-}
-/* Terrenos */
+
+/* ── Terrain zones ── */
 .terrain { position: absolute; image-rendering: pixelated; z-index: 0; }
 .grassland {
   inset: 0;
@@ -449,9 +310,9 @@ onUnmounted(() => {
   right: 108px; top: 90px; width: 408px; height: 288px;
   border: 6px solid #535353;
   background:
-    linear-gradient(45deg,  #8f8f8f 25%, transparent 25%),
+    linear-gradient(45deg, #8f8f8f 25%, transparent 25%),
     linear-gradient(-45deg, #8f8f8f 25%, transparent 25%),
-    linear-gradient(45deg,  transparent 75%, #8f8f8f 75%),
+    linear-gradient(45deg, transparent 75%, #8f8f8f 75%),
     linear-gradient(-45deg, transparent 75%, #8f8f8f 75%),
     #707070;
   background-size: 46px 46px;
@@ -465,8 +326,8 @@ onUnmounted(() => {
     #3f86db;
   background-size: 40px 40px;
 }
-.road-main   { left: 78px; top: 588px;  width: 1044px; height: 43px;   border: 4px solid #5d4524; background: #b58956; }
-.road-cross  { left: 582px; top: 174px;  width: 43px;   height: 900px; border: 4px solid #5d4524; background: #b58956; }
+.road-main  { left: 78px; top: 588px; width: 1044px; height: 43px; border: 4px solid #5d4524; background: #b58956; }
+.road-cross { left: 582px; top: 174px; width: 43px; height: 900px; border: 4px solid #5d4524; background: #b58956; }
 .village-zone {
   left: 138px; top: 678px; width: 180px; height: 132px;
   border: 5px solid #6a361f;
@@ -480,90 +341,22 @@ onUnmounted(() => {
   left: 708px; top: 384px; width: 204px; height: 132px;
   border: 5px solid #4b3f31;
   background:
-    linear-gradient(45deg,  #7f7264 25%, transparent 25%),
+    linear-gradient(45deg, #7f7264 25%, transparent 25%),
     linear-gradient(-45deg, #7f7264 25%, transparent 25%),
-    linear-gradient(45deg,  transparent 75%, #7f7264 75%),
+    linear-gradient(45deg, transparent 75%, #7f7264 75%),
     linear-gradient(-45deg, transparent 75%, #7f7264 75%),
     #9a8b79;
   background-size: 36px 36px;
 }
-/* Jugador */
-.player {
-  position: absolute; width: 40px; height: 40px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s ease-out;
-}
 
-.player.is-moving {
-  animation: walking 0.25s infinite alternate ease-in-out;
-}
-
-@keyframes walking {
-  0% { transform: translateY(0) rotate(-4deg); }
-  100% { transform: translateY(-2px) rotate(4deg); }
-}
-
-.player__fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
-  box-shadow: 0 4px 15px rgba(0,0,0,.3);
-  transition: background .1s;
-}
-
-.player__sprite {
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-  image-rendering: pixelated;
-}
-
-.mini-grid {
-  display: grid;
-  grid-template-columns: repeat(16, 2.5px);
-  grid-template-rows: repeat(16, 2.5px);
-  width: 40px;
-  height: 40px;
-}
-
-.mini-grid__pixel {
-  width: 2.5px;
-  height: 2.5px;
-}
-/* Logo */
-.game-logo {
-  position: absolute; right: 18px; top: 18px;
-  width: 108px; height: 108px; object-fit: contain;
-  z-index: 30; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
-}
-/* Fade */
-.fade-overlay {
-  position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-  background-color: #0b0d17; opacity: 0; pointer-events: none;
-  transition: opacity .5s ease-in-out; z-index: 1000;
-}
-.fade-overlay.active { opacity: 1; }
+/* Shop hint */
 .shop-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 32px;
-  transform: translateX(-50%);
-  z-index: 20;
-  margin: 0;
-  font-size: 8px;
-  color: #fff8e1;
-  text-shadow: 0 1px 2px #000;
-  pointer-events: none;
+  position: absolute; left: 50%; bottom: 32px;
+  transform: translateX(-50%); z-index: 20; margin: 0;
+  font-size: 8px; color: #fff8e1; text-shadow: 0 1px 2px #000; pointer-events: none;
 }
 .shop-hint kbd {
-  display: inline-block;
-  border: 2px solid #333;
-  background: #222;
-  color: #ffcc80;
-  padding: 2px 6px;
-  font-size: 9px;
-  font-family: inherit;
-  margin: 0 2px;
+  display: inline-block; border: 2px solid #333; background: #222;
+  color: #ffcc80; padding: 2px 6px; font-size: 9px; font-family: inherit; margin: 0 2px;
 }
 </style>

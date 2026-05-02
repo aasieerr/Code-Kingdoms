@@ -62,6 +62,7 @@
 
 <script setup>
 import { useCharacterStore } from '../stores/character'
+import { parseSprite, isEmptySprite } from '../utils/sprite'
 
 defineProps({
   mapOpen: { type: Boolean, default: false },
@@ -70,20 +71,6 @@ defineProps({
 defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'logout'])
 
 const characterStore = useCharacterStore()
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
 </script>
 
 <style scoped>

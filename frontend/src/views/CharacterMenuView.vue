@@ -112,6 +112,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { lastTransition, activeCharacterId, setActiveCharacterId } from '../gameState'
 import { fetchCharacters, deleteCharacter } from '../api/character'
+import { parseSprite, isEmptySprite } from '../utils/sprite'
 import CreateCharacterForm from '../components/CreateCharacterForm.vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
@@ -148,20 +149,6 @@ async function loadList() {
 function labelKingdom(c) { return c.kingdom?.name ?? '—' }
 function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
 
 const isZooming = ref(false)
 const zoomOrigin = ref('center center')
@@ -223,8 +210,6 @@ async function logout() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
 .char-page {
   image-rendering: pixelated;
   position: relative;

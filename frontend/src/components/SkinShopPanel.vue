@@ -91,10 +91,8 @@ async function load() {
     }
     const [list, ch] = await Promise.all([fetchSkinsCatalog(), fetchCharacter(activeCharacterId.value)])
     skins.value = list
-    // Actualizar el store también para que todo esté sincronizado
-    characterStore.codeCoins = ch.code_coins ?? 0
-    characterStore.gold = ch.gold ?? 0
-    equippedId.value = ch.equipped_skin_id ?? null
+    await characterStore.refresh()
+    equippedId.value = characterStore.equippedSkin?.id ?? null
 
     const ids = ch.owned_skin_ids
     if (Array.isArray(ids)) {
@@ -112,9 +110,6 @@ async function buy(s) {
   msg.value = ''
   try {
     const res = await purchaseSkin(s.id)
-    if (res?.user?.code_coins != null) {
-      characterStore.codeCoins = res.user.code_coins
-    }
     ownedIds.value.add(s.id)
     emit('wallet-updated')
     await characterStore.refresh()

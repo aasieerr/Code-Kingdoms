@@ -1,19 +1,19 @@
 <template>
-  <section class="premium-inventory-panel" @click.stop>
+  <section class="game-panel" @click.stop>
     <!-- SCANLINES -->
-    <div class="scanlines"></div>
+    <div class="panel-scanlines"></div>
 
     <header class="panel-header">
       <div class="panel-tabs">
         <button class="tab-btn" @click="$emit('switch-panel', 'inventory')">INVENTARIO</button>
         <button class="tab-btn active">EQUIPO</button>
       </div>
-      <button class="close-btn" @click="$emit('close')">✖</button>
+      <button class="panel-close-btn" @click="$emit('close')">✖</button>
     </header>
 
     <div class="panel-content">
-      <!-- LEFT: Equipment Grid & List -->
-      <div class="inventory-main">
+      <!-- LEFT: Equipment List -->
+      <div class="panel-main">
         <div class="equipment-stats-bar">
           <div class="stat-box">
             <span class="stat-label">ATAQUE</span>
@@ -58,7 +58,7 @@
         </div>
       </div>
 
-      <!-- RIGHT: Preview & Actions (Same as inventory) -->
+      <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
         <div class="preview-header">
           <div class="sprite-display">
@@ -86,7 +86,7 @@
         </div>
 
         <div class="preview-actions">
-          <button 
+          <button
             class="action-btn sell"
             @click="handleUnequip(selectedItem)"
             :disabled="busy"
@@ -107,7 +107,6 @@ import { ref, computed, onMounted } from 'vue'
 import {
   equippedItems as globalEquippedItems,
   isInventoryLoading,
-  lastInventoryError,
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
@@ -116,11 +115,9 @@ defineEmits(['close', 'switch-panel'])
 
 const SPRITES = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
 
-const selectedItem  = ref(null)
+const selectedItem = ref(null)
 const busy = ref(false)
-
 const loading = isInventoryLoading
-const error = lastInventoryError
 const equippedItems = globalEquippedItems
 
 const totalStats = computed(() => {
@@ -158,7 +155,7 @@ async function handleUnequip(ci) {
     await toggleEquipItem(ci.id, false)
     selectedItem.value = null
   } catch (err) {
-    console.error("Error al desequipar", err)
+    console.error('Error al desequipar', err)
   } finally {
     busy.value = false
     await fetchInventoryData()
@@ -166,136 +163,23 @@ async function handleUnequip(ci) {
 }
 </script>
 
+<style>
+@import '../styles/game-panel.css';
+</style>
+
 <style scoped>
-/* REUSANDO LOS MISMOS ESTILOS DEL INVENTARIO PARA CONSISTENCIA */
-.premium-inventory-panel {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  width: min(1000px, 95vw);
-  height: 600px;
-  z-index: 200;
-  border: 4px solid #facc15;
-  background: #0f172a;
-  box-shadow: 12px 12px 0 #854d0e, 0 30px 60px rgba(0,0,0,0.8);
-  color: #fef9c3;
-  padding: 0;
-  font-family: 'Press Start 2P', monospace;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.scanlines {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
-  background-size: 100% 4px;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.panel-header {
-  padding: 20px 30px;
-  background: #1e293b;
-  border-bottom: 4px solid #facc15;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.panel-tabs { display: flex; gap: 12px; }
-
-.tab-btn {
-  border: 4px solid #facc15;
-  background: #0f172a;
-  color: #facc15;
-  padding: 12px 24px;
-  font-size: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-}
-
-.tab-btn.active { background: #ca8a04; color: #fef9c3; box-shadow: 4px 4px 0 #854d0e; }
-
-.close-btn { width: 40px; height: 40px; border: 4px solid #facc15; background: #991b1b; color: #fecaca; cursor: pointer; box-shadow: 4px 4px 0 #431407; }
-
-.panel-content { flex: 1; display: flex; min-height: 0; }
-
-.inventory-main { flex: 1; display: flex; flex-direction: column; padding: 24px; border-right: 2px solid rgba(250, 204, 21, 0.1); }
-
-.equipment-stats-bar {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 24px;
-}
+/* ── Equipment-specific styles ── */
+.equipment-stats-bar { display: flex; gap: 20px; margin-bottom: 24px; }
 
 .stat-box {
-  flex: 1;
-  background: #0b0d17;
-  border: 2px solid rgba(250, 204, 21, 0.2);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  flex: 1; background: #0b0d17;
+  border: 2px solid rgba(250,204,21,0.2);
+  padding: 15px; display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
 }
-
 .stat-label { font-size: 6px; color: #facc15; opacity: 0.6; }
 .stat-value { font-size: 14px; font-weight: bold; color: white; }
 
-.list-wrapper { flex: 1; overflow-y: auto; background: #0b0d17; border: 3px solid #1e293b; padding: 12px; }
-
-.item-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-
-.item-list li {
-  padding: 12px;
-  background: #1e293b;
-  border: 2px solid #334155;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-}
-
-.item-list li.selected { background: #ca8a04; border-color: #facc15; color: #fef9c3; }
-
-.item-icon-box { width: 40px; height: 40px; background: #0f172a; border: 2px solid rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-
-.item-info { flex: 1; }
-.item-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.item-name { font-size: 9px; font-weight: bold; }
-.slot-tag { font-size: 6px; background: rgba(250, 204, 21, 0.1); color: #facc15; padding: 2px 6px; border: 1px solid #facc15; }
-
-.item-meta { display: flex; gap: 12px; font-size: 7px; color: #94a3b8; }
-
-/* Preview Section */
-.item-preview { width: 360px; padding: 30px; background: #1e293b; display: flex; flex-direction: column; gap: 24px; }
-.preview-placeholder { width: 360px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 8px; }
-
-.sprite-display { width: 100%; aspect-ratio: 1; background: #0b0d17; border: 4px solid #facc15; display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 20px; }
-.display-icon { font-size: 80px; z-index: 1; }
-.display-glow { position: absolute; inset: 20%; background: #facc15; filter: blur(40px); opacity: 0.15; }
-
-.preview-title { font-size: 14px; color: #facc15; text-shadow: 2px 2px 0 #431407; margin-bottom: 12px; }
-.preview-desc { font-size: 8px; line-height: 1.8; color: #cbd5e1; }
-
-.stats-label { font-size: 7px; color: #facc15; opacity: 0.6; margin-bottom: 12px; }
-.stats-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.stats-list li { font-size: 8px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(250, 204, 21, 0.1); padding-bottom: 4px; }
-.stat-val { color: #facc15; }
-
-.preview-actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
-
-.action-btn { padding: 16px; font-family: inherit; font-size: 8px; font-weight: bold; border: 4px solid #facc15; cursor: pointer; transition: all 0.1s; }
-.action-btn.sell { background: #991b1b; color: #fecaca; border-color: #ef4444; box-shadow: 4px 4px 0 #450a0a; }
-
-.status-box { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 20px; font-size: 8px; color: #94a3b8; }
-.loading-spinner { width: 30px; height: 30px; border: 3px solid rgba(250, 204, 21, 0.1); border-top-color: #facc15; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.custom-scrollbar::-webkit-scrollbar { width: 8px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #0b0d17; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #ca8a04; border: 2px solid #facc15; }
+.slot-tag { font-size: 6px; background: rgba(250,204,21,0.1); color: #facc15; padding: 2px 6px; border: 1px solid #facc15; }
+.meta-power { font-size: 7px; color: #94a3b8; }
 </style>

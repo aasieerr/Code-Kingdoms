@@ -112,11 +112,6 @@ function clearCanvas() {
   emit('update:modelValue', [...pixels.value])
 }
 
-function selectColor(c) {
-  selectedColor.value = c
-  tool.value = 'pen'
-}
-
 watch(() => props.modelValue, (newVal) => {
   if (newVal.length === size * size && JSON.stringify(newVal) !== JSON.stringify(pixels.value)) {
     pixels.value = [...newVal]
