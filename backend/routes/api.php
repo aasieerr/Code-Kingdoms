@@ -12,9 +12,11 @@ use App\Http\Controllers\RaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ScreenshotController;
+use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (contenido del juego / registro)
+Route::get('/stats', [StatsController::class, 'index']);
 Route::get('/kingdoms', [KingdomController::class, 'index']);
 Route::get('/kingdoms/{id}', [KingdomController::class, 'show']);
 Route::get('/races', [RaceController::class, 'index']);
