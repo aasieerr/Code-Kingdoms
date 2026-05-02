@@ -110,7 +110,7 @@
             <span class="gold-lbl">RUN</span>
           </div>
           <div class="gold-item bank">
-            <span class="gold-icon">🏛️</span>
+            <span class="gold-icon">🏦</span>
             <span class="gold-val">{{ characterStore.gold }}</span>
             <span class="gold-lbl">BANCO</span>
           </div>
@@ -630,56 +630,12 @@ watch([section, sectionWave, phase], () => {
 })
 </script>
 
+<style>
+@import './styles/game-world.css';
+</style>
+
 <style scoped>
-.viewport {
-  width: 100vw;
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  left: 0;
-  outline: none;
-  overflow: hidden;
-  background-color: #2f3440;
-  font-family: 'Press Start 2P', monospace;
-}
-
-.scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1000;
-  opacity: 0.04;
-  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
-}
-
-.game-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0) 55%),
-    linear-gradient(180deg, #4b5563 0%, #374151 100%);
-}
-
-.world {
-  position: absolute;
-  width: v-bind(worldWidthPx);
-  height: v-bind(worldHeightPx);
-  transform-origin: 0 0;
-  will-change: transform;
-}
-
-.grid {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 50px 50px;
-  z-index: 1;
-}
-
+/* ── Arena specific ── */
 .arena-floor {
   position: absolute;
   inset: 0;
@@ -687,182 +643,6 @@ watch([section, sectionWave, phase], () => {
   background:
     radial-gradient(ellipse 80% 50% at 50% 50%, rgba(120, 180, 90, 0.35), transparent 55%),
     linear-gradient(180deg, #2d4a22 0%, #1e3518 100%);
-}
-
-.player {
-  position: absolute;
-  width: 40px;
-  height: 40px;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.1s ease-out;
-}
-
-.player.is-moving {
-  animation: walking 0.25s infinite alternate ease-in-out;
-}
-
-@keyframes walking {
-  0% { transform: translateY(0) rotate(-4deg); }
-  100% { transform: translateY(-2px) rotate(4deg); }
-}
-
-.player__fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-  transition: background 0.1s;
-}
-
-.player__sprite {
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-  image-rendering: pixelated;
-}
-
-.mini-grid {
-  display: grid;
-  grid-template-columns: repeat(16, 2.5px);
-  grid-template-rows: repeat(16, 2.5px);
-  width: 40px;
-  height: 40px;
-}
-
-.mini-grid__pixel {
-  width: 2.5px;
-  height: 2.5px;
-}
-
-.enemy {
-  position: absolute;
-  z-index: 3;
-  border-radius: 4px;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.enemy--java {
-  background: linear-gradient(145deg, #f4a340, #cf6d1e);
-  border: 2px solid #6a2e0c;
-}
-
-.enemy--php {
-  background: linear-gradient(145deg, #6ea8ff, #2d5ebd);
-  border: 2px solid #173a7f;
-}
-
-.enemy-hp {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 4px;
-  display: block;
-}
-
-.enemy--java .enemy-hp {
-  background: #ff7b00;
-}
-
-.enemy--php .enemy-hp {
-  background: #1e88e5;
-}
-
-.bullet {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: #ffeb3b;
-  box-shadow: 0 0 8px #ff9800;
-  z-index: 4;
-}
-
-.enemy-bullet {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  margin-top: -7px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 9px;
-  font-weight: 700;
-  color: #ffffff;
-  z-index: 4;
-  border: 2px solid #fff;
-}
-
-.enemy-bullet--java {
-  background: #ff8f00;
-  box-shadow: 0 0 12px #e65100, 0 0 4px #fff;
-}
-
-.enemy-bullet--php {
-  background: #1e88e5;
-  box-shadow: 0 0 12px #0d47a1, 0 0 4px #fff;
-}
-
-.boss-enemy {
-  border: 4px solid #facc15 !important;
-  box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(0,0,0,0.8) !important;
-}
-
-.boss-enemy::after {
-  content: '⚠';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 24px;
-  color: #facc15;
-  opacity: 0.5;
-}
-
-.slash-container {
-  position: absolute;
-  z-index: 6;
-  pointer-events: none;
-  transform: translate(-50%, -50%) rotate(var(--angle));
-}
-.slash-effect {
-  width: 220px;
-  height: 220px;
-  border: 12px solid transparent;
-  border-top: 12px solid #ffffff;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
-  animation: slash-anim 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
-}
-@keyframes slash-anim {
-  0% { transform: rotate(-70deg) scale(0.7); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: rotate(70deg) scale(1.1); opacity: 0; }
-}
-
-.coin-pickup {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  z-index: 2;
-  font-size: 18px;
-  display: grid;
-  place-items: center;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
-  animation: coinbob 0.6s ease-in-out infinite alternate;
-}
-
-@keyframes coinbob {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-4px);
-  }
 }
 
 /* PREMIUM ARENA HUD */
