@@ -2,21 +2,21 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const BASE_MOVE_SPEED = 5.2
+const BASE_MOVE_SPEED = 3.8
 const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
 const BASE_CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
-const BULLET_SPEED = 8
+const BULLET_SPEED = 6.5
 const BULLET_LIFETIME_MS = 2200
 const FIRE_INTERVAL_MS = 320
 const BULLET_DAMAGE = 12
 const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
-const MAGNET_SPEED = 5
+const MAGNET_SPEED = 2.2
 const TOTAL_SECTIONS = 7
 const INTERMEDIATE_SECTIONS = 6
 const WAVES_PER_SECTION = 10
@@ -294,7 +294,7 @@ export function useArenaCombat(options = {}) {
     if (isPhpKingdom(race)) speed += 0.25
     else speed -= 0.15
 
-    return Math.max(3.8, Math.min(6.2, speed))
+    return Math.max(2.8, Math.min(5.2, speed))
   }
 
   function tick() {
@@ -457,7 +457,7 @@ export function useArenaCombat(options = {}) {
         if (e.type === 'garbage_collector') {
           const dragDist = Math.hypot(ecx - pcx, ecy - pcy)
           if (dragDist < 210 && dragDist > 0) {
-            const pullStrength = 1.7 * (1 - dragDist / 210)
+            const pullStrength = 0.65 * (1 - dragDist / 210)
             x.value = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, x.value + ((ecx - pcx) / dragDist) * pullStrength))
             y.value = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, y.value + ((ecy - pcy) / dragDist) * pullStrength))
           }
