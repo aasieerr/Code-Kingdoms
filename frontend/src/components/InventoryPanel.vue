@@ -13,11 +13,11 @@
         <span class="gold-icon">🪙</span>
         <span class="gold-amount">{{ characterStore.gold }}</span>
       </div>
-      <button class="panel-close-btn" @click="$emit('close')">✖</button>
+      <button class="panel-close-btn" @click="$emit('close')">X</button>
     </header>
 
     <div class="panel-content">
-      <div class="inventory-main">
+      <div class="panel-main">
         <div class="inventory-header-actions">
           <div class="inventory-filters">
             <button
@@ -322,8 +322,31 @@ async function handleSell(ci) {
 </style>
 
 <style scoped>
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 8px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #0b0d17; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #ca8a04; border: 2px solid #facc15; }
+/* ── Inventory-specific styles ── */
+.inventory-header-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 20px; margin-bottom: 24px;
+}
+.inventory-filters { display: flex; gap: 8px; }
+.search-wrapper { flex: 1; position: relative; max-width: 300px; }
+.search-input {
+  width: 100%; padding: 10px 14px 10px 40px;
+  background: #0b0d17; border: 2px solid #334155;
+  color: #facc15; font-family: 'Press Start 2P', monospace;
+  font-size: 7px; transition: all 0.2s; box-sizing: border-box;
+}
+.search-input:focus { outline: none; border-color: #facc15; box-shadow: 0 0 10px rgba(250,204,21,0.2); }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: 0.5; pointer-events: none; }
+.filter-btn {
+  padding: 10px 14px; background: #1e293b; border: 2px solid #334155;
+  color: #94a3b8; font-size: 7px; font-family: 'Press Start 2P', monospace;
+  cursor: pointer; transition: all 0.2s;
+}
+.filter-btn.active { border-color: #facc15; color: #facc15; }
+.equipped-tag { font-size: 7px; background: #facc15; color: #431407; padding: 2px 4px; }
+.meta-price { font-size: 7px; color: #94a3b8; }
+.retry-btn {
+  padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
+  color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
+}
 </style>

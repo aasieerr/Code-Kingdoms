@@ -22,6 +22,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <!-- List -->
         <section class="panel">
+          <div class="panel-scanlines"></div>
           <div class="panel__header">
             <h2 class="text-[#facc15] text-[10px]">TUS HÉROES ({{ characters.length }}/4)</h2>
           </div>
@@ -68,6 +69,7 @@
 
         <!-- Form -->
         <section class="panel">
+          <div class="panel-scanlines"></div>
           <div class="panel__header">
             <h2 class="text-[#facc15] text-[10px]">NUEVA AVENTURA</h2>
           </div>
@@ -112,7 +114,6 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { lastTransition, activeCharacterId, setActiveCharacterId } from '../gameState'
 import { fetchCharacters, deleteCharacter } from '../api/character'
-import { parseSprite, isEmptySprite } from '../utils/sprite'
 import CreateCharacterForm from '../components/CreateCharacterForm.vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
@@ -149,6 +150,20 @@ async function loadList() {
 function labelKingdom(c) { return c.kingdom?.name ?? '—' }
 function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
+
+function parseSprite(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data
+    return Array.isArray(parsed) ? parsed : Array(256).fill('')
+  } catch {
+    return Array(256).fill('')
+  }
+}
+
+function isEmptySprite(data) {
+  const pixels = parseSprite(data)
+  return !pixels.some(p => p && p !== '')
+}
 
 const isZooming = ref(false)
 const zoomOrigin = ref('center center')
@@ -210,125 +225,147 @@ async function logout() {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 .char-page {
   image-rendering: pixelated;
   position: relative;
+  background: radial-gradient(circle at center, #1e293b 0%, #0b0d17 100%);
 }
 
 /* Panel */
 .panel {
   border: 4px solid #facc15;
   background: #0f172a;
-  box-shadow: 8px 8px 0 #854d0e;
+  box-shadow: 12px 12px 0 #854d0e, 0 30px 60px rgba(0,0,0,0.8);
+  position: relative;
+  overflow: hidden;
 }
+
+.panel-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.05) 50%);
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
 .panel__header {
-  padding: 1rem 1.5rem;
-  border-bottom: 3px solid #facc15;
-  background: rgba(250, 204, 21, 0.05);
+  padding: 20px 30px;
+  background: #1e293b;
+  border-bottom: 4px solid #facc15;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
 }
 .panel__body {
-  padding: 1.5rem;
+  padding: 24px;
+  background: #0f172a;
+  position: relative;
+  z-index: 5;
 }
 
 /* Character card */
 .char-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 3px solid rgba(250, 204, 21, 0.15);
-  background: #0b0d17;
-  transition: border-color 0.2s;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  border: 4px solid #334155;
+  background: #1e293b;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+  cursor: pointer;
 }
 .char-card:hover {
-  border-color: rgba(250, 204, 21, 0.4);
+  border-color: #facc15;
+  background: #334155;
+  transform: translateX(8px);
+  box-shadow: 10px 10px 0 rgba(0,0,0,0.8);
 }
 .char-card--active {
+  background: #ca8a04;
   border-color: #facc15;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+  color: #fef9c3;
+  box-shadow: 8px 8px 0 #854d0e;
 }
 
 .char-card__avatar {
-  width: 48px;
-  height: 48px;
-  background: #0f172a;
-  border: 2px solid #854d0e;
+  width: 64px;
+  height: 64px;
+  background: #0b0d17;
+  border: 3px solid #facc15;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  position: relative;
-}
-
-.char-card__placeholder {
-  font-size: 14px;
-  color: #854d0e;
+  flex-shrink: 0;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  image-rendering: pixelated;
 }
 
 .mini-grid {
   display: grid;
-  grid-template-columns: repeat(16, 2px);
-  grid-template-rows: repeat(16, 2px);
-  width: 32px;
-  height: 32px;
+  grid-template-columns: repeat(16, 3px);
+  grid-template-rows: repeat(16, 3px);
+  width: 48px;
+  height: 48px;
 }
 
 .mini-grid__pixel {
-  width: 2px;
-  height: 2px;
+  width: 3px;
+  height: 3px;
 }
 
 /* Buttons */
 .btn-play {
   width: 120px;
-  padding: 0.6rem 0.5rem;
+  padding: 0.8rem 0.5rem;
   font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  border: 3px solid #facc15;
+  font-size: 8px;
+  border: 4px solid #facc15;
   background: #ca8a04;
   color: #fef9c3;
   cursor: pointer;
-  box-shadow: 3px 3px 0 #854d0e;
+  box-shadow: 4px 4px 0 #854d0e;
   transition: all 0.1s;
   text-align: center;
 }
 .btn-play:hover {
   background: #facc15;
   color: #431407;
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 #854d0e;
+  transform: translate(-2px, -2px);
 }
 
 .btn-delete {
   width: 123px;
-  padding: 0.5rem 0.5rem;
+  padding: 0.6rem 0.5rem;
   font-family: 'Press Start 2P', monospace;
-  font-size: 6px;
-  border: 2px solid #ef4444;
+  font-size: 7px;
+  border: 3px solid #ef4444;
   background: #7f1d1d;
   color: #fca5a5;
   cursor: pointer;
-  box-shadow: 2px 2px 0 #450a0a;
+  box-shadow: 3px 3px 0 #450a0a;
   transition: all 0.1s;
   text-align: center;
 }
 .btn-delete:hover {
   background: #ef4444;
   color: white;
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 #450a0a;
 }
 
 /* Custom Scrollbar for the list */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: #0b0d17;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #854d0e;
-  border: 1px solid #facc15;
+  border: 2px solid #facc15;
 }
 
 /* Zoom & Fade Animations */
@@ -350,4 +387,5 @@ async function logout() {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+
 </style>

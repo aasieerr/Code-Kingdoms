@@ -11,14 +11,14 @@
         <p class="create-form__sub">ELIGE TU DESTINO EN EL REINO DEL CÓDIGO</p>
       </template>
 
-      <div class="pixel-field">
-        <label class="pixel-label">NOMBRE DEL HÉROE</label>
-        <input v-model.trim="name" type="text" required maxlength="50" autocomplete="username" class="pixel-input" />
+      <div class="field">
+        <label class="field__label">NOMBRE DEL HÉROE</label>
+        <input v-model.trim="name" type="text" required maxlength="50" autocomplete="username" class="field__input" />
       </div>
 
-      <div class="pixel-field">
-        <label class="pixel-label">REINO</label>
-        <select v-model="id_kingdom" required class="pixel-input" :disabled="kingdoms.length === 0">
+      <div class="field">
+        <label class="field__label">REINO</label>
+        <select v-model="id_kingdom" required class="field__input" :disabled="kingdoms.length === 0">
           <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO REINOS...' : 'SELECCIONA UN REINO' }}</option>
           <option v-for="k in kingdoms" :key="getId(k, 'id_kingdom')" :value="getId(k, 'id_kingdom')">
             {{ k.name ?? k.nombre ?? 'Sin nombre' }}
@@ -26,9 +26,9 @@
         </select>
       </div>
 
-      <div class="pixel-field">
-        <label class="pixel-label">RAZA</label>
-        <select v-model="id_race" required class="pixel-input" :disabled="races.length === 0">
+      <div class="field">
+        <label class="field__label">RAZA</label>
+        <select v-model="id_race" required class="field__input" :disabled="races.length === 0">
           <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO RAZAS...' : 'SELECCIONA UNA RAZA' }}</option>
           <option v-for="r in races" :key="getId(r, 'id_race')" :value="getId(r, 'id_race')">
             {{ r.name ?? r.nombre ?? 'Sin nombre' }}
@@ -36,9 +36,9 @@
         </select>
       </div>
 
-      <div class="pixel-field">
-        <label class="pixel-label">CLASE</label>
-        <select v-model="id_class" required class="pixel-input" :disabled="classes.length === 0">
+      <div class="field">
+        <label class="field__label">CLASE</label>
+        <select v-model="id_class" required class="field__input" :disabled="classes.length === 0">
           <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO CLASES...' : 'SELECCIONA UNA CLASE' }}</option>
           <option v-for="c in classes" :key="getId(c, 'id_class')" :value="getId(c, 'id_class')">
             {{ c.name ?? c.nombre ?? 'Sin nombre' }}
@@ -46,13 +46,13 @@
         </select>
       </div>
 
-      <div class="pixel-field mt-4">
+      <div class="field mt-4">
         <PixelArtEditor v-model="sprite" />
       </div>
 
       <p v-if="err" class="create-form__err">{{ err }}</p>
 
-      <button class="btn-pixel-gold w-full mt-2" type="submit" :disabled="sending || loadingCatalogs || !kingdoms.length || !races.length || !classes.length || !id_kingdom || !id_race || !id_class">
+      <button class="create-form__btn" type="submit" :disabled="sending || loadingCatalogs || !kingdoms.length || !races.length || !classes.length || !id_kingdom || !id_race || !id_class">
         {{ sending ? 'FORJANDO...' : submitLabel }}
       </button>
 
@@ -77,6 +77,24 @@ const name = ref('')
 const id_kingdom = ref('')
 const id_race = ref('')
 const id_class = ref('')
+
+function getStickman() {
+  const s = Array(256).fill('')
+  const c = '#ffffff' // White stickman
+  // Head
+  const head = [36,37,38,39,51,56,67,72,84,85,86,87]
+  head.forEach(i => s[i] = c)
+  // Torso
+  for(let i=6; i<=11; i++) s[i*16 + 7] = c;
+  for(let i=6; i<=11; i++) s[i*16 + 8] = c;
+  // Arms
+  for(let i=4; i<=11; i++) s[8*16 + i] = c;
+  // Legs
+  s[12*16+6]=c; s[12*16+9]=c;
+  s[13*16+5]=c; s[13*16+10]=c;
+  s[14*16+4]=c; s[14*16+11]=c;
+  return s
+}
 
 const sprite = ref(Array(256).fill(''))
 const kingdoms = ref([])
@@ -194,6 +212,7 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  font-family: 'Press Start 2P', monospace;
   color: #facc15;
 }
 .create-form__title {
@@ -217,5 +236,64 @@ async function onSubmit() {
   color: white;
   font-size: 0.5rem;
   line-height: 1.6;
+}
+
+/* Fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.field__label {
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  color: rgba(250, 204, 21, 0.7);
+}
+.field__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.9rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  border: 3px solid #854d0e;
+  background: #0b0d17;
+  color: #facc15;
+  appearance: none;
+}
+.field__input:focus {
+  outline: none;
+  border-color: #facc15;
+}
+.field__input option {
+  background: #0f172a;
+  color: #facc15;
+}
+
+/* Submit button */
+.create-form__btn {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: 4px solid #facc15;
+  background: #ca8a04;
+  color: #fef9c3;
+  box-shadow: 4px 4px 0 #854d0e;
+  transition: all 0.1s;
+}
+.create-form__btn:hover:not(:disabled) {
+  background: #facc15;
+  color: #431407;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #854d0e;
+}
+.create-form__btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #854d0e;
+}
+.create-form__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
