@@ -110,6 +110,9 @@ import {
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
+import { useCharacterStore } from '../stores/character'
+
+const characterStore = useCharacterStore()
 
 defineEmits(['close', 'switch-panel'])
 
@@ -159,6 +162,7 @@ async function handleUnequip(ci) {
   } finally {
     busy.value = false
     await fetchInventoryData()
+    await characterStore.refresh()
   }
 }
 </script>

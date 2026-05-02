@@ -1,7 +1,7 @@
 <template>
-  <section class="game-panel" @click.stop>
+  <section class="premium-inventory-panel" @click.stop>
     <!-- SCANLINES -->
-    <div class="panel-scanlines"></div>
+    <div class="scanlines"></div>
 
     <header class="panel-header">
       <div class="panel-tabs" v-if="!isShop">
@@ -9,11 +9,15 @@
         <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
       </div>
       <h2 v-else>Tienda del Reino</h2>
-      <button class="panel-close-btn" @click="$emit('close')">✖</button>
+      <div class="header-gold">
+        <span class="gold-icon">🪙</span>
+        <span class="gold-amount">{{ characterStore.gold }}</span>
+      </div>
+      <button class="close-btn" @click="$emit('close')">X</button>
     </header>
 
     <div class="panel-content">
-      <div class="panel-main">
+      <div class="inventory-main">
         <div class="inventory-header-actions">
           <div class="inventory-filters">
             <button
@@ -80,13 +84,14 @@
 
       <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
-        <div class="preview-header">
+        <div class="preview-header" style="display: flex; align-items: center; gap: 16px;">
           <div class="sprite-display">
             <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
-            <div class="display-glow"></div>
           </div>
-          <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
-          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+          <div>
+            <h3 class="preview-title" style="margin-bottom: 6px;">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <p class="preview-desc" style="margin: 0;">{{ selectedItem.item.description }}</p>
+          </div>
         </div>
 
         <div class="preview-stats">
@@ -111,17 +116,19 @@
         </div>
 
         <div class="preview-actions">
+          <!-- BOTÓN DE COMPRA: visible cuando estamos en modo tienda -->
           <button
             v-if="isShop"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
-            :disabled="busy"
+            :disabled="busy || (characterStore.gold < (selectedItem.item?.price || 0))"
           >
-            COMPRAR ({{ selectedItem.item.price || 0 }} 🪙)
+            {{ (characterStore.gold < (selectedItem.item?.price || 0)) ? 'FALTA ORO' : `COMPRAR AHORA (${selectedItem.item?.price || 0} 🪙)` }}
           </button>
-          <template v-else>
+
+          <div v-else class="inventory-actions">
             <button 
-              v-if="selectedItem.id && !selectedItem.is_equipped"
+              v-if="!selectedItem.is_equipped"
               class="action-btn sell"
               @click="handleSell(selectedItem)"
               :disabled="busy"
@@ -129,14 +136,14 @@
               VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
             </button>
             <button 
-              v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
+              v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
               class="action-btn equip" 
               @click="handleEquip(selectedItem)"
               :disabled="busy"
             >
               {{ selectedItem.is_equipped ? 'DESEQUIPAR' : 'EQUIPAR' }}
             </button>
-          </template>
+          </div>
         </div>
       </aside>
       <div v-else class="preview-placeholder">
@@ -147,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
   globalItems,
   myCharacterItems,
@@ -157,6 +164,9 @@ import {
   toggleEquipItem
 } from '../api/inventario'
 import { purchaseItem, sellItem } from '../api/shop'
+import { useCharacterStore } from '../stores/character'
+
+const characterStore = useCharacterStore()
 
 const props = defineProps({
   isShop: {
@@ -188,6 +198,17 @@ const busy = ref(false)
 const loading = isInventoryLoading
 const error = lastInventoryError
 
+// Refrescar datos al cambiar entre inventario y tienda
+watch(() => props.isShop, async () => {
+  // Resetear selección ANTES de cargar para evitar que un item con id real
+  // quede seleccionado mientras llegan los datos de la tienda
+  selectedItem.value = null
+  await fetchInventoryData(true)
+  if (filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
+  }
+})
+
 const filteredItems = computed(() => {
   const source = props.isShop 
     ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
@@ -208,8 +229,9 @@ const filteredItems = computed(() => {
 })
 
 onMounted(async () => {
+  selectedItem.value = null
   await fetchInventoryData(true)
-  if (!selectedItem.value && filteredItems.value.length > 0) {
+  if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }
 })
@@ -242,6 +264,7 @@ async function handleEquip(ci) {
     } else {
       await toggleEquipItem(ci.id, false)
     }
+    await characterStore.refresh() // Refrescar para que SecondView detecte el cambio de arma inmediatamente
   } catch (err) {
     console.error("Error al equipar/desequipar", err)
   } finally {
@@ -258,6 +281,7 @@ async function handleBuy(item) {
   busy.value = true
   try {
     await purchaseItem(item.id_item)
+    await characterStore.refresh() // Refrescar oro tras compra
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al comprar')
   } finally {
@@ -277,6 +301,7 @@ async function handleSell(ci) {
   busy.value = true
   try {
     await sellItem(ci.id)
+    await characterStore.refresh() // Refrescar oro tras venta
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al vender')
   } finally {
@@ -292,36 +317,313 @@ async function handleSell(ci) {
 }
 </script>
 
-<style>
-@import '../styles/game-panel.css';
-</style>
-
 <style scoped>
-/* ── Inventory-specific styles ── */
+.premium-inventory-panel {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: min(1000px, 95vw);
+  height: 600px;
+  z-index: 200;
+  border: 4px solid #facc15;
+  background: #0f172a;
+  box-shadow: 12px 12px 0 #854d0e, 0 30px 60px rgba(0,0,0,0.8);
+  color: #fef9c3;
+  padding: 0;
+  font-family: 'Press Start 2P', monospace;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+
+/* Scanlines */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.panel-header {
+  padding: 20px 30px;
+  background: #1e293b;
+  border-bottom: 4px solid #facc15;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
+}
+
+.panel-tabs { display: flex; gap: 12px; }
+
+.tab-btn {
+  border: 4px solid #facc15;
+  background: #0f172a;
+  color: #facc15;
+  padding: 12px 24px;
+  font-size: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+.tab-btn.active {
+  background: #ca8a04;
+  color: #fef9c3;
+  box-shadow: 4px 4px 0 #854d0e;
+  transform: translateY(-2px);
+}
+
+.close-btn {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #facc15;
+  background: #991b1b;
+  color: #fecaca;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 4px 4px 0 #431407;
+}
+
+.header-gold {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0b0d17;
+  padding: 8px 16px;
+  border: 2px solid #facc15;
+  border-radius: 4px;
+}
+.gold-amount {
+  font-size: 10px;
+  color: #facc15;
+}
+
+
+/* Content Layout */
+.panel-content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.inventory-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-right: 2px solid rgba(250, 204, 21, 0.1);
+}
+
 .inventory-header-actions {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 20px; margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
 }
-.inventory-filters { display: flex; gap: 8px; }
-.search-wrapper { flex: 1; position: relative; max-width: 300px; }
+
+.inventory-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.search-wrapper {
+  flex: 1;
+  position: relative;
+  max-width: 300px;
+}
+
 .search-input {
-  width: 100%; padding: 10px 14px 10px 40px;
-  background: #0b0d17; border: 2px solid #334155;
-  color: #facc15; font-family: 'Press Start 2P', monospace;
-  font-size: 7px; transition: all 0.2s; box-sizing: border-box;
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  background: #0b0d17;
+  border: 2px solid #334155;
+  color: #facc15;
+  font-family: inherit;
+  font-size: 7px;
+  transition: all 0.2s;
 }
-.search-input:focus { outline: none; border-color: #facc15; box-shadow: 0 0 10px rgba(250,204,21,0.2); }
-.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: 0.5; pointer-events: none; }
+
+.search-input:focus {
+  outline: none;
+  border-color: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .filter-btn {
-  padding: 10px 14px; background: #1e293b; border: 2px solid #334155;
-  color: #94a3b8; font-size: 7px; font-family: 'Press Start 2P', monospace;
-  cursor: pointer; transition: all 0.2s;
+  padding: 10px 14px;
+  background: #1e293b;
+  border: 2px solid #334155;
+  color: #94a3b8;
+  font-size: 7px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.filter-btn.active { border-color: #facc15; color: #facc15; }
+
+.filter-btn.active {
+  border-color: #facc15;
+  color: #facc15;
+  background: #1e293b;
+}
+
+.list-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  background: #0b0d17;
+  border: 3px solid #1e293b;
+  padding: 12px;
+}
+
+.item-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-list li {
+  padding: 12px;
+  background: #1e293b;
+  border: 2px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.item-list li:hover {
+  border-color: #facc15;
+  background: #334155;
+  transform: translateX(4px);
+}
+
+.item-list li.selected {
+  background: #ca8a04;
+  border-color: #facc15;
+  color: #fef9c3;
+}
+
+.item-icon-box {
+  width: 40px;
+  height: 40px;
+  background: #0f172a;
+  border: 2px solid rgba(250, 204, 21, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.item-info { flex: 1; }
+.item-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.item-name { font-size: 9px; font-weight: bold; }
 .equipped-tag { font-size: 7px; background: #facc15; color: #431407; padding: 2px 4px; }
-.meta-price { font-size: 7px; color: #94a3b8; }
-.retry-btn {
-  padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
-  color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
+
+.item-meta { display: flex; gap: 12px; font-size: 7px; color: #94a3b8; }
+
+/* Preview Section */
+.item-preview {
+  width: 360px;
+  padding: 20px;
+  background: #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
 }
+
+.preview-placeholder {
+  width: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 8px;
+  text-align: center;
+}
+
+.sprite-display {
+  width: 80px;
+  height: 80px;
+  background: #0b0d17;
+  border: 4px solid #facc15;
+  box-shadow: 4px 4px 0 #854d0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.display-icon { font-size: 40px; z-index: 1; }
+.display-glow {
+  position: absolute;
+  inset: 20%;
+  background: #facc15;
+  filter: blur(40px);
+  opacity: 0.15;
+}
+
+.preview-title { font-size: 14px; color: #facc15; text-shadow: 2px 2px 0 #431407; margin-bottom: 12px; }
+.preview-desc { font-size: 8px; line-height: 1.8; color: #cbd5e1; }
+
+.stats-label { font-size: 7px; color: #facc15; opacity: 0.6; margin-bottom: 12px; }
+.stats-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.stats-list li { font-size: 8px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(250, 204, 21, 0.1); padding-bottom: 4px; }
+.stat-val { color: #facc15; }
+
+.preview-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; flex-shrink: 0; }
+
+.action-btn {
+  padding: 16px;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: bold;
+  border: 4px solid #facc15;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.action-btn.buy { background: #ca8a04; color: #fef9c3; box-shadow: 4px 4px 0 #854d0e; }
+.action-btn.sell { background: #991b1b; color: #fecaca; border-color: #ef4444; box-shadow: 4px 4px 0 #450a0a; }
+.action-btn.equip { background: #1e40af; color: #dbeafe; border-color: #3b82f6; box-shadow: 4px 4px 0 #1e3a8a; }
+
+.action-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+/* Status Boxes */
+.status-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  text-align: center;
+  font-size: 8px;
+  color: #94a3b8;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #0b0d17; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #ca8a04; border: 2px solid #facc15; }
 </style>

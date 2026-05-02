@@ -73,7 +73,7 @@
     />
 
     <InventoryPanel
-      v-show="showPanel === 'inventory' || showPanel === 'shop'"
+      v-if="showPanel === 'inventory' || showPanel === 'shop'"
       :is-shop="showPanel === 'shop'"
       @close="showPanel = null"
       @switch-panel="openPanel"
@@ -105,7 +105,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="openPanel('shop')"
+      @open-shop="npcsManager.activeDialogueNpc.value = null; openPanel('shop')"
     />
 
     <div class="fade-overlay" :class="{ active: isFading }"></div>
@@ -222,22 +222,36 @@ function onSkinShopKey(e) {
 const navigating    = ref(false)
 const portalCooldown = ref(true)
 
+function isPhpKingdomSelected() {
+  const kName = String(characterStore.kingdomName || '').toLowerCase()
+  return kName.includes('php') || kName.includes('peachepe') || Number(characterStore.kingdomId) === 1
+}
+
+// Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
   try { await refreshWallet() } catch (err) { console.error('Error inicial en MainView:', err) }
+
+  const isPhpKingdom = isPhpKingdomSelected()
+  if (lastTransition.value === 'second-to-main') {
+    y.value = isPhpKingdom ? -50 : WORLD_EDGE + 50
+  }
 
   if (lastTransition.value === 'second-to-main') {
     locked.value = true; moving.value = true; isFading.value = true
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        if (y.value <= WORLD_EDGE - 180) {
-          locked.value = false; moving.value = false
+        const reachedTarget = isPhpKingdom ? y.value >= 180 : y.value <= WORLD_EDGE - 180
+        if (reachedTarget) {
+          locked.value = false
+          moving.value = false
           lastTransition.value = null
           setTimeout(() => { portalCooldown.value = false }, 500)
           return
         }
-        y.value -= 5; requestAnimationFrame(enterLoop)
+        y.value += isPhpKingdom ? 5 : -5
+        requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
     }, 100)
@@ -252,14 +266,30 @@ onMounted(async () => {
   }
 })
 
+// Salida hacia SecondView:
+// - Java: borde inferior
+// - PHP: borde superior
 watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
-  const PLAYER = 40; const cx = WORLD_EDGE / 2
-  if (newY >= WORLD_EDGE - PLAYER && newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH) {
-    navigating.value = true; locked.value = true; moving.value = true; isFading.value = true
+  
+  const PLAYER = 40
+  const cx = WORLD_EDGE / 2
+  const isPhpKingdom = isPhpKingdomSelected()
+  const inPortalX = newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH
+  const isAtPortalEdge = isPhpKingdom ? newY <= 0 : newY >= WORLD_EDGE - PLAYER
+  if (
+    isAtPortalEdge
+    && inPortalX
+  ) {
+    navigating.value = true
+    locked.value = true
+    moving.value = true
+    isFading.value = true
+    
     const exitLoop = () => {
-      y.value += 5
-      if (y.value >= WORLD_EDGE + 80) {
+      y.value += isPhpKingdom ? -5 : 5
+      const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= WORLD_EDGE + 80
+      if (outOfBounds) {
         lastTransition.value = 'main-to-second'
         router.push({ name: 'SecondGame' }).catch(() => { navigating.value = false; locked.value = false })
       } else { requestAnimationFrame(exitLoop) }

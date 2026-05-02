@@ -30,7 +30,7 @@ defineEmits(['open-micropay'])
 <style scoped>
 .wallet-bar {
   position: absolute;
-  top: 24px;
+  top: 64px;
   right: 140px;
   z-index: 100;
   display: flex;
