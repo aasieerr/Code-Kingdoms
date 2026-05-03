@@ -84,33 +84,66 @@
 
       <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
-        <div class="preview-header" style="display: flex; align-items: center; gap: 16px;">
+        <div class="preview-header-box">
           <div class="sprite-display">
             <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <div class="display-glow"></div>
           </div>
-          <div>
-            <h3 class="preview-title" style="margin-bottom: 6px;">{{ selectedItem.item.name.toUpperCase() }}</h3>
-            <p class="preview-desc" style="margin: 0;">{{ selectedItem.item.description }}</p>
+          <div class="preview-info">
+            <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <div class="preview-type-tag">{{ labelsByType[selectedItem.item.type] }}</div>
           </div>
         </div>
 
+        <div class="description-box">
+          <h4 class="section-label">DESCRIPCIÓN</h4>
+          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+        </div>
+
         <div class="preview-stats">
-          <h4 class="stats-label">ATRIBUTOS</h4>
+          <h4 class="section-label">ATRIBUTOS DEL SISTEMA</h4>
           <ul class="stats-list">
             <template v-if="selectedItem.item.type === 'weapon'">
-              <li><span>DAÑO:</span> <span class="stat-val">{{ selectedItem.item.details?.damage ?? '-' }}</span></li>
-              <li><span>TIPO:</span> <span class="stat-val">{{ selectedItem.item.details?.weapon_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA DE ATAQUE:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.damage ?? '0' }} DMG</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">CATEGORÍA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.weapon_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
             <template v-if="selectedItem.item.type === 'armor'">
-              <li><span>DEFENSA:</span> <span class="stat-val">{{ selectedItem.item.details?.defense ?? '-' }}</span></li>
-              <li><span>CLASE:</span> <span class="stat-val">{{ selectedItem.item.details?.armor_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">NIVEL DE DEFENSA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">TIPO DE ARMADURA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.armor_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
             <template v-if="selectedItem.item.type === 'consumable'">
-              <li><span>EFECTO:</span> <span class="stat-val">{{ selectedItem.item.details?.effect ?? '-' }}</span></li>
-              <li><span>POTENCIA:</span> <span class="stat-val">{{ selectedItem.item.details?.power ?? '-' }}</span></li>
-              <li><span>DURACIÓN:</span> <span class="stat-val">{{ selectedItem.item.details?.duration ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">EFECTO PRIMARIO:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.power ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">DURACIÓN:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.duration ? selectedItem.item.details.duration + 's' : 'INSTANTÁNEO' }}</span>
+              </li>
             </template>
           </ul>
         </div>

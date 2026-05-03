@@ -74,20 +74,20 @@ class CharacterController extends Controller
 
         // Selección de arma
         $weaponName = match ($charClass->name) {
-            'Guerrero' => 'Espada del Guerrero',
-            'Mago' => 'Varita Arcana',
-            'Arquero' => 'Arco de Roble',
-            'Paladín' => 'Hacha de Batalla',
-            'Asesino' => 'Daga Asesina',
-            default => 'Espada del Guerrero',
+            'Guerrero' => 'Espada de Entrenamiento',
+            'Mago' => 'Varita de Madera',
+            'Arquero' => 'Arco de Iniciado',
+            'Paladín' => 'Hacha de Piedra',
+            'Asesino' => 'Daga de Práctica',
+            default => 'Espada de Entrenamiento',
         };
 
         // Selección de armadura
         $armorName = match ($charClass->name) {
-            'Guerrero', 'Paladín' => 'Armadura de Placas',
-            'Mago' => 'Túnica Mágica',
-            'Arquero', 'Asesino' => 'Armadura de Cuero',
-            default => 'Armadura de Cuero',
+            'Mago', 'Asesino' => 'Ropas de Viajero',
+            'Arquero', 'Guerrero' => 'Peto de Cuero Viejo',
+            'Paladín' => 'Escudo de Madera Circular',
+            default => 'Ropas de Viajero',
         };
 
         $this->giveAndEquipItem($character->id, $weaponName);
