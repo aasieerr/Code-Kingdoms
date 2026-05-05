@@ -2,6 +2,7 @@
   <div
     class="viewport"
     ref="arenaRef"
+    :style="viewportBgStyle"
     tabindex="0"
     @click="arenaRef.focus()"
     @focus="focused = true"
@@ -12,16 +13,23 @@
     <div class="game-bg"></div>
 
     <div class="world" :style="{ transform: cameraTransform }">
-      <div class="grid"></div>
-      <div class="arena-floor"></div>
+      <div class="grid" :style="arenaGridStyle"></div>
+      <div class="arena-floor" :style="arenaFloorStyle"></div>
 
       <div
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :class="[enemyFactionClass, { 'boss-enemy': e.type === 'boss' || e.type === 'miniboss' }]"
+        :class="[enemyFactionClass, { 'boss-enemy': e.type === 'boss' || e.type === 'miniboss', 'enemy--with-image': isPhpMeleeEnemy(e) }]"
         :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
+        <img
+          v-if="isPhpMeleeEnemy(e)"
+          class="enemy-skin enemy-skin--php-melee"
+          :src="phpMeleeEnemyImg"
+          :style="phpMeleeEnemyStyle(e)"
+          alt="PHP melee enemy"
+        />
         <span class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
       </div>
 
@@ -95,7 +103,8 @@
       <!-- Wave Info -->
       <div class="hud-top-center">
         <div class="wave-display">
-          <span class="wave-label">SECCIÓN {{ section }} / {{ TOTAL_SECTIONS }}</span>
+          <span class="wave-label">{{ currentMap.name.toUpperCase() }}</span>
+          <span class="wave-label-sub">SECCIÓN {{ section }} / {{ TOTAL_SECTIONS }}</span>
           <span class="wave-number">{{ sectionWave }} / {{ WAVES_PER_SECTION }}</span>
           <span class="route-label">{{ startKingdom }} → {{ targetKingdom }} · {{ routeInstruction }}</span>
         </div>
@@ -130,16 +139,16 @@
       <!-- Controls Hint (Bottom) -->
       <div class="hud-bottom-hints">
         <div class="hint-pill">
-          <span class="key">WASD</span> MOVIMIENTO
+          <span class="key">{{ keyLabel(settings.keybinds.moveUp) }}/{{ keyLabel(settings.keybinds.moveLeft) }}/{{ keyLabel(settings.keybinds.moveDown) }}/{{ keyLabel(settings.keybinds.moveRight) }}</span> MOVIMIENTO
         </div>
         <div class="hint-pill">
-          <span class="key">I</span> MOCHILA
+          <span class="key">{{ keyLabel(settings.keybinds.inventory) }}</span> MOCHILA
         </div>
         <div class="hint-pill">
-          <span class="key">K</span> EQUIPO
+          <span class="key">{{ keyLabel(settings.keybinds.equipment) }}</span> EQUIPO
         </div>
         <div class="hint-pill">
-          <span class="key">M</span> MAPA
+          <span class="key">{{ keyLabel(settings.keybinds.map) }}</span> MAPA
         </div>
       </div>
     </div>
@@ -228,9 +237,12 @@
 
 <script setup>
 import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useArenaCombat } from './composables/useArenaCombat'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
+import { SECTION_MAPS } from './constants/maps'
+import arrayIslandsMap from './assets/maps/array-islands-reference.png'
+import phpMeleeEnemyImg from './assets/enemy-php-melee.png'
 import { lastTransition } from './gameState'
 import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
 import api from './api/axios'
@@ -240,6 +252,8 @@ import MapPanel from './components/MapPanel.vue'
 import WalletBar from './components/WalletBar.vue'
 import MicropayModal from './components/MicropayModal.vue'
 import { useCharacterStore } from './stores/character'
+import { confirmCodeCoinsCheckout } from './api/micropay'
+import { useGameSettings } from './composables/useGameSettings'
 
 function parseSprite(data) {
   try {
@@ -257,6 +271,7 @@ function isEmptySprite(data) {
 
 
 const router = useRouter()
+const route = useRoute()
 const ARENA_WORLD_WIDTH = 1700
 const ARENA_WORLD_HEIGHT = WORLD_EDGE
 const worldWidthPx = `${ARENA_WORLD_WIDTH}px`
@@ -269,8 +284,46 @@ const showMapPanel = ref(false)
 const showMicropay = ref(false)
 
 const characterStore = useCharacterStore()
+const { keyMatches, settings, keyLabel } = useGameSettings()
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
+const currentMap = computed(() => {
+  const faction = isPhpKingdomSelected() ? 'php' : 'java'
+  const idx = Math.min((section.value || 1) - 1, 5)
+  return SECTION_MAPS[faction][idx]
+})
+
+const isArrayIslandsSection = computed(() => currentMap.value?.name === 'Array Islands')
+
+const arenaFloorStyle = computed(() => {
+  if (isArrayIslandsSection.value) {
+    return {
+      backgroundImage: `url(${arrayIslandsMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+
+  return {
+    background: `
+      radial-gradient(ellipse 80% 50% at 50% 50%, ${currentMap.value.accent}33, transparent 55%),
+      linear-gradient(180deg, ${currentMap.value.floor} 0%, ${currentMap.value.floorAlt} 100%)
+    `
+  }
+})
+
+const arenaGridStyle = computed(() => ({
+  backgroundImage: `
+    linear-gradient(${currentMap.value.gridColor} 1px, transparent 1px),
+    linear-gradient(90deg, ${currentMap.value.gridColor} 1px, transparent 1px)
+  `,
+  backgroundSize: '50px 50px'
+}))
+
+const viewportBgStyle = computed(() => ({
+  backgroundColor: currentMap.value.bg
+}))
 const navigating = ref(false)
 const portalCooldown = ref(true)
 const showVictoryModal = ref(true)
@@ -280,6 +333,52 @@ const progressHydrated = ref(false)
 function isPhpKingdomSelected() {
   const kName = String(characterStore.kingdomName || '').toLowerCase()
   return kName.includes('php') || kName.includes('peachepe') || Number(characterStore.kingdomId) === 1
+}
+
+const ARRAY_ISLANDS_WATER_ELLIPSES = [
+  // Bahía principal derecha (imagen Array Islands actual)
+  { cx: 1420, cy: 620, rx: 430, ry: 560 },
+  { cx: 1270, cy: 620, rx: 250, ry: 330 },
+  // Entradas de agua superior derecha
+  { cx: 1485, cy: 170, rx: 120, ry: 100 },
+  { cx: 1620, cy: 255, rx: 95, ry: 85 },
+  // Agua inferior derecha
+  { cx: 1505, cy: 1030, rx: 170, ry: 200 },
+]
+
+function isPointInWaterEllipse(px, py, ellipse) {
+  const nx = (px - ellipse.cx) / ellipse.rx
+  const ny = (py - ellipse.cy) / ellipse.ry
+  return (nx * nx + ny * ny) <= 1
+}
+
+function isPointOnArrayIslandsLand(px, py) {
+  if (px < 40 || px > ARENA_WORLD_WIDTH - 40 || py < 40 || py > ARENA_WORLD_HEIGHT - 40) {
+    return false
+  }
+  return !ARRAY_ISLANDS_WATER_ELLIPSES.some((ellipse) => isPointInWaterEllipse(px, py, ellipse))
+}
+
+function isArrayIslandsWalkable(nextX, nextY, ctx = {}) {
+  const currentSection = Number(ctx.section || 1)
+  const faction = isPhpKingdomSelected() ? 'php' : 'java'
+  const sectionIndex = Math.min(Math.max(currentSection - 1, 0), 5)
+  const sectionMapName = SECTION_MAPS[faction]?.[sectionIndex]?.name
+  if (sectionMapName !== 'Array Islands') {
+    return true
+  }
+
+  const playerSize = Number(ctx.playerSize || 40)
+  const pad = 4
+  const samplePoints = [
+    [nextX + pad, nextY + pad],
+    [nextX + playerSize - pad, nextY + pad],
+    [nextX + pad, nextY + playerSize - pad],
+    [nextX + playerSize - pad, nextY + playerSize - pad],
+    [nextX + playerSize / 2, nextY + playerSize / 2],
+  ]
+
+  return samplePoints.every(([px, py]) => isPointOnArrayIslandsLand(px, py))
 }
 
 
@@ -322,6 +421,7 @@ const {
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
   characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
+  isWalkable: isArrayIslandsWalkable,
   debugImmortal: true,
   debugMaxDamage: true,
   debugDamage: 99999,
@@ -410,22 +510,24 @@ function onArenaPanelHotkey(e) {
   if (showMicropay.value) {
     return
   }
-  const k = e.key.toLowerCase()
-  if (!['i', 'k', 'm'].includes(k)) {
+  const isInventory = keyMatches(e, 'inventory')
+  const isEquipment = keyMatches(e, 'equipment')
+  const isMap = keyMatches(e, 'map')
+  if (!isInventory && !isEquipment && !isMap) {
     return
   }
   e.preventDefault()
-  if (k === 'i') {
+  if (isInventory) {
     showPanel.value = showPanel.value === 'inventory' ? null : 'inventory'
     if (showPanel.value) {
       showMapPanel.value = false
     }
-  } else if (k === 'k') {
+  } else if (isEquipment) {
     showPanel.value = showPanel.value === 'equipment' ? null : 'equipment'
     if (showPanel.value) {
       showMapPanel.value = false
     }
-  } else if (k === 'm') {
+  } else if (isMap) {
     showMapPanel.value = !showMapPanel.value
     if (showMapPanel.value) {
       showPanel.value = null
@@ -444,6 +546,24 @@ const enemyFactionClass = computed(() =>
 
 function hpBarPct(e) {
   return Math.max(8, Math.round((100 * e.hp) / (e.maxHp || 1)))
+}
+
+function isPhpMeleeEnemy(e) {
+  if (enemyFaction.value !== 'php') return false
+  const rangedTypes = new Set(['thread_spammer', 'dependency_injector', 'composer_update', 'boss', 'miniboss'])
+  return !rangedTypes.has(e.type)
+}
+
+function phpMeleeEnemyStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const enemyCy = e.y + esize / 2
+  const playerCx = x.value + 20
+  const playerCy = y.value + 20
+  const angleDeg = (Math.atan2(playerCy - enemyCy, playerCx - enemyCx) * 180) / Math.PI - 90
+  return {
+    transform: `rotate(${angleDeg}deg) scale(1.2)`,
+  }
 }
 
 /** Menos zoom = más área visible (ver enemigos a distancia). */
@@ -470,6 +590,21 @@ async function refreshWallet() {
   } else {
     colorStill.value = '#e94560'
     colorMoving.value = '#f5a623'
+  }
+}
+
+async function handleMicropayReturn() {
+  const status = String(route.query.micropay_status || '')
+  const sessionId = String(route.query.session_id || '')
+  if (status !== 'success' || !sessionId) return
+
+  try {
+    await confirmCodeCoinsCheckout(sessionId)
+    await refreshWallet()
+  } catch (err) {
+    console.error('Error confirmando micropago en SecondView:', err)
+  } finally {
+    router.replace({ path: route.path, query: {} }).catch(() => {})
   }
 }
 
@@ -529,6 +664,7 @@ onMounted(async () => {
       ? await fetchCharacter(arenaCharacterId.value)
       : null
     await refreshWallet()
+    await handleMicropayReturn()
     if (arenaCharacter) {
       characterStore.arenaSection = Number(arenaCharacter.arena_section ?? 1) || 1
       characterStore.arenaWave = Number(arenaCharacter.arena_wave ?? 1) || 1
@@ -639,7 +775,6 @@ watch([section, sectionWave, phase], () => {
   left: 0;
   outline: none;
   overflow: hidden;
-  background-color: #2f3440;
   font-family: 'Press Start 2P', monospace;
 }
 
@@ -741,6 +876,36 @@ watch([section, sectionWave, phase], () => {
   border-radius: 4px;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+
+.enemy--with-image {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.enemy-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+  pointer-events: none;
+}
+
+.enemy-skin--php-melee {
+  width: 150%;
+  height: 150%;
+  left: -25%;
+  top: -25%;
+  transform-origin: center;
+  transition: transform 0.08s linear;
+}
+
+.enemy--with-image .enemy-hp {
+  bottom: -6px;
 }
 
 .enemy--java {
@@ -894,6 +1059,11 @@ watch([section, sectionWave, phase], () => {
 }
 
 .wave-label { font-size: 8px; color: #facc15; opacity: 0.8; }
+.wave-label-sub {
+  font-size: 7px;
+  color: rgba(250, 204, 21, 0.5);
+  letter-spacing: 0.1em;
+}
 .wave-number { font-size: 22px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
 .route-label { font-size: 7px; color: #a7f3d0; letter-spacing: 0.08em; }
 

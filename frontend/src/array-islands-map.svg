@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1200" viewBox="0 0 1700 1200" role="img" aria-label="Array Islands arena map">
+  <defs>
+    <style>
+      .ocean { fill: #0a1628; }
+      .wave-a { fill: #10203a; opacity: 0.35; animation: driftA 12s linear infinite; }
+      .wave-b { fill: #142949; opacity: 0.22; animation: driftB 16s linear infinite; }
+      .bin-light { fill: #3b82f6; opacity: 0.18; animation: blink 2.8s steps(2, end) infinite; }
+      .reef { fill: #f59e0b; }
+      .reef-deep { fill: #d97706; }
+      .island { fill: #5a3a18; stroke: #7b4f22; stroke-width: 6; shape-rendering: crispEdges; }
+      .bridge { fill: #6b4420; stroke: #8a5b2a; stroke-width: 3; shape-rendering: crispEdges; }
+      .bridge-plank { fill: #a0713e; opacity: 0.7; shape-rendering: crispEdges; }
+      .label {
+        font-family: "Press Start 2P", monospace;
+        font-size: 20px;
+        fill: #dbeafe;
+        letter-spacing: 1px;
+        text-shadow: 0 0 6px #1d4ed8;
+      }
+
+      @keyframes driftA {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-120px); }
+      }
+      @keyframes driftB {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(140px); }
+      }
+      @keyframes blink {
+        0%, 45% { opacity: 0.08; }
+        50%, 75% { opacity: 0.35; }
+        100% { opacity: 0.1; }
+      }
+    </style>
+    <pattern id="pixelWavesA" width="96" height="96" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="24" height="8"/>
+      <rect x="40" y="24" width="20" height="8"/>
+      <rect x="70" y="60" width="22" height="8"/>
+      <rect x="20" y="74" width="26" height="8"/>
+    </pattern>
+    <pattern id="pixelWavesB" width="110" height="90" patternUnits="userSpaceOnUse">
+      <rect x="8" y="8" width="18" height="6"/>
+      <rect x="48" y="34" width="24" height="6"/>
+      <rect x="80" y="56" width="18" height="6"/>
+      <rect x="22" y="72" width="30" height="6"/>
+    </pattern>
+  </defs>
+
+  <!-- Ocean base -->
+  <rect class="ocean" x="0" y="0" width="1700" height="1200"/>
+
+  <!-- Subtle animated pixel waves -->
+  <rect class="wave-a" x="-150" y="0" width="2000" height="1200" fill="url(#pixelWavesA)"/>
+  <rect class="wave-b" x="-120" y="0" width="2000" height="1200" fill="url(#pixelWavesB)"/>
+
+  <!-- Binary blink lights in water -->
+  <g>
+    <rect class="bin-light" x="110" y="210" width="7" height="7"/>
+    <rect class="bin-light" x="142" y="210" width="7" height="7" style="animation-delay:0.4s"/>
+    <rect class="bin-light" x="580" y="150" width="7" height="7" style="animation-delay:1.1s"/>
+    <rect class="bin-light" x="1240" y="180" width="7" height="7" style="animation-delay:0.9s"/>
+    <rect class="bin-light" x="1570" y="290" width="7" height="7" style="animation-delay:1.6s"/>
+    <rect class="bin-light" x="260" y="980" width="7" height="7" style="animation-delay:0.7s"/>
+    <rect class="bin-light" x="920" y="1050" width="7" height="7" style="animation-delay:1.4s"/>
+    <rect class="bin-light" x="1410" y="1000" width="7" height="7" style="animation-delay:0.2s"/>
+    <rect class="bin-light" x="1640" y="840" width="7" height="7" style="animation-delay:1.8s"/>
+    <rect class="bin-light" x="70" y="640" width="7" height="7" style="animation-delay:1.3s"/>
+  </g>
+
+  <!-- Coral reef walls on borders -->
+  <g>
+    <rect class="reef" x="0" y="0" width="1700" height="28"/>
+    <rect class="reef-deep" x="0" y="28" width="1700" height="12"/>
+    <rect class="reef" x="0" y="1172" width="1700" height="28"/>
+    <rect class="reef-deep" x="0" y="1160" width="1700" height="12"/>
+    <rect class="reef" x="0" y="0" width="28" height="1200"/>
+    <rect class="reef-deep" x="28" y="0" width="12" height="1200"/>
+    <rect class="reef" x="1672" y="0" width="28" height="1200"/>
+    <rect class="reef-deep" x="1660" y="0" width="12" height="1200"/>
+
+    <!-- Reef pixel clusters corners -->
+    <rect class="reef" x="60" y="60" width="46" height="22"/>
+    <rect class="reef-deep" x="96" y="82" width="22" height="16"/>
+    <rect class="reef" x="1594" y="64" width="46" height="22"/>
+    <rect class="reef-deep" x="1578" y="86" width="22" height="16"/>
+    <rect class="reef" x="66" y="1118" width="46" height="22"/>
+    <rect class="reef-deep" x="102" y="1102" width="22" height="16"/>
+    <rect class="reef" x="1590" y="1116" width="46" height="22"/>
+    <rect class="reef-deep" x="1574" y="1100" width="22" height="16"/>
+  </g>
+
+  <!-- Playable islands (kept outside central clear area: x450-1250, y300-900) -->
+  <g>
+    <path class="island" d="M120 120 h230 l40 30 v120 l-35 35 h-250 l-45 -35 v-115 z"/>
+    <path class="island" d="M1310 110 h230 l50 45 v130 l-44 38 h-248 l-38 -34 v-126 z"/>
+    <path class="island" d="M120 930 h250 l30 32 v132 l-38 36 h-236 l-44 -40 v-124 z"/>
+    <path class="island" d="M1290 920 h250 l46 40 v128 l-40 42 h-254 l-40 -36 v-130 z"/>
+    <path class="island" d="M640 70 h420 l62 40 v112 l-56 42 h-432 l-54 -38 v-114 z"/>
+    <path class="island" d="M620 948 h450 l48 32 v120 l-58 36 h-434 l-46 -30 v-122 z"/>
+  </g>
+
+  <!-- Pixel wooden bridges (array index connections) -->
+  <g>
+    <rect class="bridge" x="360" y="162" width="280" height="34"/>
+    <rect class="bridge" x="1060" y="162" width="250" height="34"/>
+    <rect class="bridge" x="360" y="1012" width="260" height="34"/>
+    <rect class="bridge" x="1070" y="1012" width="220" height="34"/>
+
+    <!-- planks -->
+    <rect class="bridge-plank" x="372" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="404" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="436" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="468" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="500" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="532" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="564" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="596" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1080" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1112" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1144" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1176" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1208" y="168" width="8" height="22"/>
+    <rect class="bridge-plank" x="1240" y="168" width="8" height="22"/>
+
+    <rect class="bridge-plank" x="372" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="404" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="436" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="468" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="500" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="532" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="564" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1090" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1122" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1154" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1186" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1218" y="1018" width="8" height="22"/>
+    <rect class="bridge-plank" x="1250" y="1018" width="8" height="22"/>
+  </g>
+
+  <!-- Array index labels per island -->
+  <g>
+    <text class="label" x="185" y="210">[0]</text>
+    <text class="label" x="1390" y="220">[1]</text>
+    <text class="label" x="180" y="1030">[2]</text>
+    <text class="label" x="1360" y="1025">[3]</text>
+    <text class="label" x="795" y="175">[4]</text>
+    <text class="label" x="800" y="1038">[5]</text>
+  </g>
+
+  <!-- Name -->
+  <text class="label" x="700" y="48" style="font-size:24px; fill:#facc15;">ARRAY ISLANDS</text>
+</svg>

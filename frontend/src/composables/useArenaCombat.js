@@ -125,6 +125,7 @@ export function useArenaCombat(options = {}) {
   const equippedWeapon = options.equippedWeapon ?? ref(null)
   const characterClass = options.characterClass ?? ref('')
   const characterRace = options.characterRace ?? ref('')
+  const isWalkable = typeof options.isWalkable === 'function' ? options.isWalkable : null
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -297,25 +298,56 @@ export function useArenaCombat(options = {}) {
     return Math.max(2.8, Math.min(5.2, speed))
   }
 
+  function canPlayerStandAt(nextX, nextY) {
+    if (!isWalkable) return true
+    return Boolean(isWalkable(nextX, nextY, {
+      playerSize: PLAYER_SIZE,
+      worldWidth: WORLD_W,
+      worldHeight: WORLD_H,
+      section: section.value,
+      startKingdom: startKingdom.value,
+      enemyFaction: enemyFaction.value,
+    }))
+  }
+
+  function movePlayerConstrained(nextX, nextY) {
+    const prevX = x.value
+    const prevY = y.value
+    const boundedX = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, nextX))
+    const boundedY = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, nextY))
+
+    if (!isWalkable || canPlayerStandAt(boundedX, boundedY)) {
+      x.value = boundedX
+      y.value = boundedY
+      return
+    }
+
+    const canSlideX = canPlayerStandAt(boundedX, prevY)
+    const canSlideY = canPlayerStandAt(prevX, boundedY)
+    x.value = canSlideX ? boundedX : prevX
+    y.value = canSlideY ? boundedY : prevY
+  }
+
   function tick() {
     const now = performance.now()
 
     if (!locked.value && arenaRef.value) {
-      const W = WORLD_W - PLAYER_SIZE
-      const H = WORLD_H - PLAYER_SIZE
       const moveSpeed = resolveMovementSpeed()
+      let nextX = x.value
+      let nextY = y.value
       if (keys.w) {
-        y.value = Math.max(0, y.value - moveSpeed)
+        nextY -= moveSpeed
       }
       if (keys.s) {
-        y.value = Math.min(H, y.value + moveSpeed)
+        nextY += moveSpeed
       }
       if (keys.a) {
-        x.value = Math.max(0, x.value - moveSpeed)
+        nextX -= moveSpeed
       }
       if (keys.d) {
-        x.value = Math.min(W, x.value + moveSpeed)
+        nextX += moveSpeed
       }
+      movePlayerConstrained(nextX, nextY)
       moving.value = Object.values(keys).some(Boolean)
     }
 
@@ -458,8 +490,10 @@ export function useArenaCombat(options = {}) {
           const dragDist = Math.hypot(ecx - pcx, ecy - pcy)
           if (dragDist < 210 && dragDist > 0) {
             const pullStrength = 0.65 * (1 - dragDist / 210)
-            x.value = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, x.value + ((ecx - pcx) / dragDist) * pullStrength))
-            y.value = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, y.value + ((ecy - pcy) / dragDist) * pullStrength))
+            movePlayerConstrained(
+              x.value + ((ecx - pcx) / dragDist) * pullStrength,
+              y.value + ((ecy - pcy) / dragDist) * pullStrength
+            )
           }
         }
 
@@ -719,8 +753,7 @@ export function useArenaCombat(options = {}) {
           if (b.isZone) {
             const pxDir = (pcx - b.x) / (dist || 1)
             const pyDir = (pcy - b.y) / (dist || 1)
-            x.value = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, x.value + pxDir * 0.8))
-            y.value = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, y.value + pyDir * 0.8))
+            movePlayerConstrained(x.value + pxDir * 0.8, y.value + pyDir * 0.8)
             keptEBullets.push(b)
           }
         } else {

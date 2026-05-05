@@ -59,7 +59,7 @@
       v-if="inSkinShopZone && !showSkinShop && !showMicropay"
       class="shop-hint"
     >
-      Pulsa <kbd>E</kbd> — Apariencia
+      Pulsa <kbd>{{ keyLabel(settings.keybinds.interact) }}</kbd> - Apariencia
     </p>
 
     <!-- Logo -->
@@ -79,6 +79,7 @@
       @open-equipment="openPanel('equipment')"
       @toggle-map="toggleMap"
       @character-menu="goCharacterMenu"
+      @open-settings="showSettings = true"
       @logout="handleLogout"
     />
 
@@ -104,6 +105,7 @@
     />
 
     <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
 
     <!-- Mapa -->
     <MapPanel
@@ -129,7 +131,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
 import { lastTransition, setActiveCharacterId } from './gameState'
@@ -143,9 +145,12 @@ import MapPanel       from './components/MapPanel.vue'
 import WalletBar      from './components/WalletBar.vue'
 import SkinShopPanel  from './components/SkinShopPanel.vue'
 import MicropayModal  from './components/MicropayModal.vue'
+import SettingsModal  from './components/SettingsModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
 import { useCharacterStore } from './stores/character'
+import { confirmCodeCoinsCheckout } from './api/micropay'
+import { useGameSettings } from './composables/useGameSettings'
 
 function parseSprite(data) {
   try {
@@ -163,6 +168,7 @@ function isEmptySprite(data) {
 
 
 const router        = useRouter()
+const route = useRoute()
 const worldEdgePx   = `${WORLD_EDGE}px`
 const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
 const startY   = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
@@ -172,8 +178,10 @@ const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
 const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
+const showSettings = ref(false)
 const authStore = useAuthStore()
 const characterStore = useCharacterStore()
+const { keyMatches, keyLabel, settings } = useGameSettings()
 
 // Monedero y apariencia
 
@@ -232,13 +240,28 @@ async function refreshWallet() {
   }
 }
 
+async function handleMicropayReturn() {
+  const status = String(route.query.micropay_status || '')
+  const sessionId = String(route.query.session_id || '')
+  if (status !== 'success' || !sessionId) return
+
+  try {
+    await confirmCodeCoinsCheckout(sessionId)
+    await refreshWallet()
+  } catch (err) {
+    console.error('Error confirmando micropago en MainView:', err)
+  } finally {
+    router.replace({ path: route.path, query: {} }).catch(() => {})
+  }
+}
+
 
 // Bloquear movimiento si hay paneles abiertos
 watch(
-  [showPanel, showMapPanel, showSkinShop, showMicropay, npcsManager.activeDialogueNpc],
-  ([p, m, s, mi, d]) => {
+  [showPanel, showMapPanel, showSkinShop, showMicropay, showSettings, npcsManager.activeDialogueNpc],
+  ([p, m, s, mi, st, d]) => {
     // Si hay algo abierto, bloqueamos. Si no, desbloqueamos (a menos que estemos en transición)
-    if (p || m || s || mi || d) {
+    if (p || m || s || mi || st || d) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -276,7 +299,10 @@ async function handleLogout() {
 }
 
 function onSkinShopKey(e) {
-  if (e.key.toLowerCase() !== 'e') {
+  if (showSettings.value) {
+    return
+  }
+  if (!keyMatches(e, 'interact')) {
     return
   }
   if (showSkinShop.value || showMicropay.value) {
@@ -313,6 +339,7 @@ onMounted(async () => {
   
   try {
     await refreshWallet()
+    await handleMicropayReturn()
   } catch (err) {
     console.error("Error inicial en MainView:", err)
   }

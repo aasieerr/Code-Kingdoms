@@ -46,6 +46,9 @@
         <button class="nav-btn hero-btn" @click.stop="$emit('character-menu')">
           <span class="btn-text">HÉROES</span>
         </button>
+        <button class="nav-btn settings-btn" @click.stop="$emit('open-settings')">
+          <span class="btn-text">SETTINGS</span>
+        </button>
         <button class="nav-btn exit-btn" @click.stop="$emit('logout')">
           <span class="btn-text">SALIR</span>
         </button>
@@ -68,7 +71,7 @@ defineProps({
   mapOpen: { type: Boolean, default: false },
 })
 
-defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'logout'])
+defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'open-settings', 'logout'])
 
 const characterStore = useCharacterStore()
 </script>
@@ -243,6 +246,9 @@ const characterStore = useCharacterStore()
 
 .hero-btn { background: #1e40af; border-color: #1d4ed8; color: #dbeafe; box-shadow: 4px 4px 0 #1e3a8a; }
 .hero-btn:hover { background: #2563eb; color: white; }
+
+.settings-btn { background: #4c1d95; border-color: #6d28d9; color: #ede9fe; box-shadow: 4px 4px 0 #3b0764; }
+.settings-btn:hover { background: #7c3aed; color: white; }
 
 .exit-btn { background: #991b1b; border-color: #b91c1c; color: #fecaca; box-shadow: 4px 4px 0 #7f1d1d; }
 .exit-btn:hover { background: #dc2626; color: white; }
