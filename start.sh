@@ -58,7 +58,7 @@ docker compose exec laravel.test php artisan migrate --force
 
 # ── 7. (Opcional) Seeders ─────────────────────────────────────────────────────
 read -p "¿Ejecutar seeders con datos de prueba? (s/N): " run_seed
-if [[ "$run_seed" =~ ^[sS]$ ]]; then
+if [ "$run_seed" = "s" ] || [ "$run_seed" = "S" ]; then
   docker compose exec laravel.test php artisan db:seed --force
   echo -e "${GREEN}✓ Seeders ejecutados${NC}"
 fi

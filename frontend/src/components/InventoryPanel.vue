@@ -1,7 +1,7 @@
 <template>
-  <section class="premium-inventory-panel" @click.stop>
+  <section class="game-panel" @click.stop>
     <!-- SCANLINES -->
-    <div class="scanlines"></div>
+    <div class="panel-scanlines"></div>
 
     <header class="panel-header">
       <div class="panel-tabs" v-if="!isShop">
@@ -13,11 +13,11 @@
         <span class="gold-icon">🪙</span>
         <span class="gold-amount">{{ characterStore.gold }}</span>
       </div>
-      <button class="close-btn" @click="$emit('close')">X</button>
+      <button class="panel-close-btn" @click="$emit('close')">X</button>
     </header>
 
     <div class="panel-content">
-      <div class="inventory-main">
+      <div class="panel-main">
         <div class="inventory-header-actions">
           <div class="inventory-filters">
             <button
@@ -84,33 +84,66 @@
 
       <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
-        <div class="preview-header" style="display: flex; align-items: center; gap: 16px;">
+        <div class="preview-header-box">
           <div class="sprite-display">
             <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <div class="display-glow"></div>
           </div>
-          <div>
-            <h3 class="preview-title" style="margin-bottom: 6px;">{{ selectedItem.item.name.toUpperCase() }}</h3>
-            <p class="preview-desc" style="margin: 0;">{{ selectedItem.item.description }}</p>
+          <div class="preview-info">
+            <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <div class="preview-type-tag">{{ labelsByType[selectedItem.item.type] }}</div>
           </div>
         </div>
 
+        <div class="description-box">
+          <h4 class="section-label">DESCRIPCIÓN</h4>
+          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+        </div>
+
         <div class="preview-stats">
-          <h4 class="stats-label">ATRIBUTOS</h4>
+          <h4 class="section-label">ATRIBUTOS DEL SISTEMA</h4>
           <ul class="stats-list">
             <template v-if="selectedItem.item.type === 'weapon'">
-              <li><span>DAÑO:</span> <span class="stat-val">{{ selectedItem.item.details?.damage ?? '-' }}</span></li>
-              <li><span>TIPO:</span> <span class="stat-val">{{ selectedItem.item.details?.weapon_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA DE ATAQUE:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.damage ?? '0' }} DMG</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">CATEGORÍA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.weapon_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
             <template v-if="selectedItem.item.type === 'armor'">
-              <li><span>DEFENSA:</span> <span class="stat-val">{{ selectedItem.item.details?.defense ?? '-' }}</span></li>
-              <li><span>CLASE:</span> <span class="stat-val">{{ selectedItem.item.details?.armor_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">NIVEL DE DEFENSA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">TIPO DE ARMADURA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.armor_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
             <template v-if="selectedItem.item.type === 'consumable'">
-              <li><span>EFECTO:</span> <span class="stat-val">{{ selectedItem.item.details?.effect ?? '-' }}</span></li>
-              <li><span>POTENCIA:</span> <span class="stat-val">{{ selectedItem.item.details?.power ?? '-' }}</span></li>
-              <li><span>DURACIÓN:</span> <span class="stat-val">{{ selectedItem.item.details?.duration ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">EFECTO PRIMARIO:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.power ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">DURACIÓN:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.duration ? selectedItem.item.details.duration + 's' : 'INSTANTÁNEO' }}</span>
+              </li>
             </template>
           </ul>
         </div>
@@ -317,313 +350,36 @@ async function handleSell(ci) {
 }
 </script>
 
+<style>
+@import '../styles/game-panel.css';
+</style>
+
 <style scoped>
-.premium-inventory-panel {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  width: min(1000px, 95vw);
-  height: 600px;
-  z-index: 200;
-  border: 4px solid #facc15;
-  background: #0f172a;
-  box-shadow: 12px 12px 0 #854d0e, 0 30px 60px rgba(0,0,0,0.8);
-  color: #fef9c3;
-  padding: 0;
-  font-family: 'Press Start 2P', monospace;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  image-rendering: pixelated;
-}
-
-/* Scanlines */
-.scanlines {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
-  background-size: 100% 4px;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.panel-header {
-  padding: 20px 30px;
-  background: #1e293b;
-  border-bottom: 4px solid #facc15;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 5;
-}
-
-.panel-tabs { display: flex; gap: 12px; }
-
-.tab-btn {
-  border: 4px solid #facc15;
-  background: #0f172a;
-  color: #facc15;
-  padding: 12px 24px;
-  font-size: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
-}
-
-.tab-btn.active {
-  background: #ca8a04;
-  color: #fef9c3;
-  box-shadow: 4px 4px 0 #854d0e;
-  transform: translateY(-2px);
-}
-
-.close-btn {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #facc15;
-  background: #991b1b;
-  color: #fecaca;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 4px 4px 0 #431407;
-}
-
-.header-gold {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #0b0d17;
-  padding: 8px 16px;
-  border: 2px solid #facc15;
-  border-radius: 4px;
-}
-.gold-amount {
-  font-size: 10px;
-  color: #facc15;
-}
-
-
-/* Content Layout */
-.panel-content {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.inventory-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  border-right: 2px solid rgba(250, 204, 21, 0.1);
-}
-
+/* ── Inventory-specific styles ── */
 .inventory-header-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 20px; margin-bottom: 24px;
 }
-
-.inventory-filters {
-  display: flex;
-  gap: 8px;
-}
-
-.search-wrapper {
-  flex: 1;
-  position: relative;
-  max-width: 300px;
-}
-
+.inventory-filters { display: flex; gap: 8px; }
+.search-wrapper { flex: 1; position: relative; max-width: 300px; }
 .search-input {
-  width: 100%;
-  padding: 10px 14px 10px 40px;
-  background: #0b0d17;
-  border: 2px solid #334155;
-  color: #facc15;
-  font-family: inherit;
-  font-size: 7px;
-  transition: all 0.2s;
+  width: 100%; padding: 10px 14px 10px 40px;
+  background: #0b0d17; border: 2px solid #334155;
+  color: #facc15; font-family: 'Press Start 2P', monospace;
+  font-size: 7px; transition: all 0.2s; box-sizing: border-box;
 }
-
-.search-input:focus {
-  outline: none;
-  border-color: #facc15;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
-}
-
-.search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
+.search-input:focus { outline: none; border-color: #facc15; box-shadow: 0 0 10px rgba(250,204,21,0.2); }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: 0.5; pointer-events: none; }
 .filter-btn {
-  padding: 10px 14px;
-  background: #1e293b;
-  border: 2px solid #334155;
-  color: #94a3b8;
-  font-size: 7px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 10px 14px; background: #1e293b; border: 2px solid #334155;
+  color: #94a3b8; font-size: 7px; font-family: 'Press Start 2P', monospace;
+  cursor: pointer; transition: all 0.2s;
 }
-
-.filter-btn.active {
-  border-color: #facc15;
-  color: #facc15;
-  background: #1e293b;
-}
-
-.list-wrapper {
-  flex: 1;
-  overflow-y: auto;
-  background: #0b0d17;
-  border: 3px solid #1e293b;
-  padding: 12px;
-}
-
-.item-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.item-list li {
-  padding: 12px;
-  background: #1e293b;
-  border: 2px solid #334155;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.item-list li:hover {
-  border-color: #facc15;
-  background: #334155;
-  transform: translateX(4px);
-}
-
-.item-list li.selected {
-  background: #ca8a04;
-  border-color: #facc15;
-  color: #fef9c3;
-}
-
-.item-icon-box {
-  width: 40px;
-  height: 40px;
-  background: #0f172a;
-  border: 2px solid rgba(250, 204, 21, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.item-info { flex: 1; }
-.item-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.item-name { font-size: 9px; font-weight: bold; }
+.filter-btn.active { border-color: #facc15; color: #facc15; }
 .equipped-tag { font-size: 7px; background: #facc15; color: #431407; padding: 2px 4px; }
-
-.item-meta { display: flex; gap: 12px; font-size: 7px; color: #94a3b8; }
-
-/* Preview Section */
-.item-preview {
-  width: 360px;
-  padding: 20px;
-  background: #1e293b;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
+.meta-price { font-size: 7px; color: #94a3b8; }
+.retry-btn {
+  padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
+  color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
 }
-
-.preview-placeholder {
-  width: 360px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 8px;
-  text-align: center;
-}
-
-.sprite-display {
-  width: 80px;
-  height: 80px;
-  background: #0b0d17;
-  border: 4px solid #facc15;
-  box-shadow: 4px 4px 0 #854d0e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.display-icon { font-size: 40px; z-index: 1; }
-.display-glow {
-  position: absolute;
-  inset: 20%;
-  background: #facc15;
-  filter: blur(40px);
-  opacity: 0.15;
-}
-
-.preview-title { font-size: 14px; color: #facc15; text-shadow: 2px 2px 0 #431407; margin-bottom: 12px; }
-.preview-desc { font-size: 8px; line-height: 1.8; color: #cbd5e1; }
-
-.stats-label { font-size: 7px; color: #facc15; opacity: 0.6; margin-bottom: 12px; }
-.stats-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.stats-list li { font-size: 8px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(250, 204, 21, 0.1); padding-bottom: 4px; }
-.stat-val { color: #facc15; }
-
-.preview-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; flex-shrink: 0; }
-
-.action-btn {
-  padding: 16px;
-  font-family: inherit;
-  font-size: 8px;
-  font-weight: bold;
-  border: 4px solid #facc15;
-  cursor: pointer;
-  transition: all 0.1s;
-}
-
-.action-btn.buy { background: #ca8a04; color: #fef9c3; box-shadow: 4px 4px 0 #854d0e; }
-.action-btn.sell { background: #991b1b; color: #fecaca; border-color: #ef4444; box-shadow: 4px 4px 0 #450a0a; }
-.action-btn.equip { background: #1e40af; color: #dbeafe; border-color: #3b82f6; box-shadow: 4px 4px 0 #1e3a8a; }
-
-.action-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-
-/* Status Boxes */
-.status-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 20px;
-  text-align: center;
-  font-size: 8px;
-  color: #94a3b8;
-}
-
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 8px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #0b0d17; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #ca8a04; border: 2px solid #facc15; }
 </style>

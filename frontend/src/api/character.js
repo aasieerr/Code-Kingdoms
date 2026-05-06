@@ -36,27 +36,7 @@ export async function fetchCharacter(id) {
  * Devuelve el personaje activo (elegido en el menú). No asigna ningún PJ por defecto.
  */
 export async function ensureActiveCharacterId() {
-  if (activeCharacterId.value != null) {
-    return activeCharacterId.value
-  }
-  const s = readStoredId()
-  if (s != null) {
-    setActiveCharacterId(s)
-  }
   return activeCharacterId.value
-}
-
-function readStoredId() {
-  try {
-    const raw = localStorage.getItem('ck_active_character_id')
-    if (raw == null || raw === '') {
-      return null
-    }
-    const n = parseInt(raw, 10)
-    return Number.isNaN(n) ? null : n
-  } catch {
-    return null
-  }
 }
 
 /**

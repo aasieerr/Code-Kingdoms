@@ -7,14 +7,17 @@ use App\Http\Controllers\CharacterItemController;
 use App\Http\Controllers\CosmeticSkinController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KingdomController;
+use App\Http\Controllers\MicropayController;
 use App\Http\Controllers\NPCController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ScreenshotController;
+use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (contenido del juego / registro)
+Route::get('/stats', [StatsController::class, 'index']);
 Route::get('/kingdoms', [KingdomController::class, 'index']);
 Route::get('/kingdoms/{id}', [KingdomController::class, 'show']);
 Route::get('/races', [RaceController::class, 'index']);
@@ -46,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shop/sell', [ShopController::class, 'sell']);
     Route::post('/skins/purchase', [CosmeticSkinController::class, 'purchase']);
     Route::post('/characters/{id}/equip-skin', [CosmeticSkinController::class, 'equip']);
+    Route::post('/micropay/code-coins/checkout', [MicropayController::class, 'createCheckoutSession']);
+    Route::post('/micropay/code-coins/confirm', [MicropayController::class, 'confirmCheckoutSession']);
 
     Route::get('/characters', [CharacterController::class, 'index']);
     Route::get('/characters/{id}', [CharacterController::class, 'show']);

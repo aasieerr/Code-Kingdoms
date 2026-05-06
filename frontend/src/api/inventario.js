@@ -32,7 +32,7 @@ export async function fetchInventoryData(force = false) {
       return
     }
     const [resItems, resChar] = await Promise.all([
-      api.get('/items'),
+      api.get('/items', { params: { id_character: cid } }),
       api.get('/character-items', { params: { id_character: cid } })
     ])
     globalItems.value = Array.isArray(resItems.data) ? resItems.data : []

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#0b0d17] text-white flex flex-col" style="font-family: 'Press Start 2P', monospace; image-rendering: pixelated;">
+  <div class="pixel-page min-h-screen flex flex-col">
     <AppHeader />
     
     <!-- Scanlines overlay -->
