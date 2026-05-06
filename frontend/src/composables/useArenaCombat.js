@@ -2,21 +2,23 @@ import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 
 const PLAYER_SIZE = 40
-const BASE_MOVE_SPEED = 5.2
+// Hitbox ligeramente menor que el sprite para evitar atascos en bordes.
+const PLAYER_COLLISION_SIZE = 34
+const BASE_MOVE_SPEED = 3.8
 const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
 const BASE_CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
-const BULLET_SPEED = 8
+const BULLET_SPEED = 6.5
 const BULLET_LIFETIME_MS = 2200
 const FIRE_INTERVAL_MS = 320
 const BULLET_DAMAGE = 12
 const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
-const MAGNET_SPEED = 5
+const MAGNET_SPEED = 2.2
 const TOTAL_SECTIONS = 7
 const INTERMEDIATE_SECTIONS = 6
 const WAVES_PER_SECTION = 10
@@ -25,6 +27,20 @@ const GHOST_INTANGIBLE_MS = 3000
 const CORRUPTED_ZONE_LIFETIME_MS = 4200
 const SECTION_GROWTH = 0.34
 const WAVE_GROWTH = 0.035
+const LEVEL_DAMAGE_BONUS = 0.055
+
+const ENEMY_XP_REWARD = {
+  microservice: 8,
+  spaghetti_runner: 11,
+  composer_update: 14,
+  dependency_injector: 18,
+  thread_spammer: 22,
+  boilerplate_guard: 24,
+  garbage_collector: 28,
+  global_ghost: 32,
+  legacy_monolith: 65,
+  boss: 240,
+}
 
 const ROUND_ENEMY_CONFIG = [
   { garbage_collector: 3, thread_spammer: 2 },
@@ -51,7 +67,10 @@ function normalizeKingdomName(value) {
 
 function isPhpKingdom(value) {
   const normalized = normalizeKingdomName(value)
-  return normalized.includes('php') || normalized.includes('peachepe') || normalized === '1'
+  if (normalized.includes('php') || normalized.includes('peachepe')) return true
+  if (normalized.includes('java')) return false
+  // Compatibilidad con payloads numéricos: PHP suele llegar como 2.
+  return normalized === '2'
 }
 
 function sectionMultiplier(sectionValue) {
@@ -76,6 +95,10 @@ function earlyWaveEnemyCountMultiplier(sectionValue, waveValue) {
   if (waveValue <= 4) return 0.7
   if (waveValue <= 6) return 0.85
   return 1
+}
+
+function maxWavesForSection(sectionValue) {
+  return Number(sectionValue) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
 }
 
 function typeBaseStats(type) {
@@ -103,6 +126,10 @@ function typeBaseStats(type) {
   }
 }
 
+function xpForEnemyType(type) {
+  return ENEMY_XP_REWARD[type] ?? 12
+}
+
 function randomSpawnEdgePosition(worldW, worldH, pad = 80) {
   const edge = Math.floor(Math.random() * 4)
   if (edge === 0) return { x: Math.random() * (worldW - pad * 2) + pad, y: pad }
@@ -125,6 +152,18 @@ export function useArenaCombat(options = {}) {
   const equippedWeapon = options.equippedWeapon ?? ref(null)
   const characterClass = options.characterClass ?? ref('')
   const characterRace = options.characterRace ?? ref('')
+  const characterLevel = options.characterLevel ?? ref(1)
+  const characterArmor = options.characterArmor ?? ref(0)
+  const characterAttackSpeed = options.characterAttackSpeed ?? ref(1)
+  const characterMoveSpeed = options.characterMoveSpeed ?? ref(1)
+  const characterBaseDamage = options.characterBaseDamage ?? ref(BULLET_DAMAGE)
+  const isWalkable = typeof options.isWalkable === 'function' ? options.isWalkable : null
+  const debugImmortal = Boolean(resolveOptionValue(options.debugImmortal, false))
+  const debugMaxDamage = Boolean(resolveOptionValue(options.debugMaxDamage, false))
+  const resolvedDebugDamage = Number(resolveOptionValue(options.debugDamage, BULLET_DAMAGE))
+  const debugDamage = Number.isFinite(resolvedDebugDamage) && resolvedDebugDamage > 0
+    ? resolvedDebugDamage
+    : BULLET_DAMAGE
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -161,6 +200,33 @@ export function useArenaCombat(options = {}) {
   let lastFireAt = 0
   let lastContactAt = 0
   let rafId = null
+
+  function grantExperience(amount, reason = 'combat') {
+    const safeAmount = Math.max(0, Math.floor(Number(amount) || 0))
+    if (safeAmount <= 0) return
+    options.onExperienceGain?.({
+      amount: safeAmount,
+      reason,
+      section: section.value,
+      wave: sectionWave.value,
+    })
+  }
+
+  function grantEnemyKillExperience(type) {
+    const baseXp = xpForEnemyType(type)
+    const sectionBonus = 1 + Math.max(0, section.value - 1) * 0.1
+    const waveBonus = 1 + Math.max(0, sectionWave.value - 1) * 0.03
+    grantExperience(Math.round(baseXp * sectionBonus * waveBonus), `enemy:${type}`)
+  }
+
+  function applyPlayerDamage(rawDamage) {
+    if (debugImmortal) return
+    const safeDamage = Math.max(0, Math.round(Number(rawDamage) || 0))
+    if (safeDamage <= 0) return
+    const armorReduction = Math.min(0.55, Math.max(0, Number(characterArmor.value || 0) * 0.006))
+    const mitigatedDamage = Math.max(1, Math.round(safeDamage * (1 - armorReduction)))
+    playerHp.value = Math.max(0, playerHp.value - mitigatedDamage)
+  }
 
   function resolveRouteContext() {
     const kingdomRaw = resolveOptionValue(options.startKingdom, startKingdom.value)
@@ -294,28 +360,60 @@ export function useArenaCombat(options = {}) {
     if (isPhpKingdom(race)) speed += 0.25
     else speed -= 0.15
 
-    return Math.max(3.8, Math.min(6.2, speed))
+    speed *= Math.max(0.3, Number(characterMoveSpeed.value || 1))
+    return Math.max(2.8, Math.min(6.4, speed))
+  }
+
+  function canPlayerStandAt(nextX, nextY) {
+    if (!isWalkable) return true
+    return Boolean(isWalkable(nextX, nextY, {
+      playerSize: PLAYER_COLLISION_SIZE,
+      worldWidth: WORLD_W,
+      worldHeight: WORLD_H,
+      section: section.value,
+      startKingdom: startKingdom.value,
+      enemyFaction: enemyFaction.value,
+    }))
+  }
+
+  function movePlayerConstrained(nextX, nextY) {
+    const prevX = x.value
+    const prevY = y.value
+    const boundedX = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, nextX))
+    const boundedY = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, nextY))
+
+    if (!isWalkable || canPlayerStandAt(boundedX, boundedY)) {
+      x.value = boundedX
+      y.value = boundedY
+      return
+    }
+
+    const canSlideX = canPlayerStandAt(boundedX, prevY)
+    const canSlideY = canPlayerStandAt(prevX, boundedY)
+    x.value = canSlideX ? boundedX : prevX
+    y.value = canSlideY ? boundedY : prevY
   }
 
   function tick() {
     const now = performance.now()
 
     if (!locked.value && arenaRef.value) {
-      const W = WORLD_W - PLAYER_SIZE
-      const H = WORLD_H - PLAYER_SIZE
       const moveSpeed = resolveMovementSpeed()
+      let nextX = x.value
+      let nextY = y.value
       if (keys.w) {
-        y.value = Math.max(0, y.value - moveSpeed)
+        nextY -= moveSpeed
       }
       if (keys.s) {
-        y.value = Math.min(H, y.value + moveSpeed)
+        nextY += moveSpeed
       }
       if (keys.a) {
-        x.value = Math.max(0, x.value - moveSpeed)
+        nextX -= moveSpeed
       }
       if (keys.d) {
-        x.value = Math.min(W, x.value + moveSpeed)
+        nextX += moveSpeed
       }
+      movePlayerConstrained(nextX, nextY)
       moving.value = Object.values(keys).some(Boolean)
     }
 
@@ -457,16 +555,18 @@ export function useArenaCombat(options = {}) {
         if (e.type === 'garbage_collector') {
           const dragDist = Math.hypot(ecx - pcx, ecy - pcy)
           if (dragDist < 210 && dragDist > 0) {
-            const pullStrength = 1.7 * (1 - dragDist / 210)
-            x.value = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, x.value + ((ecx - pcx) / dragDist) * pullStrength))
-            y.value = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, y.value + ((ecy - pcy) / dragDist) * pullStrength))
+            const pullStrength = 0.65 * (1 - dragDist / 210)
+            movePlayerConstrained(
+              x.value + ((ecx - pcx) / dragDist) * pullStrength,
+              y.value + ((ecy - pcy) / dragDist) * pullStrength
+            )
           }
         }
 
         const dist = Math.hypot(ecx - pcx, ecy - pcy)
         if (dist < (esize / 2 + 10) && now - lastContactAt > CONTACT_COOLDOWN_MS) {
           const sectionContactDamage = Math.max(1, Math.round(e.contactDamage || BASE_CONTACT_DAMAGE))
-          playerHp.value = Math.max(0, playerHp.value - sectionContactDamage)
+          applyPlayerDamage(sectionContactDamage)
           lastContactAt = now
           break
         }
@@ -479,7 +579,14 @@ export function useArenaCombat(options = {}) {
 
       if (equippedWeapon.value) {
         currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
+      } else {
+        currentDamage = Number(characterBaseDamage.value || BULLET_DAMAGE)
       }
+      if (debugMaxDamage) {
+        currentDamage = debugDamage
+      }
+      const levelBonus = 1 + (Math.max(1, Number(characterLevel.value) || 1) - 1) * LEVEL_DAMAGE_BONUS
+      currentDamage = Math.max(1, Math.round(currentDamage * levelBonus))
 
       const tgt = nearestEnemy(px, py)
 
@@ -496,6 +603,8 @@ export function useArenaCombat(options = {}) {
       else if (effectiveType === 'varita') currentFireInterval = 320
       else if (effectiveType === 'espada') currentFireInterval = 650
       else if (effectiveType === 'hacha') currentFireInterval = 850
+      const attackSpeedScale = Math.max(0.25, Number(characterAttackSpeed.value || 1))
+      currentFireInterval = Math.max(110, Math.round(currentFireInterval / attackSpeedScale))
 
       // Reducir daño melee un poco para equilibrar
       if (MELEE_TYPES.includes(effectiveType)) {
@@ -553,6 +662,7 @@ export function useArenaCombat(options = {}) {
               }
               const nh = e.hp - currentDamage
               if (nh <= 0) {
+                grantEnemyKillExperience(e.type)
                 newCoins.push({
                   id: coinId++,
                   x: e.x + 8,
@@ -664,6 +774,7 @@ export function useArenaCombat(options = {}) {
         }
         const nh = e.hp - (b.damage || BULLET_DAMAGE)
         if (nh <= 0) {
+          grantEnemyKillExperience(e.type)
           newCoins.push({
             id: coinId++,
             x: e.x + 8,
@@ -715,12 +826,11 @@ export function useArenaCombat(options = {}) {
         const dist = Math.hypot(b.x - pcx, b.y - pcy)
         const hitRadius = b.isZone ? (b.radius || 58) : 25
         if (dist < hitRadius) {
-          playerHp.value = Math.max(0, playerHp.value - (b.damage || 15))
+          applyPlayerDamage(b.damage || 15)
           if (b.isZone) {
             const pxDir = (pcx - b.x) / (dist || 1)
             const pyDir = (pcy - b.y) / (dist || 1)
-            x.value = Math.max(0, Math.min(WORLD_W - PLAYER_SIZE, x.value + pxDir * 0.8))
-            y.value = Math.max(0, Math.min(WORLD_H - PLAYER_SIZE, y.value + pyDir * 0.8))
+            movePlayerConstrained(x.value + pxDir * 0.8, y.value + pyDir * 0.8)
             keptEBullets.push(b)
           }
         } else {
@@ -776,18 +886,22 @@ export function useArenaCombat(options = {}) {
   }
 
   function startNextWave() {
-    if (sectionWave.value >= WAVES_PER_SECTION) {
+    const clearedSection = section.value
+    const maxWavesInCurrentSection = maxWavesForSection(section.value)
+    if (sectionWave.value >= maxWavesInCurrentSection) {
       section.value = Math.min(TOTAL_SECTIONS, section.value + 1)
       sectionWave.value = 1
+      const sectionXp = 85 + clearedSection * 20
+      grantExperience(sectionXp, 'section_clear')
     } else {
       sectionWave.value += 1
     }
+    const waveXp = 30 + Math.max(0, sectionWave.value - 1) * 9 + Math.max(0, section.value - 1) * 8
+    grantExperience(waveXp, 'wave_clear')
     wave.value = sectionWave.value
     resolveRouteContext()
-    playerHp.value = Math.min(
-      playerMaxHp.value,
-      playerHp.value + Math.floor(playerMaxHp.value * 0.12)
-    )
+    playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
+    playerHp.value = Math.min(playerMaxHp.value, playerHp.value + Math.floor(playerMaxHp.value * 0.12))
     phase.value = 'fighting'
     spawnWave()
   }
@@ -797,13 +911,15 @@ export function useArenaCombat(options = {}) {
     sectionWave.value = 1
     wave.value = 1
     resolveRouteContext()
+    playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
+    playerHp.value = playerMaxHp.value
     phase.value = 'fighting'
     spawnWave()
   }
 
   function resumeAt(sectionValue, waveValue) {
     const safeSection = Math.min(TOTAL_SECTIONS, Math.max(1, Number(sectionValue) || 1))
-    const safeWave = Math.min(WAVES_PER_SECTION, Math.max(1, Number(waveValue) || 1))
+    const safeWave = Math.min(maxWavesForSection(safeSection), Math.max(1, Number(waveValue) || 1))
     section.value = safeSection
     sectionWave.value = safeWave
     wave.value = safeWave
