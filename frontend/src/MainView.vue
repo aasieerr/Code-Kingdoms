@@ -373,8 +373,8 @@ function isPhpKingdomSelected() {
   if (kName.includes('php') || kName.includes('peachepe')) return true
   if (kName.includes('java')) return false
   const kId = Number(characterStore.kingdomId)
-  // Compatibilidad con backends donde PHP puede ser 2 (y Java 1).
-  return kId === 2
+  // En este backend: 1 = Peachepe/PHP, 2 = Java.
+  return kId === 1
 }
 
 const kingdomLobbyStyle = computed(() => ({

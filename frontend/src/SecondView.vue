@@ -336,10 +336,10 @@ const characterStore = useCharacterStore()
 const { keyMatches, settings, keyLabel } = useGameSettings()
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
+const arenaFaction = computed(() => (isPhpKingdomSelected() ? 'java' : 'php'))
 const currentMap = computed(() => {
-  const faction = isPhpKingdomSelected() ? 'php' : 'java'
   const idx = Math.min((section.value || 1) - 1, 5)
-  return SECTION_MAPS[faction][idx]
+  return SECTION_MAPS[arenaFaction.value][idx]
 })
 const mapImageByName = {
   'Array Islands': arrayIslandsMap,
@@ -357,13 +357,13 @@ const mapImageByName = {
 }
 const currentArenaMapImage = computed(() => {
   if (isFinalKingdomSection.value) {
-    return isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap
+    return arenaFaction.value === 'php' ? phpKingdomMap : javaKingdomMap
   }
   return mapImageByName[currentMap.value?.name] || ''
 })
 const currentArenaMapName = computed(() => {
   if (isFinalKingdomSection.value) {
-    return isPhpKingdomSelected() ? 'REINO PHP (BOSS FINAL)' : 'REINO JAVA (BOSS FINAL)'
+    return arenaFaction.value === 'php' ? 'REINO PHP (BOSS FINAL)' : 'REINO JAVA (BOSS FINAL)'
   }
   return currentMap.value?.name?.toUpperCase() || 'MAPA DESCONOCIDO'
 })
@@ -381,7 +381,7 @@ const isComposerDesertSection = computed(() => currentMap.value?.name === 'Compo
 const isLaravelCitadelSection = computed(() => currentMap.value?.name === 'Laravel Citadel')
 const isPhpFrontierMarshesSection = computed(() => currentMap.value?.name === 'PHP Frontier Marshes')
 const isFinalKingdomSection = computed(() => Number(section.value || 1) === TOTAL_SECTIONS)
-const currentKingdomHudName = computed(() => (isPhpKingdomSelected() ? 'REINO DE PHP' : 'REINO DE JAVA'))
+const currentKingdomHudName = computed(() => (arenaFaction.value === 'php' ? 'REINO DE PHP' : 'REINO DE JAVA'))
 const hudMapLabel = computed(() => (
   isFinalKingdomSection.value
     ? `${currentKingdomHudName.value} · BOSS FINAL`
@@ -395,7 +395,7 @@ const hudSectionLabel = computed(() => (
 const maxWavesInSection = computed(() => (
   Number(section.value || 1) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
 ))
-const finalBossName = computed(() => (isPhpKingdomSelected() ? 'ANDRÉS' : 'JUAN CARLOS'))
+const finalBossName = computed(() => (arenaFaction.value === 'php' ? 'ANDRÉS' : 'JUAN CARLOS'))
 const finalBossEnemy = computed(() => (
   enemies.value.find((enemy) => enemy.type === 'boss') || null
 ))
@@ -678,8 +678,8 @@ function isPhpKingdomSelected() {
   if (kName.includes('php') || kName.includes('peachepe')) return true
   if (kName.includes('java')) return false
   const kId = Number(characterStore.kingdomId)
-  // Compatibilidad con backends donde PHP puede ser 2 (y Java 1).
-  return kId === 2
+  // En este backend: 1 = Peachepe/PHP, 2 = Java.
+  return kId === 1
 }
 
 function getSectionMapNameByIndex(faction, sectionNumber) {
@@ -1464,7 +1464,7 @@ function isKingdomBlockedPixel(r, g, b, a, forPhp) {
 
 function isArrayIslandsWalkable(nextX, nextY, ctx = {}) {
   const currentSection = Number(ctx.section || 1)
-  const faction = isPhpKingdomSelected() ? 'php' : 'java'
+  const faction = arenaFaction.value
   const sectionIndex = Math.min(Math.max(currentSection - 1, 0), 5)
   const sectionMapName = SECTION_MAPS[faction]?.[sectionIndex]?.name
   if (currentSection === TOTAL_SECTIONS) {
@@ -1711,7 +1711,7 @@ const {
   worldHeight: ARENA_WORLD_HEIGHT,
   startX: ARENA_WORLD_WIDTH / 2,
   startY: startY.value,
-  startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
+  startKingdom: computed(() => (arenaFaction.value === 'php' ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
   characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
@@ -2082,7 +2082,7 @@ onMounted(async () => {
       characterStore.arenaInProgress = Boolean(arenaCharacter.arena_in_progress)
     }
     const isPhpKingdom = isPhpKingdomSelected()
-    const faction = isPhpKingdom ? 'php' : 'java'
+    const faction = isPhpKingdom ? 'java' : 'php'
     const initialSection = queryStart?.section
       || (characterStore.arenaInProgress ? Number(characterStore.arenaSection || 1) : 1)
     const initialMapName = getSectionMapNameByIndex(faction, initialSection)
@@ -2107,7 +2107,7 @@ onMounted(async () => {
       isFading.value = false
       const enterLoop = () => {
         const mapNameForEntry = getSectionMapNameByIndex(
-          isPhpKingdom ? 'php' : 'java',
+          isPhpKingdom ? 'java' : 'php',
           Number(section.value || characterStore.arenaSection || 1)
         )
         const targetY = getArenaEntryPoint(mapNameForEntry).y

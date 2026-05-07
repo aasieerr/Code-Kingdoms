@@ -69,8 +69,8 @@ function isPhpKingdom(value) {
   const normalized = normalizeKingdomName(value)
   if (normalized.includes('php') || normalized.includes('peachepe')) return true
   if (normalized.includes('java')) return false
-  // Compatibilidad con payloads numéricos: PHP suele llegar como 2.
-  return normalized === '2'
+  // En este backend: 1 = Peachepe/PHP, 2 = Java.
+  return normalized === '1'
 }
 
 function sectionMultiplier(sectionValue) {
