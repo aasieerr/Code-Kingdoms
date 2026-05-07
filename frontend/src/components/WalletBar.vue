@@ -8,6 +8,13 @@
     <div class="wallet-divider"></div>
     
     <div class="wallet-item">
+      <span class="wallet-icon lvl">⬆</span>
+      <span class="wallet-val lvl">LV {{ level ?? 1 }}</span>
+    </div>
+
+    <div class="wallet-divider"></div>
+
+    <div class="wallet-item">
       <span class="wallet-icon cc">◆</span>
       <span class="wallet-val cc">{{ codeCoins ?? 0 }}</span>
       <button
@@ -23,6 +30,7 @@
 defineProps({
   gold: { type: [Number, String], default: null },
   codeCoins: { type: [Number, String], default: null },
+  level: { type: [Number, String], default: 1 },
 })
 defineEmits(['open-micropay'])
 </script>
@@ -64,6 +72,8 @@ defineEmits(['open-micropay'])
 }
 
 .wallet-icon {
+  position: relative;
+  top: -2px;
   font-size: 14px;
   filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5));
   transition: transform 0.3s ease;
@@ -75,6 +85,7 @@ defineEmits(['open-micropay'])
 
 .wallet-icon.gold { color: #facc15; filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); }
 .wallet-icon.cc { color: #a855f7; filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4)); }
+.wallet-icon.lvl { color: #34d399; filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.4)); }
 
 .wallet-val {
   font-size: 9px;
@@ -84,6 +95,10 @@ defineEmits(['open-micropay'])
 
 .wallet-val.cc {
   color: #e9d5ff;
+}
+
+.wallet-val.lvl {
+  color: #bbf7d0;
 }
 
 .wallet-divider {

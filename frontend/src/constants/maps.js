@@ -1,5 +1,5 @@
 export const SECTION_MAPS = {
-  php: [
+  java: [
     { name: 'JVM Volcano', bg: '#1a0800', floor: '#4a1a00', floorAlt: '#2a0d00', accent: '#ff6d00', gridColor: 'rgba(255,109,0,0.08)' },
     { name: 'Maven Mountains', bg: '#10101a', floor: '#2a2a4a', floorAlt: '#1a1a3a', accent: '#94a3b8', gridColor: 'rgba(148,163,184,0.07)' },
     { name: 'Spring Boot City', bg: '#080f1a', floor: '#0f2a4a', floorAlt: '#081a30', accent: '#3b82f6', gridColor: 'rgba(59,130,246,0.08)' },
@@ -7,7 +7,7 @@ export const SECTION_MAPS = {
     { name: 'Hibernate Ruins', bg: '#120e08', floor: '#3a2a18', floorAlt: '#281a0a', accent: '#d97706', gridColor: 'rgba(217,119,6,0.08)' },
     { name: 'Spring Border Gate', bg: '#1a1208', floor: '#5a3a18', floorAlt: '#3a2010', accent: '#ff6d00', gridColor: 'rgba(255,109,0,0.08)' },
   ],
-  java: [
+  php: [
     { name: 'Array Islands', bg: '#0d1f3c', floor: '#1a4a7a', floorAlt: '#0e3a6a', accent: '#3b82f6', gridColor: 'rgba(59,130,246,0.08)' },
     { name: 'Eloquent Swamps', bg: '#0d1a0d', floor: '#2d5a28', floorAlt: '#1a3a18', accent: '#4ade80', gridColor: 'rgba(74,222,128,0.06)' },
     { name: 'Blade Forest', bg: '#071a07', floor: '#1a4a1a', floorAlt: '#0d2b0d', accent: '#22c55e', gridColor: 'rgba(34,197,94,0.07)' },

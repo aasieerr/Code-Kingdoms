@@ -4,6 +4,7 @@
     ref="arenaRef"
     tabindex="0"
     @click="arenaRef.focus()"
+    @keydown="onMainPanelHotkey"
     @focus="focused = true"
     @blur="focused = false"
   >
@@ -12,14 +13,7 @@
     <div class="game-bg"></div>
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
-      <div class="terrain grassland"></div>
-      <div class="terrain forest-zone"></div>
-      <div class="terrain mountain-zone"></div>
-      <div class="terrain lake-zone"></div>
-      <div class="terrain road-main"></div>
-      <div class="terrain road-cross"></div>
-      <div class="terrain village-zone"></div>
-      <div class="terrain ruins-zone"></div>
+      <div class="terrain kingdom-lobby" :style="kingdomLobbyStyle"></div>
       <div
         class="player"
         :class="{ 'is-moving': moving }"
@@ -68,6 +62,7 @@
     <WalletBar
       :gold="characterStore.gold"
       :code-coins="characterStore.codeCoins"
+      :level="characterStore.level"
       @open-micropay="showMicropay = !showMicropay"
     />
 
@@ -113,6 +108,10 @@
       :player-x="x"
       :player-y="y"
       :npcs="npcs"
+      :map-image="currentLobbyMapImage"
+      :map-name="currentLobbyMapName"
+      :world-width="MAIN_WORLD_WIDTH"
+      :world-height="MAIN_WORLD_HEIGHT"
       @close="showMapPanel = false"
     />
 
@@ -151,6 +150,8 @@ import DialogueModal  from './components/DialogueModal.vue'
 import { useCharacterStore } from './stores/character'
 import { confirmCodeCoinsCheckout } from './api/micropay'
 import { useGameSettings } from './composables/useGameSettings'
+import javaKingdomMap from './assets/maps/java-kingdom-map.png'
+import phpKingdomMap from './assets/maps/php-kingdom-map.png'
 
 function parseSprite(data) {
   try {
@@ -169,9 +170,12 @@ function isEmptySprite(data) {
 
 const router        = useRouter()
 const route = useRoute()
-const worldEdgePx   = `${WORLD_EDGE}px`
+const MAIN_WORLD_WIDTH = 1700
+const MAIN_WORLD_HEIGHT = WORLD_EDGE
+const worldWidthPx = `${MAIN_WORLD_WIDTH}px`
+const worldHeightPx = `${MAIN_WORLD_HEIGHT}px`
 const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
-const startY   = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
+const startY   = lastTransition.value === 'second-to-main' ? MAIN_WORLD_HEIGHT + 50 : MAIN_WORLD_HEIGHT / 2
 
 // Estado de paneles
 const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
@@ -190,7 +194,12 @@ const colorMoving = ref('#f5a623')
 
 
 // Movimiento del personaje
-const { arenaRef, x, y, focused, moving, locked } = useWasd(WORLD_EDGE / 2, startY)
+const { arenaRef, x, y, focused, moving, locked } = useWasd(
+  MAIN_WORLD_WIDTH / 2,
+  startY,
+  MAIN_WORLD_WIDTH,
+  MAIN_WORLD_HEIGHT
+)
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
 if (lastTransition.value === 'second-to-main') {
@@ -227,8 +236,8 @@ const cameraTransform = computed(() => {
   const cy        = window.innerHeight / 2
   const halfW     = cx / zoom
   const halfH     = cy / zoom
-  const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_EDGE - halfW))
-  const targetY   = Math.max(halfH, Math.min(y.value + 20, WORLD_EDGE - halfH))
+  const targetX   = Math.max(halfW, Math.min(x.value + 20, MAIN_WORLD_WIDTH - halfW))
+  const targetY   = Math.max(halfH, Math.min(y.value + 20, MAIN_WORLD_HEIGHT - halfH))
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
 
@@ -325,13 +334,61 @@ function onSkinShopKey(e) {
   showSkinShop.value = true
 }
 
+function onMainPanelHotkey(e) {
+  if (route.name !== 'Game') return
+  const tag = String(e.target?.tagName || '').toUpperCase()
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return
+  if (showMicropay.value || showSkinShop.value || npcsManager.activeDialogueNpc.value) return
+  const key = String(e.key || '').toLowerCase()
+  if (key === 'escape') {
+    e.preventDefault()
+    showSettings.value = true
+    showMapPanel.value = false
+    return
+  }
+  if (key === 'i') {
+    e.preventDefault()
+    showMapPanel.value = false
+    showPanel.value = showPanel.value === 'inventory' ? null : 'inventory'
+    return
+  }
+  if (keyMatches(e, 'equipment')) {
+    e.preventDefault()
+    showMapPanel.value = false
+    showPanel.value = showPanel.value === 'equipment' ? null : 'equipment'
+    return
+  }
+  if (keyMatches(e, 'map')) {
+    e.preventDefault()
+    showPanel.value = null
+    showMapPanel.value = !showMapPanel.value
+  }
+}
+
 const navigating = ref(false)
 const portalCooldown = ref(true)
 
 function isPhpKingdomSelected() {
   const kName = String(characterStore.kingdomName || '').toLowerCase()
-  return kName.includes('php') || kName.includes('peachepe') || Number(characterStore.kingdomId) === 1
+  if (kName.includes('php') || kName.includes('peachepe')) return true
+  if (kName.includes('java')) return false
+  const kId = Number(characterStore.kingdomId)
+  // En este backend: 1 = Peachepe/PHP, 2 = Java.
+  return kId === 1
 }
+
+const kingdomLobbyStyle = computed(() => ({
+  backgroundImage: `url(${isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap})`,
+  backgroundRepeat: 'no-repeat',
+  backgroundSize: '100% 100%',
+  backgroundPosition: 'center',
+}))
+const currentLobbyMapImage = computed(() => (
+  isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap
+))
+const currentLobbyMapName = computed(() => (
+  isPhpKingdomSelected() ? 'REINO PHP (LOBBY)' : 'REINO JAVA (LOBBY)'
+))
 
 // Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
@@ -346,7 +403,7 @@ onMounted(async () => {
 
   const isPhpKingdom = isPhpKingdomSelected()
   if (lastTransition.value === 'second-to-main') {
-    y.value = isPhpKingdom ? -50 : WORLD_EDGE + 50
+    y.value = isPhpKingdom ? -50 : MAIN_WORLD_HEIGHT + 50
   }
 
   if (lastTransition.value === 'second-to-main') {
@@ -358,7 +415,7 @@ onMounted(async () => {
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        const reachedTarget = isPhpKingdom ? y.value >= 180 : y.value <= WORLD_EDGE - 180
+        const reachedTarget = isPhpKingdom ? y.value >= 180 : y.value <= MAIN_WORLD_HEIGHT - 180
         if (reachedTarget) {
           locked.value = false
           moving.value = false
@@ -396,10 +453,10 @@ watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
   
   const PLAYER = 40
-  const cx = WORLD_EDGE / 2
+  const cx = MAIN_WORLD_WIDTH / 2
   const isPhpKingdom = isPhpKingdomSelected()
   const inPortalX = newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH
-  const isAtPortalEdge = isPhpKingdom ? newY <= 0 : newY >= WORLD_EDGE - PLAYER
+  const isAtPortalEdge = isPhpKingdom ? newY <= 0 : newY >= MAIN_WORLD_HEIGHT - PLAYER
   if (
     isAtPortalEdge
     && inPortalX
@@ -411,7 +468,7 @@ watch([x, y], ([newX, newY]) => {
     
     const exitLoop = () => {
       y.value += isPhpKingdom ? -5 : 5
-      const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= WORLD_EDGE + 80
+      const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= MAIN_WORLD_HEIGHT + 80
       if (outOfBounds) {
         lastTransition.value = 'main-to-second'
         router.push({ name: 'SecondGame' }).catch(() => {
@@ -455,8 +512,8 @@ onUnmounted(() => {
 }
 .world {
   position: absolute;
-  width: v-bind(worldEdgePx);
-  height: v-bind(worldEdgePx);
+  width: v-bind(worldWidthPx);
+  height: v-bind(worldHeightPx);
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -469,6 +526,9 @@ onUnmounted(() => {
 }
 /* Terrenos */
 .terrain { position: absolute; image-rendering: pixelated; z-index: 0; }
+.kingdom-lobby {
+  inset: 0;
+}
 .grassland {
   inset: 0;
   background:

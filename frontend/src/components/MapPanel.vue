@@ -12,30 +12,30 @@
     <div class="panel-content map-layout">
       <!-- LEFT: Visual Map -->
       <div class="map-visual-container">
-        <div class="pixel-map-premium" ref="mapRef">
+        <div class="pixel-map-premium" ref="mapRef" :style="mapBackgroundStyle">
           <!-- Blueprint Biomes -->
-          <div class="blueprint-biome b-forest"></div>
-          <div class="blueprint-biome b-water"></div>
-          <div class="blueprint-biome b-mountains"></div>
+          <div v-if="!hasRealMapImage" class="blueprint-biome b-forest"></div>
+          <div v-if="!hasRealMapImage" class="blueprint-biome b-water"></div>
+          <div v-if="!hasRealMapImage" class="blueprint-biome b-mountains"></div>
           <!-- Blueprint Roads -->
-          <div class="blueprint-road bh-road"></div>
-          <div class="blueprint-road bv-road"></div>
+          <div v-if="!hasRealMapImage" class="blueprint-road bh-road"></div>
+          <div v-if="!hasRealMapImage" class="blueprint-road bv-road"></div>
           <!-- Grid Overlay -->
           <div class="map-grid-overlay"></div>
           <!-- Landmarks -->
-          <div class="landmark village">
+          <div v-if="!hasRealMapImage" class="landmark village">
             <div class="landmark-pointer color-village"></div>
             <span class="landmark-name">PUEBLO</span>
           </div>
-          <div class="landmark ruins">
+          <div v-if="!hasRealMapImage" class="landmark ruins">
             <div class="landmark-pointer color-ruins"></div>
             <span class="landmark-name">RUINAS</span>
           </div>
-          <div class="landmark tower">
+          <div v-if="!hasRealMapImage" class="landmark tower">
             <div class="landmark-pointer color-tower"></div>
             <span class="landmark-name">TORRE</span>
           </div>
-          <div class="landmark arena">
+          <div v-if="!hasRealMapImage" class="landmark arena">
             <div class="landmark-pointer color-arena"></div>
             <span class="landmark-name">ARENA</span>
           </div>
@@ -67,12 +67,9 @@
           </div>
         </div>
         <div class="sidebar-section">
-          <h4 class="sidebar-title">REGIONES</h4>
+          <h4 class="sidebar-title">MAPA ACTUAL</h4>
           <ul class="region-list">
-            <li class="region-item">BOSQUE SUSURRANTE</li>
-            <li class="region-item">LAGO DE CRISTAL</li>
-            <li class="region-item">PICOS HELADOS</li>
-            <li class="region-item">TIERRAS BALDÍAS</li>
+            <li class="region-item map-name">{{ mapName }}</li>
           </ul>
         </div>
       </aside>
@@ -88,6 +85,10 @@ const props = defineProps({
   playerX: { type: Number, default: WORLD_EDGE / 2 },
   playerY: { type: Number, default: WORLD_EDGE / 2 },
   npcs:    { type: Array, default: () => [] },
+  mapImage: { type: String, default: '' },
+  mapName: { type: String, default: 'DESCONOCIDO' },
+  worldWidth: { type: Number, default: WORLD_EDGE },
+  worldHeight: { type: Number, default: WORLD_EDGE },
 })
 
 defineEmits(['close'])
@@ -95,18 +96,32 @@ defineEmits(['close'])
 const mapRef = ref(null)
 const MAP_W = 600
 const MAP_H = 450
-const WORLD = WORLD_EDGE
+const hasRealMapImage = computed(() => Boolean(String(props.mapImage || '').trim()))
+
+const mapBackgroundStyle = computed(() => {
+  if (!hasRealMapImage.value) return {}
+  return {
+    backgroundImage: `url(${props.mapImage})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+    backgroundSize: '100% 100%',
+  }
+})
 
 const playerMarkerStyle = computed(() => {
-  const px = Math.max(0, Math.min(MAP_W - 20, (props.playerX / WORLD) * MAP_W))
-  const py = Math.max(0, Math.min(MAP_H - 20, (props.playerY / WORLD) * MAP_H))
+  const worldW = Number(props.worldWidth) || WORLD_EDGE
+  const worldH = Number(props.worldHeight) || WORLD_EDGE
+  const px = Math.max(0, Math.min(MAP_W - 20, (props.playerX / worldW) * MAP_W))
+  const py = Math.max(0, Math.min(MAP_H - 20, (props.playerY / worldH) * MAP_H))
   return { left: `${px}px`, top: `${py}px` }
 })
 
 function getNpcStyle(npc) {
   if (npc.x === undefined || npc.y === undefined) return { display: 'none' }
-  const nx = Math.max(0, Math.min(MAP_W - 10, (npc.x / WORLD) * MAP_W))
-  const ny = Math.max(0, Math.min(MAP_H - 10, (npc.y / WORLD) * MAP_H))
+  const worldW = Number(props.worldWidth) || WORLD_EDGE
+  const worldH = Number(props.worldHeight) || WORLD_EDGE
+  const nx = Math.max(0, Math.min(MAP_W - 10, (npc.x / worldW) * MAP_W))
+  const ny = Math.max(0, Math.min(MAP_H - 10, (npc.y / worldH) * MAP_H))
   return { left: `${nx}px`, top: `${ny}px` }
 }
 </script>

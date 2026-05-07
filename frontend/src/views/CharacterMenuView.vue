@@ -52,7 +52,8 @@
                 <div class="flex-1 min-w-0">
                   <h3 class="text-[#facc15] text-[10px] mb-2 truncate">{{ c.name.toUpperCase() }}</h3>
                   <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span class="text-[7px] text-[#facc15]/60">NIVEL {{ c.level }}</span>
+                    <span class="text-[7px] text-[#facc15]/60">NIVEL {{ charLevel(c) }}</span>
+                    <span class="text-[7px] text-emerald-300/70">XP {{ charExperience(c) }}</span>
                     <span class="text-[7px] text-yellow-500/80">{{ labelKingdom(c) }}</span>
                     <span class="text-[7px] text-blue-400/60">{{ labelRace(c) }}</span>
                     <span class="text-[7px] text-green-400/60">{{ labelClass(c) }}</span>
@@ -150,6 +151,8 @@ async function loadList() {
 function labelKingdom(c) { return c.kingdom?.name ?? '—' }
 function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
+function charLevel(c) { return Math.max(1, Number(c?.level ?? 1) || 1) }
+function charExperience(c) { return Math.max(0, Number(c?.experience ?? c?.xp ?? 0) || 0) }
 
 function parseSprite(data) {
   try {

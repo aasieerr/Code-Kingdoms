@@ -2,7 +2,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE } from '../constants/world'
 import { useGameSettings } from '../composables/useGameSettings'
 
-export function useWasd(initialX = 280, initialY = 170) {
+export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE, worldHeight = WORLD_EDGE) {
   const arenaRef = ref(null)
   const x = ref(initialX)
   const y = ref(initialY)
@@ -31,8 +31,8 @@ export function useWasd(initialX = 280, initialY = 170) {
   function loop() {
     const arena = arenaRef.value
     if (arena && !locked.value) {
-      const WORLD_WIDTH = WORLD_EDGE
-      const WORLD_HEIGHT = WORLD_EDGE
+      const WORLD_WIDTH = worldWidth
+      const WORLD_HEIGHT = worldHeight
       const W = WORLD_WIDTH - SIZE
       const H = WORLD_HEIGHT - SIZE
 
