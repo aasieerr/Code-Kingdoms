@@ -21,11 +21,20 @@
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :class="[enemyFactionClass, { 'boss-enemy': e.type === 'boss' || e.type === 'miniboss', 'enemy--with-image': isPhpMeleeEnemy(e) }]"
+        :class="[enemyFactionClass, {
+          'boss-enemy': e.type === 'boss' || e.type === 'miniboss',
+          'boss--andres': isAndresBoss(e),
+          'enemy--with-image': isPhpMeleeEnemy(e)
+        }]"
         :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
+        <div
+          v-if="isAndresBoss(e)"
+          class="boss-skin boss-skin--andres"
+          :style="bossAndresStyle(e)"
+        ></div>
         <img
-          v-if="isPhpMeleeEnemy(e)"
+          v-else-if="isPhpMeleeEnemy(e)"
           class="enemy-skin enemy-skin--php-melee"
           :src="phpMeleeEnemyImg"
           :style="phpMeleeEnemyStyle(e)"
@@ -54,10 +63,11 @@
         v-for="b in enemyBullets"
         :key="b.id"
         class="enemy-bullet"
-        :class="b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'"
+        :class="enemyBulletClass(b)"
         :style="{ left: b.x + 'px', top: b.y + 'px' }"
       >
-        {{ b.symbol }}
+        <span v-if="b.kind === 'arcane_orb'" class="arcane-orb-core"></span>
+        <template v-else>{{ b.symbol }}</template>
       </div>
 
       <div
@@ -281,6 +291,7 @@ import phpFrontierMarshesMap from './assets/maps/php-frontier-marshes-map.png'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
 import phpMeleeEnemyImg from './assets/enemy-php-melee.png'
+import bossAndresSheet from './assets/characters/pixellab-angry-middle-aged-male-wizard--1778238468527-3x.png'
 import { lastTransition } from './gameState'
 import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
 import api from './api/axios'
@@ -319,7 +330,8 @@ const route = useRoute()
 const ARENA_WORLD_WIDTH = 1700
 const ARENA_WORLD_HEIGHT = WORLD_EDGE
 const ARENA_ENTRY_TARGET_Y = ARENA_WORLD_HEIGHT / 2
-const JVM_VOLCANO_ENTRY_Y = 190
+const ARRAY_ISLANDS_ENTRY_Y = ARENA_WORLD_HEIGHT / 2 - 90
+const JVM_VOLCANO_ENTRY_Y = ARENA_WORLD_HEIGHT - 240
 const LARAVEL_CITADEL_ENTRY_Y = ARENA_WORLD_HEIGHT - 220
 const COMPOSER_DESERT_ENTRY_Y = ARENA_WORLD_HEIGHT - 260
 const worldWidthPx = `${ARENA_WORLD_WIDTH}px`
@@ -479,7 +491,7 @@ let phpKingdomMaskPromise = null
 const arenaFloorStyle = computed(() => {
   if (isFinalKingdomSection.value) {
     return {
-      backgroundImage: `url(${isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap})`,
+      backgroundImage: `url(${currentArenaMapImage.value})`,
       backgroundRepeat: 'no-repeat',
       backgroundSize: '100% 100%',
       backgroundPosition: 'center',
@@ -688,6 +700,9 @@ function getSectionMapNameByIndex(faction, sectionNumber) {
 }
 
 function getArenaEntryPoint(mapName) {
+  if (mapName === 'Array Islands') {
+    return { x: ARENA_WORLD_WIDTH / 2, y: ARRAY_ISLANDS_ENTRY_Y }
+  }
   if (mapName === 'JVM Volcano') {
     // Entrada arriba del mapa, pero siempre dentro del terreno jugable.
     return { x: ARENA_WORLD_WIDTH / 2, y: JVM_VOLCANO_ENTRY_Y }
@@ -1468,30 +1483,9 @@ function isArrayIslandsWalkable(nextX, nextY, ctx = {}) {
   const sectionIndex = Math.min(Math.max(currentSection - 1, 0), 5)
   const sectionMapName = SECTION_MAPS[faction]?.[sectionIndex]?.name
   if (currentSection === TOTAL_SECTIONS) {
-    const forPhp = faction === 'php'
-    // En el reino final de Java no aplicamos colisión por máscara para permitir
-    // movimiento libre con mapas artísticos oscuros.
-    if (!forPhp) return true
-    const ready = forPhp ? phpKingdomMaskReady.value : javaKingdomMaskReady.value
-    if (!ready) return true
-    const playerSize = Number(ctx.playerSize || 40)
-    const pad = 3
-    const samplePoints = [
-      [nextX + pad, nextY + pad],
-      [nextX + playerSize - pad, nextY + pad],
-      [nextX + pad, nextY + playerSize - pad],
-      [nextX + playerSize - pad, nextY + playerSize - pad],
-      [nextX + playerSize / 2, nextY + pad],
-      [nextX + playerSize / 2, nextY + playerSize - pad],
-      [nextX + pad, nextY + playerSize / 2],
-      [nextX + playerSize - pad, nextY + playerSize / 2],
-      [nextX + playerSize / 2, nextY + playerSize / 2],
-    ]
-    return samplePoints.every(([px, py]) => {
-      const rgba = getKingdomPixelAtWorld(px, py, forPhp)
-      if (!rgba) return true
-      return !isKingdomBlockedPixel(rgba[0], rgba[1], rgba[2], rgba[3], forPhp)
-    })
+    // En la batalla final dejamos ambos reinos sin colisión por máscara
+    // para evitar bloqueos por paredes decorativas.
+    return true
   }
   if (sectionMapName === 'Array Islands') {
     const playerSize = Number(ctx.playerSize || 40)
@@ -1711,7 +1705,9 @@ const {
   worldHeight: ARENA_WORLD_HEIGHT,
   startX: ARENA_WORLD_WIDTH / 2,
   startY: startY.value,
-  startKingdom: computed(() => (arenaFaction.value === 'php' ? 'PHP' : 'Java')),
+  // Debe ser el reino del jugador (no arenaFaction: ese valor ya es el espejo enemigo).
+  // Si esto va mal, useArenaCombat invierte enemigos y el boss PHP (Andrés) sale como Java.
+  startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
   characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
@@ -1941,6 +1937,26 @@ function phpMeleeEnemyStyle(e) {
   }
 }
 
+function isAndresBoss(e) {
+  return e.type === 'boss' && enemyFaction.value === 'php'
+}
+
+function bossAndresStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    backgroundImage: `url(${bossAndresSheet})`,
+    transform: `scaleX(${flipX})`,
+  }
+}
+
+function enemyBulletClass(b) {
+  if (b.kind === 'arcane_orb') return 'enemy-bullet--arcane'
+  return b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'
+}
+
 /** Menos zoom = más área visible (ver enemigos a distancia). */
 const CAMERA_ZOOM = 1.2
 
@@ -2054,19 +2070,24 @@ function startArenaCombat(startOverride = null) {
 
 onMounted(async () => {
   const queryStart = getArenaStartFromQuery()
-
-  await ensureJvmVolcanoMaskLoaded()
-  await ensureMavenMountainsMaskLoaded()
-  await ensureSpringBootCityMaskLoaded()
-  await ensureHibernateRuinsMaskLoaded()
-  await ensureSpringBorderGateMaskLoaded()
-  await ensureEloquentSwampsMaskLoaded()
-  await ensureBladeForestMaskLoaded()
-  await ensureComposerDesertMaskLoaded()
-  await ensureLaravelCitadelMaskLoaded()
-  await ensurePhpFrontierMarshesMaskLoaded()
-  await ensureJavaKingdomMaskLoaded()
-  await ensurePhpKingdomMaskLoaded()
+  // No bloqueamos la entrada al combate por precarga de máscaras.
+  // Si alguna aún no está lista, la colisión hace fallback a movimiento libre.
+  Promise.allSettled([
+    ensureJvmVolcanoMaskLoaded(),
+    ensureMavenMountainsMaskLoaded(),
+    ensureSpringBootCityMaskLoaded(),
+    ensureHibernateRuinsMaskLoaded(),
+    ensureSpringBorderGateMaskLoaded(),
+    ensureEloquentSwampsMaskLoaded(),
+    ensureBladeForestMaskLoaded(),
+    ensureComposerDesertMaskLoaded(),
+    ensureLaravelCitadelMaskLoaded(),
+    ensurePhpFrontierMarshesMaskLoaded(),
+    ensureJavaKingdomMaskLoaded(),
+    ensurePhpKingdomMaskLoaded(),
+  ]).catch((err) => {
+    console.warn('Fallo en precarga de máscaras de arena:', err)
+  })
   window.addEventListener('beforeunload', saveArenaProgress, { capture: true })
   
   try {
@@ -2378,6 +2399,51 @@ watch([section, sectionWave, phase], () => {
   box-shadow: 0 0 12px #0d47a1, 0 0 4px #fff;
 }
 
+.enemy-bullet--arcane {
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+  background: radial-gradient(circle at 35% 35%, #f5d0fe 0%, #c084fc 35%, #7e22ce 75%, #4c1d95 100%);
+  border: 2px solid #faf5ff;
+  box-shadow:
+    0 0 18px #a855f7,
+    0 0 36px rgba(168, 85, 247, 0.75),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+  animation: arcane-orb-pulse 0.45s ease-in-out infinite alternate;
+}
+
+.arcane-orb-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px #f5d0fe, 0 0 12px #d8b4fe;
+  animation: arcane-orb-core 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes arcane-orb-pulse {
+  from {
+    box-shadow:
+      0 0 18px #a855f7,
+      0 0 36px rgba(168, 85, 247, 0.75),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1);
+  }
+  to {
+    box-shadow:
+      0 0 26px #d8b4fe,
+      0 0 52px rgba(216, 180, 254, 0.95),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes arcane-orb-core {
+  from { opacity: 0.6; transform: scale(0.8); }
+  to   { opacity: 1;   transform: scale(1.2); }
+}
+
 .boss-enemy {
   border: 4px solid #facc15 !important;
   box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(0,0,0,0.8) !important;
@@ -2392,6 +2458,86 @@ watch([section, sectionWave, phase], () => {
   font-size: 24px;
   color: #facc15;
   opacity: 0.5;
+}
+
+/* Boss Andres (mago PHP) — usa sprite pixel art con aura mágica */
+.boss--andres {
+  background: transparent !important;
+  border: 3px solid rgba(168, 85, 247, 0.55) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    0 0 38px rgba(168, 85, 247, 0.65),
+    inset 0 0 28px rgba(76, 29, 149, 0.45) !important;
+  overflow: visible !important;
+  animation: boss-andres-float 2.4s ease-in-out infinite alternate;
+}
+
+.boss--andres::after { content: none !important; }
+
+.boss--andres::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(76, 29, 149, 0.15) 45%, transparent 75%);
+  z-index: -1;
+  animation: boss-andres-aura 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.boss-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.boss-skin--andres {
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 0% 0%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px rgba(168, 85, 247, 0.55));
+  transform-origin: center;
+  animation:
+    andres-cols 2.4s steps(4, jump-none) infinite,
+    andres-rows 9.6s steps(4, jump-none) infinite;
+}
+
+@keyframes andres-cols {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 100%; }
+}
+
+@keyframes andres-rows {
+  from { background-position-y: 0%; }
+  to   { background-position-y: 100%; }
+}
+
+.boss--andres .enemy-hp {
+  bottom: -10px;
+  height: 6px;
+  background: linear-gradient(90deg, #f0abfc, #a855f7) !important;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+  border-radius: 3px;
+}
+
+@keyframes boss-andres-float {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-6px) scale(1.015); }
+}
+
+@keyframes boss-andres-aura {
+  from { opacity: 0.65; transform: scale(1); }
+  to   { opacity: 1;    transform: scale(1.08); }
 }
 
 .slash-container {

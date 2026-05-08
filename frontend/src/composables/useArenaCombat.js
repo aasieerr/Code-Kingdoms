@@ -257,13 +257,15 @@ export function useArenaCombat(options = {}) {
         y: pad,
         hp,
         maxHp: hp,
-        speed: 1.55,
+        speed: 2.2,
         size: 132,
         type: 'boss',
         contactDamage: Math.round(26 * multiplier),
-        fireInterval: 1600,
+        fireInterval: 1400,
         bulletDamage: Math.round(24 * multiplier),
         lastFireAt: performance.now() + 1100,
+        zigSeed: Math.random() * Math.PI * 2,
+        bossShotIndex: 0,
       })
       for (let i = 0; i < 8; i++) {
         const angle = (Math.PI * 2 * i) / 8
@@ -447,7 +449,22 @@ export function useArenaCombat(options = {}) {
         let nx = e.x
         let ny = e.y
 
-        if (e.type === 'dependency_injector' || e.type === 'thread_spammer') {
+        if (e.type === 'boss') {
+          // Boss mago: kiting + strafe lateral. Mantiene ~360px de distancia.
+          const preferred = 360
+          const strafeAngle = now / 700 + (e.zigSeed || 0)
+          const strafeAmt = Math.sin(strafeAngle) * 1.6
+          if (len > preferred + 30) {
+            nx = e.x + dx * (e.speed * 0.7) + (-dy) * strafeAmt
+            ny = e.y + dy * (e.speed * 0.7) + (dx) * strafeAmt
+          } else if (len < preferred - 30) {
+            nx = e.x - dx * e.speed + (-dy) * strafeAmt
+            ny = e.y - dy * e.speed + (dx) * strafeAmt
+          } else {
+            nx = e.x + (-dy) * strafeAmt * 1.2
+            ny = e.y + (dx) * strafeAmt * 1.2
+          }
+        } else if (e.type === 'dependency_injector' || e.type === 'thread_spammer') {
           const preferred = 260
           if (len > preferred + 20) {
             nx = e.x + dx * e.speed
@@ -496,7 +513,27 @@ export function useArenaCombat(options = {}) {
           const fAngle = Math.atan2(fdy, fdx)
           
           const newEBullets = []
-          if (e.type === 'boss' || e.type === 'thread_spammer') {
+          if (e.type === 'boss') {
+            // Mago boss: orbe arcano grande. Cada 4ª salva, abanico de 5 orbes.
+            const burstCount = (e.bossShotIndex || 0) % 4 === 3 ? 5 : 1
+            const spread = burstCount === 5 ? 0.34 : 0
+            const half = (burstCount - 1) / 2
+            for (let i = 0; i < burstCount; i++) {
+              const ang = fAngle + (i - half) * spread
+              newEBullets.push({
+                id: bulletId++,
+                x: fireX,
+                y: fireY,
+                vx: Math.cos(ang) * 4.6,
+                vy: Math.sin(ang) * 4.6,
+                born: now,
+                damage: e.bulletDamage || 24,
+                faction: enemyFaction.value,
+                kind: 'arcane_orb',
+              })
+            }
+            nextEnemy.bossShotIndex = (e.bossShotIndex || 0) + 1
+          } else if (e.type === 'thread_spammer') {
             // Burst of 3 projectiles
             for (let i = -1; i <= 1; i++) {
               const ang = fAngle + i * 0.25
@@ -504,10 +541,10 @@ export function useArenaCombat(options = {}) {
                 id: bulletId++,
                 x: fireX,
                 y: fireY,
-                vx: Math.cos(ang) * (e.type === 'boss' ? 5.4 : 6),
-                vy: Math.sin(ang) * (e.type === 'boss' ? 5.4 : 6),
+                vx: Math.cos(ang) * 6,
+                vy: Math.sin(ang) * 6,
                 born: now,
-                damage: e.bulletDamage || (e.type === 'boss' ? 24 : 17),
+                damage: e.bulletDamage || 17,
                 faction: enemyFaction.value,
                 symbol: enemyFaction.value === 'java' ? '☕' : '</>',
               })
@@ -824,7 +861,10 @@ export function useArenaCombat(options = {}) {
       const keptEBullets = []
       for (const b of movedE) {
         const dist = Math.hypot(b.x - pcx, b.y - pcy)
-        const hitRadius = b.isZone ? (b.radius || 58) : 25
+        let hitRadius
+        if (b.isZone) hitRadius = b.radius || 58
+        else if (b.kind === 'arcane_orb') hitRadius = 30
+        else hitRadius = 25
         if (dist < hitRadius) {
           applyPlayerDamage(b.damage || 15)
           if (b.isZone) {
