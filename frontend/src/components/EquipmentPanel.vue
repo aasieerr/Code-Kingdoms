@@ -41,7 +41,13 @@
               @click="selectedItem = ci"
             >
               <div class="item-icon-box">
-                <span class="item-icon">{{ SPRITES[ci.item?.type] }}</span>
+                <img 
+                  v-if="ci.item?.type === 'weapon'" 
+                  :src="getItemSprite(ci.item)" 
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <span v-else class="item-icon">{{ SPRITES[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
                 <div class="item-name-row">
@@ -62,7 +68,13 @@
       <aside class="item-preview" v-if="selectedItem?.item">
         <div class="preview-header">
           <div class="sprite-display">
-            <span class="display-icon">{{ SPRITES[selectedItem.item.type] }}</span>
+            <img 
+              v-if="selectedItem.item.type === 'weapon'" 
+              :src="getItemSprite(selectedItem.item)" 
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <span v-else class="display-icon">{{ SPRITES[selectedItem.item.type] }}</span>
             <div class="display-glow"></div>
           </div>
           <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
@@ -165,6 +177,18 @@ async function handleUnequip(ci) {
     await characterStore.refresh()
   }
 }
+function getItemSprite(item) {
+  if (!item || item.type !== 'weapon') return null
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const classMap = { 1: 'guerrero', 2: 'mago', 3: 'arquero', 4: 'paladin', 5: 'asesino' }
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  const clase = classMap[item.id_class] || 'comun'
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '')
+  return `/src/sprites/weapons/${reino}/${clase}/${filename}.png`
+}
 </script>
 
 <style>
@@ -186,4 +210,17 @@ async function handleUnequip(ci) {
 
 .slot-tag { font-size: 6px; background: rgba(250,204,21,0.1); color: #facc15; padding: 2px 6px; border: 1px solid #facc15; }
 .meta-power { font-size: 7px; color: #94a3b8; }
+.item-pixel-sprite {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.display-pixel-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(250,204,21,0.5));
+}
 </style>
