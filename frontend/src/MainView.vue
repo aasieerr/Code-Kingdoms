@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
@@ -447,25 +447,25 @@ onMounted(async () => {
 })
 
 // Salida hacia SecondView:
-// - Java: borde inferior
-// - PHP: borde superior
-watch([x, y], ([newX, newY]) => {
+// - Java: borde inferior  - PHP: borde superior
+// Se usa watchEffect para reaccionar también cuando characterStore carga datos del kingdom.
+watchEffect(() => {
   if (locked.value || navigating.value || portalCooldown.value) return
-  
+
   const PLAYER = 40
   const cx = MAIN_WORLD_WIDTH / 2
   const isPhpKingdom = isPhpKingdomSelected()
-  const inPortalX = newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH
-  const isAtPortalEdge = isPhpKingdom ? newY <= 0 : newY >= MAIN_WORLD_HEIGHT - PLAYER
-  if (
-    isAtPortalEdge
-    && inPortalX
-  ) {
+  const curX = x.value
+  const curY = y.value
+  const inPortalX = curX > cx - PORTAL_HALF_WIDTH && curX < cx + PORTAL_HALF_WIDTH
+  const isAtPortalEdge = isPhpKingdom ? curY <= 0 : curY >= MAIN_WORLD_HEIGHT - PLAYER
+
+  if (isAtPortalEdge && inPortalX) {
     navigating.value = true
     locked.value = true
     moving.value = true
     isFading.value = true
-    
+
     const exitLoop = () => {
       y.value += isPhpKingdom ? -5 : 5
       const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= MAIN_WORLD_HEIGHT + 80

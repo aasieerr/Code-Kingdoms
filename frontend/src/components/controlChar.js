@@ -13,7 +13,7 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
   const keys = { moveUp: false, moveLeft: false, moveDown: false, moveRight: false }
   const { keyMatches } = useGameSettings()
   const SIZE = 40
-  const SPEED = 4.5
+  const SPEED = 2.0
   let rafId = null
 
   function onKeyDown(e) {
