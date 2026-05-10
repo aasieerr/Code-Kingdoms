@@ -51,7 +51,7 @@
               </div>
               <div class="item-info">
                 <div class="item-name-row">
-                  <span class="item-name">{{ ci.item?.name.toUpperCase() }}</span>
+                  <span class="item-name">{{ ci.item?.name?.toUpperCase() }}</span>
                   <span class="slot-tag">{{ getSlotLabel(ci.item) }}</span>
                 </div>
                 <div class="item-meta">
@@ -89,7 +89,7 @@
               <li><span>TIPO:</span> <span class="stat-val">{{ selectedItem.item.details?.weapon_type ?? '-' }}</span></li>
               <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
             </template>
-            <template v-if="selectedItem.item.type === 'armor'">
+            <template v-else-if="selectedItem.item.type === 'armor'">
               <li><span>DEFENSA:</span> <span class="stat-val">{{ selectedItem.item.details?.defense ?? '-' }}</span></li>
               <li><span>CLASE:</span> <span class="stat-val">{{ selectedItem.item.details?.armor_type ?? '-' }}</span></li>
               <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
@@ -133,7 +133,7 @@ const SPRITES = { weapon: '⚔', armor: '🛡', consumable: '🧪' }
 const selectedItem = ref(null)
 const busy = ref(false)
 const loading = isInventoryLoading
-const equippedItems = globalEquippedItems
+const equippedItems = computed(() => globalEquippedItems.value.filter(ci => ci && ci.item))
 
 const totalStats = computed(() => {
   let defense = 0; let attack = 0

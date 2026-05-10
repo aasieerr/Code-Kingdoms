@@ -39,5 +39,14 @@ class CharacterItemSeeder extends Seeder
             ['id_character' => $mage->id, 'id_item' => 3],
             ['quantity' => 2, 'is_equipped' => false],
         );
+
+        // Añadir el arma definitiva al Héroe
+        $armaDefinitiva = \App\Models\Item::where('name', 'Arma Definitiva de JD')->first();
+        if ($armaDefinitiva) {
+            CharacterItem::query()->updateOrCreate(
+                ['id_character' => $hero->id, 'id_item' => $armaDefinitiva->id_item],
+                ['quantity' => 1, 'is_equipped' => false], // Puedes poner true si quieres que se equipe automáticamente
+            );
+        }
     }
 }

@@ -42,6 +42,7 @@ class ItemSeeder extends Seeder
             ['name' => 'Hacha de Piedra', 'description' => 'Tosca hacha.', 'damage' => 18, 'weapon_type' => 'hacha', 'durability' => 65, 'price' => 55, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idGuerrero],
             ['name' => 'Hacha de Recluta', 'description' => 'Hacha para paladines novatos.', 'damage' => 17, 'weapon_type' => 'hacha', 'durability' => 60, 'price' => 52, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idPaladin],
             ['name' => 'Daga de Práctica', 'description' => 'Daga pequeña.', 'damage' => 10, 'weapon_type' => 'daga', 'durability' => 40, 'price' => 35, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idAsesino],
+            ['name' => 'Arma Definitiva de JD', 'description' => 'Un arma devastadora con daño inigualable.', 'damage' => 999, 'weapon_type' => 'varita', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => true, 'id_class' => null],
 
             // ======================== REINO JAVA (30 Armas) ========================
             

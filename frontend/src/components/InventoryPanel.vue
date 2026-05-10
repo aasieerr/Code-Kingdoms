@@ -55,32 +55,32 @@
           </div>
           <ul v-else class="item-list">
             <li
-              v-for="ci in filteredItems"
-              :key="ci.item.id_item"
+              v-for="(ci, idx) in filteredItems"
+              :key="ci.item?.id_item || ci.id || idx"
               :class="{ 
-                'selected': selectedItem?.item?.id_item === ci.item.id_item,
+                'selected': selectedItem?.item?.id_item === ci.item?.id_item,
                 'equipped': ci.is_equipped 
               }"
               @click="selectedItem = ci"
             >
               <div class="item-icon-box">
                 <img 
-                  v-if="ci.item.type === 'weapon'" 
+                  v-if="ci.item?.type === 'weapon'" 
                   :src="getItemSprite(ci.item)" 
                   class="item-pixel-sprite"
                   @error="(e) => e.target.src = '/vite.svg'"
                 />
-                <span v-else class="item-icon">{{ spriteByType[ci.item.type] }}</span>
+                <span v-else class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
                 <div class="item-name-row">
-                  <span class="item-name">{{ ci.item.name.toUpperCase() }}</span>
+                  <span class="item-name">{{ ci.item?.name?.toUpperCase() }}</span>
                   <span v-if="ci.is_equipped" class="equipped-tag">E</span>
                 </div>
                 <div class="item-meta">
-                  <span class="meta-type">{{ labelsByType[ci.item.type] }}</span>
+                  <span class="meta-type">{{ labelsByType[ci.item?.type] }}</span>
                   <span class="meta-qty" v-if="ci.id">CANT: {{ ci.quantity }}</span>
-                  <span class="meta-price" v-else>{{ ci.item.price }} 🪙</span>
+                  <span class="meta-price" v-else>{{ ci.item?.price }} 🪙</span>
                 </div>
               </div>
             </li>
@@ -129,7 +129,7 @@
                 <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
               </li>
             </template>
-            <template v-if="selectedItem.item.type === 'armor'">
+            <template v-else-if="selectedItem.item.type === 'armor'">
               <li class="stat-item">
                 <span class="stat-label">NIVEL DE DEFENSA:</span> 
                 <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
@@ -143,7 +143,7 @@
                 <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
               </li>
             </template>
-            <template v-if="selectedItem.item.type === 'consumable'">
+            <template v-else-if="selectedItem.item.type === 'consumable'">
               <li class="stat-item">
                 <span class="stat-label">EFECTO PRIMARIO:</span> 
                 <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
@@ -259,7 +259,7 @@ const filteredItems = computed(() => {
     ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
     : myCharacterItems.value
 
-  let list = source
+  let list = source.filter(ci => ci && ci.item)
   
   if (activeFilter.value !== 'all') {
     list = list.filter((ci) => ci.item?.type === activeFilter.value)
