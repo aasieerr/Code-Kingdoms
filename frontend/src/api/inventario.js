@@ -20,7 +20,7 @@ export const equippedItems = computed(() => {
   return myCharacterItems.value.filter(ci => ci.is_equipped)
 })
 
-export async function fetchInventoryData(force = false) {
+export async function fetchInventoryData(force = false, shopType = null) {
   const cid = await ensureActiveCharacterId()
   if (lastLoadedCharacterId === cid && !force) return
   isInventoryLoading.value = true
@@ -31,8 +31,10 @@ export async function fetchInventoryData(force = false) {
       isInventoryLoading.value = false
       return
     }
+    const params = { id_character: cid }
+    if (shopType) params.shop_type = shopType
     const [resItems, resChar] = await Promise.all([
-      api.get('/items', { params: { id_character: cid } }),
+      api.get('/items', { params }),
       api.get('/character-items', { params: { id_character: cid } })
     ])
     globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
