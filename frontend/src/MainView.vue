@@ -176,20 +176,6 @@ function isEmptySprite(data) {
   return !pixels.some(p => p && p !== '')
 }
 
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
-
 
 const router        = useRouter()
 const route = useRoute()

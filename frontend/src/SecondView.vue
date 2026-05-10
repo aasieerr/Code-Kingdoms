@@ -313,19 +313,7 @@ function xpRequiredForLevel(levelValue) {
   return Math.round(85 * Math.pow(safeLevel, 1.35) + safeLevel * 42)
 }
 
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
 
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
 
 
 const router = useRouter()
