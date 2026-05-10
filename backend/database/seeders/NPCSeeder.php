@@ -154,8 +154,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
-                'x' => 400,
-                'y' => 500,
+                'x' => 1186,
+                'y' => 880,
             ]);
 
             \App\Models\NPC::create([
@@ -171,8 +171,8 @@ class NPCSeeder extends Seeder
                 'id_kingdom' => $java->id_kingdom,
                 // Mercader vende consumibles en Java
                 'shop_type' => 'consumables',
-                'x' => 1200,
-                'y' => 620,
+                'x' => 758,
+                'y' => 272,
             ]);
 
             \App\Models\NPC::create([
@@ -187,8 +187,8 @@ class NPCSeeder extends Seeder
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
                 'shop_type' => null,
-                'x' => 980,
-                'y' => 220,
+                'x' => 1186,
+                'y' => 238,
             ]);
 
             // Herrero para Java (similar rol que en PHP pero nombre distinto)
@@ -205,8 +205,8 @@ class NPCSeeder extends Seeder
                 'id_kingdom' => $java->id_kingdom,
                 // Herrero vende armas y armaduras en Java
                 'shop_type' => 'gear',
-                'x' => 860,
-                'y' => 460,
+                'x' => 484,
+                'y' => 236,
             ]);
 
             // NPCs adicionales para Java
@@ -221,8 +221,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
-                'x' => 1400,
-                'y' => 350,
+                'x' => 486,
+                'y' => 882,
             ]);
 
             \App\Models\NPC::create([
@@ -236,8 +236,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
-                'x' => 660,
-                'y' => 200,
+                'x' => 810,
+                'y' => 600,
             ]);
         }
     }
