@@ -21,6 +21,13 @@
         >
           Comerciar
         </button>
+        <button 
+          v-if="!['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
+          class="shop-btn stage-btn" 
+          @click="$emit('open-stage-selector', npc)"
+        >
+          Viajar
+        </button>
         <button class="next-btn" @click="nextDialogue">
           {{ isTyping ? 'Saltar' : (isLastDialogue ? 'Cerrar' : 'Siguiente') }}
           <span class="btn-hint" v-if="!isLastDialogue">Enter</span>
@@ -40,7 +47,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'open-shop'])
+const emit = defineEmits(['close', 'open-shop', 'open-stage-selector'])
 
 const currentIndex = ref(0)
 const displayedText = ref('')
@@ -222,6 +229,13 @@ onUnmounted(() => {
 .shop-btn:hover {
   background: #ffb142;
   transform: translateY(-2px);
+}
+.stage-btn {
+  background: #4a90e2;
+  color: #fff;
+}
+.stage-btn:hover {
+  background: #357abd;
 }
 
 .btn-hint {

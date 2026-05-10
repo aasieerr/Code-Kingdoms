@@ -122,6 +122,13 @@
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
       @open-shop="handleOpenShop"
+      @open-stage-selector="handleOpenStageSelector"
+    />
+
+    <StageSelectorPanel
+      v-if="showPanel === 'stage-selector'"
+      @close="showPanel = null"
+      @select-stage="goToStage"
     />
 
     <!-- Fade de transición -->
@@ -148,6 +155,7 @@ import MicropayModal  from './components/MicropayModal.vue'
 import SettingsModal  from './components/SettingsModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
+import StageSelectorPanel from './components/StageSelectorPanel.vue'
 import { useCharacterStore } from './stores/character'
 import { confirmCodeCoinsCheckout } from './api/micropay'
 import { useGameSettings } from './composables/useGameSettings'
@@ -399,6 +407,14 @@ onMounted(async () => {
   try {
     await refreshWallet()
     await handleMicropayReturn()
+    const imgSrc = isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap
+    await new Promise(resolve => {
+      if (!imgSrc) return resolve()
+      const img = new Image()
+      img.onload = resolve
+      img.onerror = resolve
+      img.src = imgSrc
+    })
   } catch (err) {
     console.error("Error inicial en MainView:", err)
   }
@@ -457,6 +473,28 @@ function handleOpenShop(npc) {
   } catch (err) {
     console.error('Error abriendo tienda:', err)
   }
+}
+
+function handleOpenStageSelector(npc) {
+  npcsManager.activeDialogueNpc.value = null
+  openPanel('stage-selector')
+}
+
+function goToStage(stageNum) {
+  showPanel.value = null
+  navigating.value = true
+  locked.value = true
+  moving.value = true
+  isFading.value = true
+
+  lastTransition.value = 'main-to-second'
+  
+  setTimeout(() => {
+    router.push({ name: 'SecondGame', query: { section: stageNum, wave: 1 } }).catch(() => {
+      navigating.value = false
+      locked.value = false
+    })
+  }, 500)
 }
 
 // Salida hacia SecondView:

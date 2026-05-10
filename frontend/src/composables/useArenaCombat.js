@@ -673,10 +673,11 @@ export function useArenaCombat(options = {}) {
                 const localT = (now + (e.ghostPhaseOffset || 0)) % cycle
                 if (localT < GHOST_INTANGIBLE_MS) continue
               }
+              let dmgToApply = currentDamage
               if (e.type === 'boilerplate_guard' && angleDiff < Math.PI / 2.1) {
-                continue
+                dmgToApply = Math.max(1, Math.round(currentDamage * 0.25))
               }
-              const nh = e.hp - currentDamage
+              const nh = e.hp - dmgToApply
               if (nh <= 0) {
                 grantEnemyKillExperience(e.type)
                 newCoins.push({
@@ -775,6 +776,7 @@ export function useArenaCombat(options = {}) {
             continue
           }
         }
+        let bulletDamageToApply = b.damage || BULLET_DAMAGE
         if (e.type === 'boilerplate_guard') {
           const esize = e.size || ENEMY_SIZE
           const ecx = e.x + esize / 2
@@ -785,10 +787,10 @@ export function useArenaCombat(options = {}) {
           const toBulletY = b.y - ecy
           const frontDot = toPlayerX * toBulletX + toPlayerY * toBulletY
           if (frontDot > 0) {
-            continue
+            bulletDamageToApply = Math.max(1, Math.round(bulletDamageToApply * 0.25))
           }
         }
-        const nh = e.hp - (b.damage || BULLET_DAMAGE)
+        const nh = e.hp - bulletDamageToApply
         if (nh <= 0) {
           grantEnemyKillExperience(e.type)
           newCoins.push({

@@ -172,6 +172,7 @@ class ItemSeeder extends Seeder
             ['name' => 'Ropas de Viajero', 'description' => 'Protección mínima.', 'defense' => 5, 'armor_type' => 'armadura_ligera', 'durability' => 50, 'price' => 40, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
             ['name' => 'Peto de Cuero Viejo', 'description' => 'Cuero desgastado.', 'defense' => 10, 'armor_type' => 'armadura_media', 'durability' => 80, 'price' => 120, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
             ['name' => 'Escudo de Madera Circular', 'description' => 'Escudo simple.', 'defense' => 8, 'armor_type' => 'escudo', 'durability' => 70, 'price' => 90, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idPaladin],
+            ['name' => 'Armadura Definitiva de JD', 'description' => 'Te hace inmatable. Solo para pruebas.', 'defense' => 99999, 'armor_type' => 'armadura_pesada', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => true, 'id_class' => null],
 
             // --- REINO JAVA ---
             ['name' => 'Coraza de Tipado Estático', 'description' => 'Validada.', 'defense' => 25, 'armor_type' => 'armadura_pesada', 'durability' => 180, 'price' => 450, 'id_kingdom' => $idJava, 'id_class' => $idGuerrero],
