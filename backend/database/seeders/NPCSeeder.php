@@ -46,6 +46,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'vendedor',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
+                // Mercader vende consumibles en PHP
+                'shop_type' => 'consumables',
                 'x' => 180,
                 'y' => 740,
             ]);
@@ -76,6 +78,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'vendedor',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
+                // Herrero vende armas y armaduras en PHP
+                'shop_type' => 'gear',
                 'x' => 760,
                 'y' => 430,
             ]);
@@ -111,6 +115,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'vendedor',
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
+                // Mercader vende consumibles en Java
+                'shop_type' => 'consumables',
                 'x' => 1200,
                 'y' => 620,
             ]);
@@ -126,6 +132,7 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $java->id_kingdom,
+                'shop_type' => null,
                 'x' => 980,
                 'y' => 220,
             ]);

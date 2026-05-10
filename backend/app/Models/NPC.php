@@ -15,6 +15,7 @@ class NPC extends Model
         'tipo',
         'id_kingdom',
         'map',
+        'shop_type',
         'x',
         'y',
     ];
