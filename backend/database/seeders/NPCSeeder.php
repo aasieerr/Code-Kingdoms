@@ -16,8 +16,11 @@ class NPCSeeder extends Seeder
         \Illuminate\Support\Facades\DB::table('npcs')->truncate();
         \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // Assign existing NPCs to PHP kingdom (Peachepe)
-        $php = \App\Models\Kingdom::where('name', 'Peachepe')->first();
+        // Ensure the PHP kingdom exists (Peachepe)
+        $php = \App\Models\Kingdom::query()->firstOrCreate(
+            ['name' => 'Peachepe'],
+            \App\Models\Kingdom::factory()->peachepe()->raw()
+        );
 
         if ($php) {
             \App\Models\NPC::create([
@@ -83,10 +86,61 @@ class NPCSeeder extends Seeder
                 'x' => 760,
                 'y' => 430,
             ]);
+
+            // NPCs adicionales para PHP
+            \App\Models\NPC::create([
+                'nombre' => 'Maestra de Blade',
+                'descripcion' => 'Experta en plantillas y renderizado.',
+                'dialogos' => [
+                    'Las vistas limpias hacen aplicaciones felices.',
+                    '¿Necesitas un componente? Te lo diseño con Blade.',
+                    'Recuerda escapar las variables cuando muestres HTML.'
+                ],
+                'tipo' => 'normal',
+                'map' => 'MainGame',
+                'id_kingdom' => $php->id_kingdom,
+                'x' => 320,
+                'y' => 520,
+            ]);
+
+            \App\Models\NPC::create([
+                'nombre' => 'Guardia de Valet',
+                'descripcion' => 'Protege las rutas del pueblo y vigila despliegues.',
+                'dialogos' => [
+                    'Mantén tu entorno local lo más parecido al de producción.',
+                    'Los deploys sin pruebas siempre traen drama.',
+                    'Si ves un error 500, revisa los logs primero.'
+                ],
+                'tipo' => 'normal',
+                'map' => 'MainGame',
+                'id_kingdom' => $php->id_kingdom,
+                'x' => 520,
+                'y' => 400,
+            ]);
+
+            // Mercader adicional para PHP (consumibles)
+            \App\Models\NPC::create([
+                'nombre' => 'Mercader del Bazar',
+                'descripcion' => 'Un comerciante que siempre tiene algo para aliviar un mal rato.',
+                'dialogos' => [
+                    'Pociones frescas, antídotos y cafés fuertes: lo que necesites para el debug.',
+                    'Tengo remedios para leaks de memoria y curitas para excepciones.',
+                    'Compra ahora o vuelve cuando el servidor esté en llamas.'
+                ],
+                'tipo' => 'vendedor',
+                'map' => 'MainGame',
+                'id_kingdom' => $php->id_kingdom,
+                'shop_type' => 'consumables',
+                'x' => 240,
+                'y' => 680,
+            ]);
         }
 
-        // Create Java-specific NPCs in the Java kingdom
-        $java = \App\Models\Kingdom::where('name', 'Java')->first();
+        // Ensure the Java kingdom exists
+        $java = \App\Models\Kingdom::query()->firstOrCreate(
+            ['name' => 'Java'],
+            \App\Models\Kingdom::factory()->java()->raw()
+        );
 
         if ($java) {
             \App\Models\NPC::create([
@@ -135,6 +189,55 @@ class NPCSeeder extends Seeder
                 'shop_type' => null,
                 'x' => 980,
                 'y' => 220,
+            ]);
+
+            // Herrero para Java (similar rol que en PHP pero nombre distinto)
+            \App\Models\NPC::create([
+                'nombre' => 'Forjador del JAR',
+                'descripcion' => 'Forja artefactos y empaca dependencias.',
+                'dialogos' => [
+                    'Un buen JAR es fruto de pruebas y empaquetado correcto.',
+                    'Cuida el classpath y evitarás NoClassDefFoundError.',
+                    'Trae tus fuentes y te ayudo a generar el artefacto.'
+                ],
+                'tipo' => 'vendedor',
+                'map' => 'MainGame',
+                'id_kingdom' => $java->id_kingdom,
+                // Herrero vende armas y armaduras en Java
+                'shop_type' => 'gear',
+                'x' => 860,
+                'y' => 460,
+            ]);
+
+            // NPCs adicionales para Java
+            \App\Models\NPC::create([
+                'nombre' => 'Arquitecto de Microservicios',
+                'descripcion' => 'Diseña sistemas desacoplados y escalables.',
+                'dialogos' => [
+                    'Divide los límites de servicio con responsabilidad.',
+                    'Un buen contrato API evita discusiones en producción.',
+                    'Recuerda: observabilidad > adivinación.'
+                ],
+                'tipo' => 'normal',
+                'map' => 'MainGame',
+                'id_kingdom' => $java->id_kingdom,
+                'x' => 1400,
+                'y' => 350,
+            ]);
+
+            \App\Models\NPC::create([
+                'nombre' => 'Guardia del ClassLoader',
+                'descripcion' => 'Vigila las clases que habitan la JVM.',
+                'dialogos' => [
+                    'Cuidado con las dependencias transitivas: pueden traer sorpresas.',
+                    'Si el ClassLoader falla, la aplicación no despierta.',
+                    '¿Has probado aislar módulos con OSGi? No es para todos.'
+                ],
+                'tipo' => 'normal',
+                'map' => 'MainGame',
+                'id_kingdom' => $java->id_kingdom,
+                'x' => 660,
+                'y' => 200,
             ]);
         }
     }
