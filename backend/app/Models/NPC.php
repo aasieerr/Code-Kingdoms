@@ -13,7 +13,9 @@ class NPC extends Model
         'descripcion',
         'dialogos',
         'tipo',
+        'id_kingdom',
         'map',
+        'shop_type',
         'x',
         'y',
     ];
@@ -21,6 +23,14 @@ class NPC extends Model
     protected $casts = [
         'dialogos' => 'array',
     ];
+
+    /**
+     * NPC belongs to a Kingdom (optional)
+     */
+    public function kingdom()
+    {
+        return $this->belongsTo(Kingdom::class, 'id_kingdom', 'id_kingdom');
+    }
 
     /**
      * Scope a query to only include NPCs of a given map.

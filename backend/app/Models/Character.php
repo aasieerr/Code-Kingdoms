@@ -18,6 +18,9 @@ class Character extends Model
         'health',
         'mana',
         'gold',
+        'arena_section',
+        'arena_wave',
+        'arena_in_progress',
         'equipped_skin_id',
         'sprite_data',
     ];
@@ -45,5 +48,17 @@ class Character extends Model
     public function characterClass(): BelongsTo
     {
         return $this->belongsTo(CharacterClass::class, 'id_class');
+    }
+
+    public function items()
+    {
+        return $this->belongsToMany(Item::class, 'character_items', 'id_character', 'id_item')
+            ->withPivot('quantity', 'is_equipped')
+            ->withTimestamps();
+    }
+
+    public function equippedItems()
+    {
+        return $this->items()->wherePivot('is_equipped', true);
     }
 }

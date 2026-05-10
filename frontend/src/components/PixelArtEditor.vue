@@ -21,12 +21,14 @@
           <button
             v-for="c in palette"
             :key="c"
+            type="button"
             class="pixel-editor__color-btn"
             :class="{ 'is-active': selectedColor === c && tool === 'pen' }"
             :style="{ backgroundColor: c }"
             @click="tool = 'pen'; selectedColor = c"
           ></button>
           <button 
+            type="button"
             class="pixel-editor__tool-btn" 
             :class="{ 'is-active': tool === 'eraser' }"
             @click="tool = 'eraser'"
@@ -113,7 +115,7 @@ function clearCanvas() {
 }
 
 watch(() => props.modelValue, (newVal) => {
-  if (newVal && newVal.length === size * size && JSON.stringify(newVal) !== JSON.stringify(pixels.value)) {
+  if (newVal.length === size * size && JSON.stringify(newVal) !== JSON.stringify(pixels.value)) {
     pixels.value = [...newVal]
   }
 })
@@ -126,7 +128,7 @@ watch(() => props.modelValue, (newVal) => {
   gap: 1rem;
   padding: 1rem;
   background: #0f172a;
-  border: 2px solid rgba(250, 204, 21, 0.2);
+  border: 2px solid #facc15/20;
 }
 .pixel-editor__label {
   font-size: 0.5rem;

@@ -1,0 +1,70 @@
+/* =============================================================
+   GAME WORLD — Shared styles for MainView and SecondView
+   NOTE: .world rule uses v-bind() and must stay in each component's scoped <style>
+   ============================================================= */
+
+.viewport {
+  width: 100vw; height: 100vh;
+  position: fixed; top: 0; left: 0;
+  outline: none; overflow: hidden;
+  background-color: #0b0d17;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.game-scanlines {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1000; opacity: 0.04;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);
+}
+
+.game-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
+}
+
+.grid {
+  position: absolute; width: 100%; height: 100%;
+  background-image:
+    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 50px 50px; z-index: 1;
+}
+
+.player {
+  position: absolute; width: 40px; height: 40px; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.1s ease-out;
+}
+.player.is-moving { animation: walking 0.25s infinite alternate ease-in-out; }
+@keyframes walking {
+  0%   { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-2px) rotate(4deg); }
+}
+
+.player__fallback {
+  width: 100%; height: 100%; border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0,0,0,.3); transition: background .1s;
+}
+.player__sprite { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); image-rendering: pixelated; }
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2.5px);
+  grid-template-rows: repeat(16, 2.5px);
+  width: 40px; height: 40px;
+}
+.mini-grid__pixel { width: 2.5px; height: 2.5px; }
+
+.game-logo {
+  position: absolute; right: 18px; top: 18px;
+  width: 108px; height: 108px; object-fit: contain;
+  z-index: 30; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+}
+
+.fade-overlay {
+  position: absolute; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background-color: #0b0d17; opacity: 0;
+  pointer-events: none; transition: opacity .5s ease-in-out; z-index: 1000;
+}
+.fade-overlay.active { opacity: 1; }

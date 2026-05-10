@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#0b0d17] text-white overflow-x-hidden" style="font-family: 'Press Start 2P', monospace; image-rendering: pixelated;">
+  <div class="pixel-page min-h-screen overflow-x-hidden">
     <AppHeader />
 
     <!-- Scanlines overlay -->
@@ -60,18 +60,27 @@
             ¿ESTÁS LISTO PARA EL COMPILADOR?
           </p>
           
-          <button @click="router.push('/register')" class="pixel-btn-gold text-[12px] px-12 py-5 w-full max-w-sm mx-auto block">
-            ► CREAR CUENTA GRATIS
-          </button>
+          <template v-if="!authStore.token">
+            <button @click="router.push('/register')" class="btn-pixel-gold text-[12px] px-12 py-5 w-full max-w-sm mx-auto block">
+              ► CREAR CUENTA GRATIS
+            </button>
 
-          <p class="mt-5 text-[7px] text-[#facc15]/30">
-            ¿YA TIENES CUENTA? 
-            <span @click="router.push('/login')" class="text-[#facc15]/60 hover:text-[#facc15] underline cursor-pointer transition-colors">
-              INICIA SESIÓN AQUÍ
-            </span>
+            <p class="mt-5 text-[7px] text-[#facc15]/30">
+              ¿YA TIENES CUENTA? 
+              <span @click="router.push('/login')" class="text-[#facc15]/60 hover:text-[#facc15] underline cursor-pointer transition-colors">
+                INICIA SESIÓN AQUÍ
+              </span>
+            </p>
+          </template>
+          <template v-else>
+            <button @click="router.push('/personajes')" class="btn-pixel-gold text-[12px] px-12 py-5 w-full max-w-sm mx-auto block">
+              ⚔ MIS HÉROES
+            </button>
+          </template>
+
+          <p v-if="stats[0].value !== '...'" class="mt-3 text-[7px] text-[#facc15]/30 uppercase tracking-widest">
+            ÚNETE A LOS {{ stats[0].value }} PROGRAMADORES
           </p>
-
-          <p class="mt-3 text-[7px] text-[#facc15]/30">ÚNETE A +50.000 PROGRAMADORES</p>
         </div>
       </div>
     </section>
@@ -94,10 +103,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
+import api from '../api/axios'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
 
 // ── TYPEWRITER ──────────────────────────────────────────────
 const line1 = 'CODE &'
@@ -150,18 +163,33 @@ function initScrollReveal() {
   items.forEach(item => observer.observe(item))
 }
 
+const stats = ref([
+  { value: '...', label: 'HÉROES' },
+  { value: '...', label: 'FOTOS' },
+  { value: '...', label: 'TESOROS' },
+  { value: '...', label: 'AVENTURAS' },
+])
+
+async function loadStats() {
+  try {
+    const { data } = await api.get('/stats')
+    stats.value = [
+      { value: data.users.toLocaleString(), label: 'HÉROES' },
+      { value: data.screenshots.toLocaleString(), label: 'FOTOS' },
+      { value: data.items.toLocaleString(), label: 'TESOROS' },
+      { value: data.characters.toLocaleString(), label: 'AVENTURAS' },
+    ]
+  } catch (error) {
+    console.error('Error loading stats:', error)
+  }
+}
+
 onMounted(() => {
   startTypewriter()
+  loadStats()
   // Small delay so the DOM is ready for observer
   setTimeout(initScrollReveal, 100)
 })
-
-const stats = [
-  { value: '50K+', label: 'HÉROES' },
-  { value: 'PHP', label: 'ELÉCTRICO' },
-  { value: 'JAVA', label: 'FIERO' },
-  { value: '4.9★', label: 'VALORACIÓN' },
-]
 </script>
 
 <style>
@@ -180,38 +208,6 @@ const stats = [
   50% { opacity: 0; }
 }
 
-/* ── SCROLL REVEAL ────────────────── */
-.reveal-item {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-.reveal-item.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ── GOLD BUTTON ──────────────────── */
-.pixel-btn-gold {
-  background: #ca8a04;
-  color: #fef9c3;
-  border: 4px solid #facc15;
-  box-shadow: 4px 4px 0 #854d0e, 8px 8px 0 #431407;
-  cursor: pointer;
-  font-family: 'Press Start 2P', monospace;
-  transition: all 0.1s;
-}
-.pixel-btn-gold:hover {
-  background: #facc15;
-  color: #431407;
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 #854d0e, 10px 10px 0 #431407;
-}
-.pixel-btn-gold:active {
-  transform: translate(4px, 4px);
-  box-shadow: 0px 0px 0 #854d0e;
-}
-
 /* ── BACKGROUND GLOW ──────────────── */
 .animate-pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
@@ -221,7 +217,4 @@ const stats = [
   50% { opacity: 0.5; transform: scale(1.1); }
 }
 
-::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: #0b0d17; }
-::-webkit-scrollbar-thumb { background: #854d0e; border: 2px solid #facc15; }
 </style>

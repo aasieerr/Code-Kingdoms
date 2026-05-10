@@ -8,6 +8,7 @@ import LoginView from '../views/LoginView.vue'
 import LandingView from '../views/LandingView.vue'
 import CommunityView from '../views/CommunityView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import ScreenshotsView from '../views/ScreenshotsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,12 +20,13 @@ const router = createRouter({
     { path: '/game/second', name: 'SecondGame', component: SecondView },
     { path: '/comunidad', name: 'Community', component: CommunityView },
     { path: '/register', name: 'Register', component: RegisterView },
+    { path: '/capturas', name: 'Screenshots', component: ScreenshotsView },
   ],
 })
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.name !== 'Login' && to.name !== 'Landing' && to.name !== 'Community' && to.name !== 'Register' && !auth.token) {
+  if (to.name !== 'Login' && to.name !== 'Landing' && to.name !== 'Community' && to.name !== 'Register' && to.name !== 'Screenshots' && !auth.token) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
 

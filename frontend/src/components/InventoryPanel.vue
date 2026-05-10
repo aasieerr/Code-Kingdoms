@@ -1,127 +1,229 @@
 <template>
-  <section class="character-panel" @click.stop>
+  <section class="game-panel" @click.stop>
+    <!-- SCANLINES -->
+    <div class="panel-scanlines"></div>
+
     <header class="panel-header">
-      <div class="panel-tabs">
+      <div class="panel-tabs" v-if="!isShop">
         <button class="tab-btn active">Inventario</button>
         <button class="tab-btn" @click="$emit('switch-panel', 'equipment')">Equipo</button>
       </div>
-      <button class="close-btn" @click="$emit('close')">X</button>
+      <h2 v-else>Tienda del Reino</h2>
+      <div class="header-gold">
+        <span class="gold-icon">🪙</span>
+        <span class="gold-amount">{{ characterStore.gold }}</span>
+      </div>
+      <button class="panel-close-btn" @click="$emit('close')">X</button>
     </header>
 
-    <!-- Filtros -->
-    <div class="inventory-filters">
-      <button
-        v-for="type in filterTypes"
-        :key="type.value"
-        class="filter-btn"
-        :class="{ active: activeFilter === type.value }"
-        @click="activeFilter = type.value"
-      >
-        {{ type.label }}
-      </button>
-    </div>
-
-    <!-- Cargando -->
-    <div v-if="loading" class="inventory-status">
-      <span class="status-icon">⏳</span>
-      <p>Cargando inventario...</p>
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="error" class="inventory-status error">
-      <span class="status-icon">⚠</span>
-      <p>{{ error }}</p>
-      <button class="filter-btn" @click="load">Reintentar</button>
-    </div>
-
-    <!-- Sin items -->
-    <div v-else-if="filteredItems.length === 0" class="inventory-status">
-      <span class="status-icon">📦</span>
-      <p>No hay items de este tipo.</p>
-    </div>
-
-    <!-- Datos del backend -->
-    <div v-else class="inventory-grid">
-      <ul class="item-list">
-        <li
-          v-for="ci in filteredItems"
-          :key="ci.item.id_item"
-          :class="{ selected: selectedItem?.item?.id_item === ci.item.id_item }"
-          @click="selectedItem = ci"
-        >
-          <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
-          <div>
-            <p class="item-name">{{ ci.item.name }} <span v-if="ci.is_equipped">(E)</span></p>
-            <p class="item-type">
-              {{ labelsByType[ci.item.type] }} 
-              <span v-if="ci.id">· x{{ ci.quantity }}</span>
-              <span v-else>· {{ ci.item.price }} 🪙</span>
-            </p>
+    <div class="panel-content">
+      <div class="panel-main">
+        <div class="inventory-header-actions">
+          <div class="inventory-filters">
+            <button
+              v-for="type in filterTypes"
+              :key="type.value"
+              class="filter-btn"
+              :class="{ active: activeFilter === type.value }"
+              @click="activeFilter = type.value"
+            >
+              {{ type.label }}
+            </button>
           </div>
-        </li>
-      </ul>
+          <div class="search-wrapper">
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="BUSCAR ÍTEM..." 
+              class="search-input"
+            />
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
 
-      <article class="item-preview" v-if="selectedItem?.item">
-        <div class="sprite-box">{{ spriteByType[selectedItem.item.type] }}</div>
-        <h3>{{ selectedItem.item.name }}</h3>
-        <p>{{ selectedItem.item.description }}</p>
-        <ul class="item-stats">
-          <li v-if="selectedItem.item.type === 'weapon'">Daño: {{ selectedItem.item.details?.damage ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'weapon'">Tipo: {{ selectedItem.item.details?.weapon_type ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'weapon'">Durabilidad: {{ selectedItem.item.details?.durability ?? '-' }}</li>
-          
-          <li v-if="selectedItem.item.type === 'armor'">Defensa: {{ selectedItem.item.details?.defense ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'armor'">Clase: {{ selectedItem.item.details?.armor_type ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'armor'">Durabilidad: {{ selectedItem.item.details?.durability ?? '-' }}</li>
-          
-          <li v-if="selectedItem.item.type === 'consumable'">Efecto: {{ selectedItem.item.details?.effect ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'consumable'">Potencia: {{ selectedItem.item.details?.power ?? '-' }}</li>
-          <li v-if="selectedItem.item.type === 'consumable'">Duración: {{ selectedItem.item.details?.duration ?? '-' }}</li>
-        </ul>
+        <div class="list-wrapper custom-scrollbar">
+          <div v-if="loading" class="status-box">
+            <div class="loading-spinner"></div>
+            <p>ACCEDIENDO A LOS ARCHIVOS...</p>
+          </div>
+          <div v-else-if="error" class="status-box error">
+            <p>{{ error }}</p>
+            <button class="retry-btn" @click="load">REINTENTAR</button>
+          </div>
+          <div v-else-if="filteredItems.length === 0" class="status-box empty">
+            <p>SISTEMA DE ALMACENAMIENTO VACÍO</p>
+          </div>
+          <ul v-else class="item-list">
+            <li
+              v-for="(ci, idx) in filteredItems"
+              :key="ci.item?.id_item || ci.id || idx"
+              :class="{ 
+                'selected': selectedItem?.item?.id_item === ci.item?.id_item,
+                'equipped': ci.is_equipped 
+              }"
+              @click="selectedItem = ci"
+            >
+              <div class="item-icon-box">
+                <img 
+                  v-if="ci.item?.type === 'weapon'" 
+                  :src="getItemSprite(ci.item)" 
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <span v-else class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
+              </div>
+              <div class="item-info">
+                <div class="item-name-row">
+                  <span class="item-name">{{ ci.item?.name?.toUpperCase() }}</span>
+                  <span v-if="ci.is_equipped" class="equipped-tag">E</span>
+                </div>
+                <div class="item-meta">
+                  <span class="meta-type">{{ labelsByType[ci.item?.type] }}</span>
+                  <span class="meta-qty" v-if="ci.id">CANT: {{ ci.quantity }}</span>
+                  <span class="meta-price" v-else>{{ ci.item?.price }} 🪙</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
 
-        <div class="item-actions">
-          <button 
-            v-if="selectedItem.id"
-            class="action-btn sell"
-            @click="handleSell(selectedItem)"
-            :disabled="busy"
-          >
-            Vender ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
-          </button>
-          
+      <!-- RIGHT: Preview & Actions -->
+      <aside class="item-preview" v-if="selectedItem?.item">
+        <div class="preview-header-box">
+          <div class="sprite-display">
+            <img 
+              v-if="selectedItem.item.type === 'weapon'" 
+              :src="getItemSprite(selectedItem.item)" 
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <span v-else class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <div class="display-glow"></div>
+          </div>
+          <div class="preview-info">
+            <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <div class="preview-type-tag">{{ labelsByType[selectedItem.item.type] }}</div>
+          </div>
+        </div>
+
+        <div class="description-box">
+          <h4 class="section-label">DESCRIPCIÓN</h4>
+          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+        </div>
+
+        <div class="preview-stats">
+          <h4 class="section-label">ATRIBUTOS DEL SISTEMA</h4>
+          <ul class="stats-list">
+            <template v-if="selectedItem.item.type === 'weapon'">
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA DE ATAQUE:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.damage ?? '0' }} DMG</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">CATEGORÍA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.weapon_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
+            </template>
+            <template v-else-if="selectedItem.item.type === 'armor'">
+              <li class="stat-item">
+                <span class="stat-label">NIVEL DE DEFENSA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">TIPO DE ARMADURA:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.armor_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
+            </template>
+            <template v-else-if="selectedItem.item.type === 'consumable'">
+              <li class="stat-item">
+                <span class="stat-label">EFECTO PRIMARIO:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA:</span> 
+                <span class="stat-val highlight">{{ selectedItem.item.details?.power ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">DURACIÓN:</span> 
+                <span class="stat-val">{{ selectedItem.item.details?.duration ? selectedItem.item.details.duration + 's' : 'INSTANTÁNEO' }}</span>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <div class="preview-actions">
+          <!-- BOTÓN DE COMPRA: visible cuando estamos en modo tienda -->
           <button
-            v-else
+            v-if="isShop"
             class="action-btn buy"
             @click="handleBuy(selectedItem.item)"
-            :disabled="busy"
+            :disabled="busy || (characterStore.gold < (selectedItem.item?.price || 0))"
           >
-            Comprar ({{ selectedItem.item.price || 0 }} 🪙)
+            {{ (characterStore.gold < (selectedItem.item?.price || 0)) ? 'FALTA ORO' : `COMPRAR AHORA (${selectedItem.item?.price || 0} 🪙)` }}
           </button>
 
-          <button 
-            v-if="selectedItem.id && ['weapon', 'armor'].includes(selectedItem.item.type)" 
-            class="action-btn equip" 
-            @click="handleEquip(selectedItem)"
-            :disabled="busy"
-          >
-            {{ selectedItem.is_equipped ? 'Desequipar' : 'Equipar' }}
-          </button>
+          <div v-else class="inventory-actions">
+            <button 
+              v-if="!selectedItem.is_equipped"
+              class="action-btn sell"
+              @click="handleSell(selectedItem)"
+              :disabled="busy"
+            >
+              VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
+            </button>
+            <button 
+              v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
+              class="action-btn equip" 
+              @click="handleEquip(selectedItem)"
+              :disabled="busy"
+            >
+              {{ selectedItem.is_equipped ? 'DESEQUIPAR' : 'EQUIPAR' }}
+            </button>
+          </div>
         </div>
-      </article>
+      </aside>
+      <div v-else class="preview-placeholder">
+        <p>SELECCIONA UN OBJETO</p>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
-  mergedInventoryItems,
+  globalItems,
+  myCharacterItems,
   isInventoryLoading,
   lastInventoryError,
   fetchInventoryData,
   toggleEquipItem
 } from '../api/inventario'
 import { purchaseItem, sellItem } from '../api/shop'
+import { useCharacterStore } from '../stores/character'
+
+const characterStore = useCharacterStore()
+
+const props = defineProps({
+  isShop: {
+    type: Boolean,
+    default: false
+  }
+  ,
+  shopType: {
+    type: String,
+    default: null
+  }
+})
 
 defineEmits(['close', 'switch-panel'])
 
@@ -135,27 +237,61 @@ const filterTypes = [
   { value: 'all',       label: 'Todo' },
   { value: 'weapon',    label: 'Armas' },
   { value: 'armor',     label: 'Armaduras' },
-  { value: 'consumable',label: 'Consumibles' },
+  { value: 'consumable',label: 'Pociones' },
 ]
 
 const selectedItem = ref(null)
 const activeFilter = ref('all')
+const searchQuery = ref('')
 const busy = ref(false)
 
-// Se exponen directamente los refs globales al template
 const loading = isInventoryLoading
 const error = lastInventoryError
-const items = mergedInventoryItems
+
+// Refrescar datos al cambiar entre inventario y tienda
+watch(() => props.isShop, async () => {
+  // Resetear selección ANTES de cargar para evitar que un item con id real
+  // quede seleccionado mientras llegan los datos de la tienda
+  selectedItem.value = null
+  await fetchInventoryData(true, props.shopType)
+  if (filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
+  }
+})
+
+// Si cambia el tipo de tienda mientras está abierta, recargar catálogo
+watch(() => props.shopType, async (t) => {
+  if (props.isShop) {
+    selectedItem.value = null
+    await fetchInventoryData(true, t)
+    if (filteredItems.value.length > 0) selectedItem.value = filteredItems.value[0]
+  }
+})
 
 const filteredItems = computed(() => {
-  if (activeFilter.value === 'all') return items.value
-  return items.value.filter((ci) => ci.item?.type === activeFilter.value)
+  const source = props.isShop 
+    ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+    : myCharacterItems.value
+
+  let list = source.filter(ci => ci && ci.item)
+  
+  if (activeFilter.value !== 'all') {
+    list = list.filter((ci) => ci.item?.type === activeFilter.value)
+  }
+  
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter((ci) => ci.item?.name?.toLowerCase().includes(q))
+  }
+  
+  return list
 })
 
 onMounted(async () => {
-  await fetchInventoryData()
-  if (!selectedItem.value && items.value.length > 0) {
-    selectedItem.value = items.value[0]
+  selectedItem.value = null
+  await fetchInventoryData(true, props.shopType)
+  if (filteredItems.value.length > 0) {
+    selectedItem.value = filteredItems.value[0]
   }
 })
 
@@ -178,7 +314,8 @@ async function handleEquip(ci) {
   try {
     if (!ci.is_equipped) {
       const mySlot = getSlot(ci.item)
-      const toUnequip = items.value.filter(x => x.is_equipped && x.id && x.id !== ci.id && getSlot(x.item) === mySlot)
+      const source = myCharacterItems.value
+      const toUnequip = source.filter(x => x.is_equipped && x.id && x.id !== ci.id && getSlot(x.item) === mySlot)
       for (const u of toUnequip) {
         await toggleEquipItem(u.id, false)
       }
@@ -186,12 +323,15 @@ async function handleEquip(ci) {
     } else {
       await toggleEquipItem(ci.id, false)
     }
+    await characterStore.refresh() // Refrescar para que SecondView detecte el cambio de arma inmediatamente
   } catch (err) {
     console.error("Error al equipar/desequipar", err)
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      selectedItem.value = myCharacterItems.value.find(x => x.item?.id_item === currentIdItem)
+    }
   }
 }
 
@@ -200,12 +340,18 @@ async function handleBuy(item) {
   busy.value = true
   try {
     await purchaseItem(item.id_item)
+    await characterStore.refresh() // Refrescar oro tras compra
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al comprar')
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      const source = props.isShop 
+        ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+        : myCharacterItems.value
+      selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
+    }
   }
 }
 
@@ -214,139 +360,82 @@ async function handleSell(ci) {
   busy.value = true
   try {
     await sellItem(ci.id)
+    await characterStore.refresh() // Refrescar oro tras venta
   } catch (err) {
     alert(err?.response?.data?.message || 'Error al vender')
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
-    if (currentIdItem) selectedItem.value = items.value.find(x => x.item?.id_item === currentIdItem)
+    if (currentIdItem) {
+      const source = props.isShop 
+        ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
+        : myCharacterItems.value
+      selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
+    }
   }
+}
+function getItemSprite(item) {
+  if (!item || item.type !== 'weapon') return null
+
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const classMap = { 1: 'guerrero', 2: 'mago', 3: 'arquero', 4: 'paladin', 5: 'asesino' }
+
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  const clase = classMap[item.id_class] || 'comun'
+  
+  // Normalizar nombre: minúsculas, reemplazar espacios por guiones
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '') // Eliminar caracteres especiales
+  
+  return `/src/sprites/weapons/${reino}/${clase}/${filename}.png`
 }
 </script>
 
+<style>
+@import '../styles/game-panel.css';
+</style>
+
 <style scoped>
-.character-panel {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  width: min(920px, 92vw);
-  min-height: 520px;
-  z-index: 45;
-  border: 5px solid #1f1f1f;
-  background: linear-gradient(180deg, #263238 0%, #1b2529 100%);
-  box-shadow: 0 0 0 5px #607d8b, 12px 12px 0 rgba(0, 0, 0, 0.5);
-  color: #f5f5f5;
-  padding: 16px;
-  font-family: 'Press Start 2P', 'Courier New', monospace;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.panel-tabs { display: flex; gap: 8px; }
-.tab-btn {
-  border: 2px solid #0f1518; background: #455a64; color: #e9eef0;
-  padding: 8px 12px; font-size: 10px; cursor: pointer; font-family: inherit;
-}
-.tab-btn.active { background: #8bc34a; color: #17210f; }
-.panel-header h2 { font-size: 14px; margin: 0; }
-.close-btn {
-  width: 34px;
-  height: 34px;
-  border: 2px solid #0f1518;
-  background: #b74a3c;
-  color: #fff7e6;
-  cursor: pointer;
-  font-family: inherit;
+/* ── Inventory-specific styles ── */
+.inventory-header-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 20px; margin-bottom: 24px;
 }
 .inventory-filters { display: flex; gap: 8px; }
+.search-wrapper { flex: 1; position: relative; max-width: 300px; }
+.search-input {
+  width: 100%; padding: 10px 14px 10px 40px;
+  background: #0b0d17; border: 2px solid #334155;
+  color: #facc15; font-family: 'Press Start 2P', monospace;
+  font-size: 7px; transition: all 0.2s; box-sizing: border-box;
+}
+.search-input:focus { outline: none; border-color: #facc15; box-shadow: 0 0 10px rgba(250,204,21,0.2); }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: 0.5; pointer-events: none; }
 .filter-btn {
-  border: 2px solid #0f1518;
-  background: #455a64;
-  color: #e9eef0;
-  padding: 8px 10px;
-  font-size: 10px;
-  cursor: pointer;
-  font-family: inherit;
+  padding: 10px 14px; background: #1e293b; border: 2px solid #334155;
+  color: #94a3b8; font-size: 7px; font-family: 'Press Start 2P', monospace;
+  cursor: pointer; transition: all 0.2s;
 }
-.filter-btn.active { background: #8bc34a; color: #17210f; }
-.inventory-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 200px;
-  border: 3px solid #111;
-  background: #2a373d;
-  padding: 20px;
-  text-align: center;
-  font-size: 10px;
-  color: #b0bec5;
+.filter-btn.active { border-color: #facc15; color: #facc15; }
+.equipped-tag { font-size: 7px; background: #facc15; color: #431407; padding: 2px 4px; }
+.meta-price { font-size: 7px; color: #94a3b8; }
+.retry-btn {
+  padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
+  color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
 }
-.inventory-status.error { color: #ef9a9a; border-color: #b71c1c; background: #1a1a2a; }
-.status-icon { font-size: 32px; }
-.inventory-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; }
-.item-list {
-  list-style: none;
-  margin: 0;
-  padding: 10px;
-  border: 3px solid #111;
-  background: #2a373d;
-  max-height: 360px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.item-pixel-sprite {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  object-fit: contain;
 }
-.item-list li {
-  border: 2px solid #0f1518;
-  padding: 10px;
-  background: #607d8b;
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  gap: 10px;
-  cursor: pointer;
+.display-pixel-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(250,204,21,0.5));
 }
-.item-list li.selected { background: #d4b16a; color: #1b1b1b; }
-.item-icon { font-size: 16px; }
-.item-name { margin: 0 0 5px; font-size: 10px; }
-.item-type { margin: 0; font-size: 9px; }
-.item-preview { border: 3px solid #111; background: #243238; padding: 12px; }
-.sprite-box {
-  width: 100%;
-  height: 150px;
-  border: 3px solid #0f1518;
-  background:
-    linear-gradient(45deg, #567 25%, transparent 25%),
-    linear-gradient(-45deg, #567 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #567 75%),
-    linear-gradient(-45deg, transparent 75%, #567 75%);
-  background-size: 22px 22px;
-  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
-  display: grid;
-  place-items: center;
-  font-size: 46px;
-  margin-bottom: 10px;
-}
-.item-preview h3 { margin: 0 0 8px; font-size: 12px; }
-.item-preview p { margin: 0 0 8px; line-height: 1.45; font-size: 10px; }
-.item-stats { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;}
-.item-stats li { font-size: 10px; }
-
-.item-actions { display: flex; flex-direction: column; gap: 8px; }
-.action-btn {
-  width: 100%; border: 2px solid #0f1518; padding: 10px;
-  font-size: 10px; cursor: pointer; font-family: inherit; font-weight: bold;
-}
-.action-btn:hover:not(:disabled) { filter: brightness(1.1); }
-.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.action-btn.buy { background: #8bc34a; color: #17210f; }
-.action-btn.sell { background: #b74a3c; color: #fff7e6; }
-.action-btn.equip { background: #c9b27a; color: #1f1f1f; }
 </style>

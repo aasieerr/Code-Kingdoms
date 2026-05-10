@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Character;
 use App\Models\User;
+use App\Models\CharacterClass;
+use App\Models\Item;
+use App\Models\CharacterItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -54,7 +57,52 @@ class CharacterController extends Controller
         );
         $character = Character::create($payload);
 
+        // Asignar equipo inicial según la clase
+        $this->assignStartingEquipment($character);
+
         return response()->json($character, 201);
+    }
+
+    /**
+     * Asigna un arma y armadura inicial al personaje recién creado según su clase.
+     */
+    private function assignStartingEquipment(Character $character)
+    {
+        $charClass = CharacterClass::find($character->id_class);
+        if (!$charClass)
+            return;
+
+        // Selección de arma
+        $weaponName = match ($charClass->name) {
+            'Guerrero' => 'Arma Definitiva de JD',
+            'Mago' => 'Varita de Madera',
+            'Arquero' => 'Arco de Iniciado',
+            'Paladín' => 'Hacha de Piedra',
+            'Asesino' => 'Daga de Práctica',
+            default => 'Espada de Entrenamiento',
+        };
+
+        // Selección de armadura
+        $armorName = match ($charClass->name) {
+            'Mago', 'Asesino' => 'Ropas de Viajero',
+            'Arquero', 'Guerrero' => 'Peto de Cuero Viejo',
+            'Paladín' => 'Escudo de Madera Circular',
+            default => 'Ropas de Viajero',
+        };
+
+        $this->giveAndEquipItem($character->id, $weaponName);
+        $this->giveAndEquipItem($character->id, $armorName);
+    }
+
+    private function giveAndEquipItem($characterId, $itemName)
+    {
+        $item = Item::where('name', $itemName)->first();
+        if ($item) {
+            CharacterItem::updateOrCreate(
+                ['id_character' => $characterId, 'id_item' => $item->id_item],
+                ['quantity' => 1, 'is_equipped' => true]
+            );
+        }
     }
 
     /**
@@ -63,7 +111,7 @@ class CharacterController extends Controller
     public function show(string $id)
     {
         $character = Character::query()
-            ->with(['equippedSkin'])
+            ->with(['equippedSkin', 'equippedItems.weapon', 'equippedItems.armor'])
             ->findOrFail($id);
 
         if ((int) $character->id_user !== (int) Auth::id()) {
@@ -96,6 +144,9 @@ class CharacterController extends Controller
             'health' => 'sometimes|integer|min:0',
             'mana' => 'sometimes|integer|min:0',
             'gold' => 'sometimes|integer|min:0',
+            'arena_section' => 'sometimes|integer|min:1|max:8',
+            'arena_wave' => 'sometimes|integer|min:1|max:20',
+            'arena_in_progress' => 'sometimes|boolean',
         ]);
         $data = $request->all();
         unset($data['id_user']);

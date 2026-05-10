@@ -118,6 +118,12 @@ class ShopController extends Controller
                 ]);
             }
 
+            if ($characterItem->is_equipped) {
+                throw ValidationException::withMessages([
+                    'id_character_item' => 'No puedes vender un objeto que tienes equipado.',
+                ]);
+            }
+
             $sellPrice = (int) floor(($characterItem->item->price ?? 0) * 0.5);
             $totalGain = $sellPrice * $quantity;
 
