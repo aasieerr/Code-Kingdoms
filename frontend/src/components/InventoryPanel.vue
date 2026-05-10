@@ -218,6 +218,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+  ,
+  shopType: {
+    type: String,
+    default: null
+  }
 })
 
 defineEmits(['close', 'switch-panel'])
@@ -248,9 +253,18 @@ watch(() => props.isShop, async () => {
   // Resetear selección ANTES de cargar para evitar que un item con id real
   // quede seleccionado mientras llegan los datos de la tienda
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
+  }
+})
+
+// Si cambia el tipo de tienda mientras está abierta, recargar catálogo
+watch(() => props.shopType, async (t) => {
+  if (props.isShop) {
+    selectedItem.value = null
+    await fetchInventoryData(true, t)
+    if (filteredItems.value.length > 0) selectedItem.value = filteredItems.value[0]
   }
 })
 
@@ -275,7 +289,7 @@ const filteredItems = computed(() => {
 
 onMounted(async () => {
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }

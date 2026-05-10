@@ -17,7 +17,7 @@
         <button 
           v-if="['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
           class="shop-btn" 
-          @click="$emit('open-shop')"
+          @click="$emit('open-shop', npc)"
         >
           Comerciar
         </button>

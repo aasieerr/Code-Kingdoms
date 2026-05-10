@@ -82,6 +82,7 @@
     <InventoryPanel
       v-if="showPanel === 'inventory' || showPanel === 'shop'"
       :is-shop="showPanel === 'shop'"
+      :shop-type="lastOpenedShopType"
       @close="showPanel = null"
       @switch-panel="openPanel"
     />
@@ -120,7 +121,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="npcsManager.activeDialogueNpc.value = null; openPanel('shop')"
+      @open-shop="handleOpenShop"
     />
 
     <!-- Fade de transición -->
@@ -186,6 +187,7 @@ const showSettings = ref(false)
 const authStore = useAuthStore()
 const characterStore = useCharacterStore()
 const { keyMatches, keyLabel, settings } = useGameSettings()
+const lastOpenedShopType = ref(null)
 
 // Monedero y apariencia
 
@@ -445,6 +447,17 @@ onMounted(async () => {
     portalCooldown.value = false
   }
 })
+
+function handleOpenShop(npc) {
+  try {
+    lastOpenedShopType.value = npc?.shop_type || null
+    // cerrar diálogo y abrir panel tienda
+    npcsManager.activeDialogueNpc.value = null
+    openPanel('shop')
+  } catch (err) {
+    console.error('Error abriendo tienda:', err)
+  }
+}
 
 // Salida hacia SecondView:
 // - Java: borde inferior  - PHP: borde superior
