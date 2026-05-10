@@ -121,7 +121,7 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="(npc) => { lastOpenedShopType.value = npc?.shop_type || null; npcsManager.activeDialogueNpc.value = null; openPanel('shop') }"
+      @open-shop="handleOpenShop"
     />
 
     <!-- Fade de transición -->
@@ -447,6 +447,17 @@ onMounted(async () => {
     portalCooldown.value = false
   }
 })
+
+function handleOpenShop(npc) {
+  try {
+    lastOpenedShopType.value = npc?.shop_type || null
+    // cerrar diálogo y abrir panel tienda
+    npcsManager.activeDialogueNpc.value = null
+    openPanel('shop')
+  } catch (err) {
+    console.error('Error abriendo tienda:', err)
+  }
+}
 
 // Salida hacia SecondView:
 // - Java: borde inferior  - PHP: borde superior
