@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\UserPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -27,7 +28,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user' => $user->only(['id', 'name', 'email']),
+            'user' => UserPresenter::present($user),
         ], 201);
     }
 
@@ -48,7 +49,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user' => $user->only(['id', 'name', 'email']),
+            'user' => UserPresenter::present($user),
         ]);
     }
 
@@ -61,6 +62,6 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        return response()->json($request->user()->only(['id', 'name', 'email']));
+        return response()->json(UserPresenter::present($request->user()));
     }
 }
