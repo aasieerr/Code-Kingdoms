@@ -19,4 +19,9 @@ class Screenshot extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function communityPost()
+    {
+        return $this->hasOne(CommunityPost::class);
+    }
 }

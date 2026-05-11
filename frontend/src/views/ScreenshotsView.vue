@@ -63,13 +63,24 @@
             </div>
 
             <!-- Footer -->
-            <div class="mt-3 flex justify-between items-center px-1">
+            <div class="mt-3 flex justify-between items-center px-1 gap-3">
               <span class="text-[#facc15]/40 text-[7px] uppercase tracking-tighter">{{ formatDate(screenshot.created_at) }}</span>
-              <button @click="deleteScreenshot(screenshot.id)" 
-                      class="text-[#ef4444]/40 hover:text-[#ef4444] text-[8px] transition-colors flex items-center gap-1 group/del">
-                <span class="group-hover/del:scale-125 transition-transform">🗑</span>
-                <span class="hidden group-hover/del:inline ml-1">ELIMINAR</span>
-              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  v-if="!screenshot.is_published"
+                  class="text-[#3b82f6]/60 hover:text-[#3b82f6] text-[7px] tracking-widest transition-colors"
+                  :disabled="publishingId === screenshot.id"
+                  @click="publishScreenshot(screenshot)"
+                >
+                  {{ publishingId === screenshot.id ? 'PUBLICANDO...' : 'PUBLICAR' }}
+                </button>
+                <span v-else class="text-[#4ade80]/70 text-[7px] tracking-widest">EN COMUNIDAD</span>
+                <button @click="deleteScreenshot(screenshot.id)"
+                        class="text-[#ef4444]/40 hover:text-[#ef4444] text-[8px] transition-colors flex items-center gap-1 group/del">
+                  <span class="group-hover/del:scale-125 transition-transform">🗑</span>
+                  <span class="hidden group-hover/del:inline ml-1">ELIMINAR</span>
+                </button>
+              </div>
             </div>
             <!-- Character Tag -->
             <div v-if="screenshot.character_name" class="absolute -top-3 left-4 bg-[#facc15] text-[#0b0d17] text-[7px] px-2 py-1 font-bold border-2 border-[#0b0d17] z-20">
@@ -125,6 +136,7 @@ import { ref, onMounted, computed } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import screenshotsApi from '../api/screenshots'
+import communityApi from '../api/community'
 import { fetchCharacters } from '../api/character'
 
 const screenshots = ref([])
@@ -133,6 +145,7 @@ const loading = ref(true)
 const selectedScreenshot = ref(null)
 const visibleCount = ref(6)
 const selectedCharacter = ref('Todos')
+const publishingId = ref(null)
 
 const uniqueCharacters = computed(() => {
   const names = characters.value.map(c => c.name)
@@ -184,6 +197,35 @@ const deleteScreenshot = async (id) => {
 
 const openLightbox = (screenshot) => {
   selectedScreenshot.value = screenshot
+}
+
+const resolveFaction = (characterName) => {
+  if (!characterName) return 'PHP'
+  const character = characters.value.find((entry) => entry.name === characterName)
+  return character?.kingdom?.name === 'Java' ? 'JAVA' : 'PHP'
+}
+
+const publishScreenshot = async (screenshot) => {
+  const caption = window.prompt(
+    'Crónica opcional para la comunidad:',
+    screenshot.character_name ? `Momento épico con ${screenshot.character_name}.` : '',
+  )
+
+  if (caption === null) return
+
+  publishingId.value = screenshot.id
+  try {
+    await communityApi.publishScreenshot(screenshot.id, {
+      caption: caption.trim() || null,
+      faction: resolveFaction(screenshot.character_name),
+    })
+    screenshot.is_published = true
+  } catch (error) {
+    console.error('Error publishing screenshot:', error)
+    alert(error.response?.data?.message || 'No se pudo publicar la captura en la comunidad.')
+  } finally {
+    publishingId.value = null
+  }
 }
 
 const formatDate = (dateString) => {

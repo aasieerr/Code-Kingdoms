@@ -21,17 +21,48 @@
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :class="[enemyFactionClass, { 'boss-enemy': e.type === 'boss' || e.type === 'miniboss', 'enemy--with-image': isPhpMeleeEnemy(e) }]"
+        :class="[enemyFactionClass, `enemy-type--${e.type}`, {
+          'boss-enemy': e.type === 'boss',
+          'boss--andres': isAndresBoss(e),
+          'boss--juan-carlos': isJuanCarlosBoss(e),
+          'boss--juan-carlos--moving': isJuanCarlosBoss(e) && isJuanCarlosFlying(e),
+          'boss--juan-carlos--defending': isJuanCarlosDefending(e),
+          'enemy--with-image': hasEnemySprite(e),
+        }]"
         :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
+        <div
+          v-if="isAndresBoss(e)"
+          class="boss-skin boss-skin--andres"
+          :style="bossAndresStyle(e)"
+        ></div>
         <img
-          v-if="isPhpMeleeEnemy(e)"
-          class="enemy-skin enemy-skin--php-melee"
-          :src="phpMeleeEnemyImg"
-          :style="phpMeleeEnemyStyle(e)"
-          alt="PHP melee enemy"
+          v-else-if="isJuanCarlosBoss(e)"
+          class="boss-skin boss-skin--juan-carlos"
+          :src="bossJuanCarlosImg(e)"
+          :style="bossJuanCarlosStyle(e)"
+          alt="Juan Carlos"
         />
-        <span class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
+        <img
+          v-else-if="enemySpriteSrc(e)"
+          class="enemy-skin"
+          :src="enemySpriteSrc(e)"
+          :style="enemySpriteStyle(e)"
+          :alt="e.type"
+        />
+        <div
+          v-if="e.type === 'boss' || e.type === 'miniboss'"
+          class="boss-enemy-hp"
+          :class="{
+            'boss-enemy-hp--java': isJuanCarlosBoss(e) || isJavaMiniboss(e),
+            'boss-enemy-hp--php': isAndresBoss(e) || isPhpMiniboss(e),
+          }"
+        >
+          <div class="boss-enemy-hp-track">
+            <div class="boss-enemy-hp-fill" :style="{ width: hpBarPct(e) + '%' }"></div>
+          </div>
+        </div>
+        <span v-else class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
       </div>
 
       <div
@@ -54,10 +85,16 @@
         v-for="b in enemyBullets"
         :key="b.id"
         class="enemy-bullet"
-        :class="b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'"
+        :class="[enemyBulletClass(b), { 'enemy-bullet--with-sprite': enemyBulletImg(b) }]"
         :style="{ left: b.x + 'px', top: b.y + 'px' }"
       >
-        {{ b.symbol }}
+        <img
+          v-if="enemyBulletImg(b)"
+          class="enemy-bullet-skin"
+          :src="enemyBulletImg(b)"
+          alt=""
+        />
+        <template v-else>{{ b.symbol }}</template>
       </div>
 
       <div
@@ -95,6 +132,11 @@
           v-else 
           class="player__fallback"
           :style="{ background: moving ? colorMoving : colorStill }"
+        ></div>
+        <div
+          v-if="dependencyMark"
+          class="player__dependency-mark"
+          aria-hidden="true"
         ></div>
       </div>
     </div>
@@ -264,6 +306,8 @@
 import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useArenaCombat } from './composables/useArenaCombat'
+import { getArenaEnemySprite } from './constants/arenaEnemySprites'
+import { getEnemyBulletSprite } from './constants/arenaEnemyBulletSprites'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
 import { SECTION_MAPS } from './constants/maps'
 import arrayIslandsMap from './assets/maps/array-islands-map.png'
@@ -280,7 +324,16 @@ import laravelCitadelMap from './assets/maps/laravel-citadel-map.png'
 import phpFrontierMarshesMap from './assets/maps/php-frontier-marshes-map.png'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
-import phpMeleeEnemyImg from './assets/enemy-php-melee.png'
+import bossAndresSheet from './assets/characters/pixellab-angry-middle-aged-male-wizard--1778238468527-3x.png'
+import javaBossIdle1 from './assets/characters/java-boss/1.png'
+import javaBossIdle2 from './assets/characters/java-boss/2.png'
+import javaBossIdle3 from './assets/characters/java-boss/3.png'
+import javaBossCast from './assets/characters/java-boss/4.png'
+import javaBossIdle5 from './assets/characters/java-boss/5.png'
+import javaBossIdle6 from './assets/characters/java-boss/6.png'
+import javaBossFly from './assets/characters/java-boss/7.png'
+import javaBossIdle8 from './assets/characters/java-boss/8.png'
+import javaBossCloak from './assets/characters/java-boss/9.png'
 import { lastTransition } from './gameState'
 import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
 import api from './api/axios'
@@ -321,7 +374,8 @@ const route = useRoute()
 const ARENA_WORLD_WIDTH = 1700
 const ARENA_WORLD_HEIGHT = WORLD_EDGE
 const ARENA_ENTRY_TARGET_Y = ARENA_WORLD_HEIGHT / 2
-const JVM_VOLCANO_ENTRY_Y = 190
+const ARRAY_ISLANDS_ENTRY_Y = ARENA_WORLD_HEIGHT / 2 - 90
+const JVM_VOLCANO_ENTRY_Y = ARENA_WORLD_HEIGHT - 240
 const LARAVEL_CITADEL_ENTRY_Y = ARENA_WORLD_HEIGHT - 220
 const COMPOSER_DESERT_ENTRY_Y = ARENA_WORLD_HEIGHT - 260
 const worldWidthPx = `${ARENA_WORLD_WIDTH}px`
@@ -421,7 +475,7 @@ const ARRAY_ISLANDS_INNER_BOUNDS = {
 const arenaFloorStyle = computed(() => {
   if (isFinalKingdomSection.value) {
     return {
-      backgroundImage: `url(${isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap})`,
+      backgroundImage: `url(${currentArenaMapImage.value})`,
       backgroundRepeat: 'no-repeat',
       backgroundSize: '100% 100%',
       backgroundPosition: 'center',
@@ -630,6 +684,9 @@ function getSectionMapNameByIndex(faction, sectionNumber) {
 }
 
 function getArenaEntryPoint(mapName) {
+  if (mapName === 'Array Islands') {
+    return { x: ARENA_WORLD_WIDTH / 2, y: ARRAY_ISLANDS_ENTRY_Y }
+  }
   if (mapName === 'JVM Volcano') {
     // Entrada arriba del mapa, pero siempre dentro del terreno jugable.
     return { x: ARENA_WORLD_WIDTH / 2, y: JVM_VOLCANO_ENTRY_Y }
@@ -676,6 +733,7 @@ const {
   playerHp,
   playerMaxHp,
   sessionGold,
+  dependencyMark,
   enemies,
   bullets,
   enemyBullets,
@@ -689,7 +747,9 @@ const {
   worldHeight: ARENA_WORLD_HEIGHT,
   startX: ARENA_WORLD_WIDTH / 2,
   startY: startY.value,
-  startKingdom: computed(() => (arenaFaction.value === 'php' ? 'PHP' : 'Java')),
+  // Debe ser el reino del jugador (no arenaFaction: ese valor ya es el espejo enemigo).
+  // Si esto va mal, useArenaCombat invierte enemigos y el boss PHP (Andrés) sale como Java.
+  startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
   characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
@@ -889,22 +949,104 @@ function hpBarPct(e) {
   return Math.max(8, Math.round((100 * e.hp) / (e.maxHp || 1)))
 }
 
-function isPhpMeleeEnemy(e) {
-  if (enemyFaction.value !== 'php') return false
-  const rangedTypes = new Set(['thread_spammer', 'dependency_injector', 'composer_update', 'boss', 'miniboss'])
-  return !rangedTypes.has(e.type)
+function enemySpriteSrc(e) {
+  if (e.type === 'boss') return null
+  return getArenaEnemySprite(enemyFaction.value, e.type)
 }
 
-function phpMeleeEnemyStyle(e) {
+function hasEnemySprite(e) {
+  return Boolean(enemySpriteSrc(e))
+}
+
+function enemySpriteStyle(e) {
   const esize = e.size || ENEMY_SIZE
   const enemyCx = e.x + esize / 2
-  const enemyCy = e.y + esize / 2
   const playerCx = x.value + 20
-  const playerCy = y.value + 20
-  const angleDeg = (Math.atan2(playerCy - enemyCy, playerCx - enemyCx) * 180) / Math.PI - 90
+  const flipX = playerCx < enemyCx ? -1 : 1
   return {
-    transform: `rotate(${angleDeg}deg) scale(1.2)`,
+    transform: `translate(-50%, -50%) scaleX(${flipX})`,
   }
+}
+
+function isPhpMiniboss(e) {
+  return e.type === 'miniboss' && enemyFaction.value === 'php'
+}
+
+function isJavaMiniboss(e) {
+  return e.type === 'miniboss' && enemyFaction.value === 'java'
+}
+
+function isAndresBoss(e) {
+  return e.type === 'boss' && enemyFaction.value === 'php'
+}
+
+const JAVA_BOSS_IDLE_FRAMES = [
+  javaBossIdle1,
+  javaBossIdle2,
+  javaBossIdle3,
+  javaBossIdle5,
+  javaBossIdle6,
+  javaBossIdle8,
+]
+const JAVA_BOSS_ATTACK_MS = 700
+
+function isJuanCarlosBoss(e) {
+  return e.type === 'boss' && enemyFaction.value === 'java'
+}
+
+function isJuanCarlosDefending(e, now = performance.now()) {
+  return isJuanCarlosBoss(e) && now < Number(e.shieldUntil || 0)
+}
+
+function isJuanCarlosAttacking(e, now = performance.now()) {
+  return isJuanCarlosBoss(e) && now - Number(e.lastFireAt || 0) < JAVA_BOSS_ATTACK_MS
+}
+
+function isJuanCarlosFlying(e, now = performance.now()) {
+  return isJuanCarlosBoss(e)
+    && Boolean(e.isMoving)
+    && !isJuanCarlosAttacking(e, now)
+    && !isJuanCarlosDefending(e, now)
+}
+
+function bossJuanCarlosImg(e) {
+  const now = performance.now()
+  if (isJuanCarlosDefending(e, now)) return javaBossCloak
+  if (isJuanCarlosAttacking(e, now)) return javaBossCast
+  if (isJuanCarlosFlying(e, now)) return javaBossFly
+  const frameIdx = Math.floor(now / 480) % JAVA_BOSS_IDLE_FRAMES.length
+  return JAVA_BOSS_IDLE_FRAMES[frameIdx]
+}
+
+function bossJuanCarlosStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    transform: `translate(-50%, -50%) scaleX(${flipX})`,
+  }
+}
+
+function bossAndresStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    backgroundImage: `url(${bossAndresSheet})`,
+    transform: `scaleX(${flipX})`,
+  }
+}
+
+function enemyBulletClass(b) {
+  if (b.kind === 'arcane_orb') return 'enemy-bullet--arcane'
+  if (b.kind === 'java_orb') return 'enemy-bullet--java-orb'
+  return b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'
+}
+
+function enemyBulletImg(b) {
+  return getEnemyBulletSprite(b)
 }
 
 /** Menos zoom = más área visible (ver enemigos a distancia). */
@@ -1020,7 +1162,6 @@ function startArenaCombat(startOverride = null) {
 
 onMounted(async () => {
   const queryStart = getArenaStartFromQuery()
-
   window.addEventListener('beforeunload', saveArenaProgress, { capture: true })
   
   try {
@@ -1231,6 +1372,29 @@ watch([section, sectionWave, phase], () => {
   image-rendering: pixelated;
 }
 
+.player__dependency-mark {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 196, 72, 0.92);
+  box-shadow:
+    0 0 10px rgba(255, 170, 40, 0.55),
+    inset 0 0 12px rgba(255, 210, 90, 0.35);
+  pointer-events: none;
+  animation: dependency-mark-pulse 0.85s ease-in-out infinite alternate;
+}
+
+@keyframes dependency-mark-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.72;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 .mini-grid {
   display: grid;
   grid-template-columns: repeat(16, 2.5px);
@@ -1261,21 +1425,17 @@ watch([section, sectionWave, phase], () => {
 
 .enemy-skin {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  image-rendering: auto;
+  left: 50%;
+  top: 50%;
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  object-position: center center;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  transform-origin: center center;
   pointer-events: none;
-}
-
-.enemy-skin--php-melee {
-  width: 150%;
-  height: 150%;
-  left: -25%;
-  top: -25%;
-  transform-origin: center;
-  transition: transform 0.08s linear;
 }
 
 .enemy--with-image .enemy-hp {
@@ -1308,6 +1468,10 @@ watch([section, sectionWave, phase], () => {
   background: #1e88e5;
 }
 
+.enemy-type--miniboss {
+  border-width: 3px;
+}
+
 .bullet {
   position: absolute;
   width: 10px;
@@ -1336,6 +1500,23 @@ watch([section, sectionWave, phase], () => {
   border: 2px solid #fff;
 }
 
+.enemy-bullet--with-sprite {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+}
+
+.enemy-bullet-skin {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
 .enemy-bullet--java {
   background: #ff8f00;
   box-shadow: 0 0 12px #e65100, 0 0 4px #fff;
@@ -1344,6 +1525,82 @@ watch([section, sectionWave, phase], () => {
 .enemy-bullet--php {
   background: #1e88e5;
   box-shadow: 0 0 12px #0d47a1, 0 0 4px #fff;
+}
+
+.enemy-bullet--arcane {
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+}
+
+.enemy-bullet--java-orb {
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+}
+
+.java-orb-core {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff7ed;
+  box-shadow: 0 0 6px #fed7aa, 0 0 12px #fb923c;
+  animation: java-orb-core 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes java-orb-pulse {
+  from {
+    box-shadow:
+      0 0 16px #fb923c,
+      0 0 30px rgba(249, 115, 22, 0.75),
+      inset 0 -3px 8px rgba(124, 45, 18, 0.35);
+    transform: scale(1);
+  }
+  to {
+    box-shadow:
+      0 0 24px #fdba74,
+      0 0 44px rgba(253, 186, 116, 0.95),
+      inset 0 -3px 8px rgba(124, 45, 18, 0.35);
+    transform: scale(1.07);
+  }
+}
+
+@keyframes java-orb-core {
+  from { opacity: 0.65; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1.18); }
+}
+
+.arcane-orb-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px #f5d0fe, 0 0 12px #d8b4fe;
+  animation: arcane-orb-core 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes arcane-orb-pulse {
+  from {
+    box-shadow:
+      0 0 18px #a855f7,
+      0 0 36px rgba(168, 85, 247, 0.75),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1);
+  }
+  to {
+    box-shadow:
+      0 0 26px #d8b4fe,
+      0 0 52px rgba(216, 180, 254, 0.95),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes arcane-orb-core {
+  from { opacity: 0.6; transform: scale(0.8); }
+  to   { opacity: 1;   transform: scale(1.2); }
 }
 
 .boss-enemy {
@@ -1360,6 +1617,183 @@ watch([section, sectionWave, phase], () => {
   font-size: 24px;
   color: #facc15;
   opacity: 0.5;
+}
+
+/* Boss Andres (mago PHP) — usa sprite pixel art con aura mágica */
+.boss--andres {
+  background: transparent !important;
+  border: 3px solid rgba(168, 85, 247, 0.55) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    0 0 38px rgba(168, 85, 247, 0.65),
+    inset 0 0 28px rgba(76, 29, 149, 0.45) !important;
+  overflow: visible !important;
+  animation: boss-andres-float 2.4s ease-in-out infinite alternate;
+}
+
+.boss--andres::after { content: none !important; }
+
+.boss--andres::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(76, 29, 149, 0.15) 45%, transparent 75%);
+  z-index: -1;
+  animation: boss-andres-aura 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.boss-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.boss-skin--andres {
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 0% 0%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px rgba(168, 85, 247, 0.55));
+  transform-origin: center;
+  animation:
+    andres-cols 2.4s steps(4, jump-none) infinite,
+    andres-rows 9.6s steps(4, jump-none) infinite;
+}
+
+@keyframes andres-cols {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 100%; }
+}
+
+@keyframes andres-rows {
+  from { background-position-y: 0%; }
+  to   { background-position-y: 100%; }
+}
+
+.boss-enemy-hp {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  transform: translateX(-50%);
+  width: 94%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.boss-enemy-hp-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  padding: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(12, 12, 16, 0.92), rgba(0, 0, 0, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.boss-enemy-hp-fill {
+  position: relative;
+  height: 100%;
+  min-width: 8%;
+  border-radius: 999px;
+  transition: width 0.16s ease-out;
+  overflow: hidden;
+}
+
+.boss-enemy-hp-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 58%);
+  pointer-events: none;
+}
+
+.boss-enemy-hp--java .boss-enemy-hp-fill {
+  background: linear-gradient(90deg, #fdba74 0%, #f97316 52%, #ea580c 100%);
+  box-shadow:
+    0 0 12px rgba(249, 115, 22, 0.55),
+    inset 0 -1px 0 rgba(124, 45, 18, 0.35);
+}
+
+.boss-enemy-hp--php .boss-enemy-hp-fill {
+  background: linear-gradient(90deg, #f0abfc 0%, #c084fc 48%, #a855f7 100%);
+  box-shadow:
+    0 0 12px rgba(168, 85, 247, 0.55),
+    inset 0 -1px 0 rgba(76, 29, 149, 0.35);
+}
+
+@keyframes boss-andres-float {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-6px) scale(1.015); }
+}
+
+@keyframes boss-andres-aura {
+  from { opacity: 0.65; transform: scale(1); }
+  to   { opacity: 1;    transform: scale(1.08); }
+}
+
+.boss--juan-carlos.boss-enemy {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  animation: boss-juan-carlos-float 2.6s ease-in-out infinite alternate;
+}
+
+.boss--juan-carlos--moving {
+  animation: none;
+}
+
+.boss--juan-carlos::after { content: none !important; }
+
+.boss--juan-carlos::before {
+  content: none;
+}
+
+.boss--juan-carlos--defending::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(253, 186, 116, 0.28) 0%, rgba(249, 115, 22, 0.12) 45%, transparent 78%);
+  z-index: -1;
+  animation: boss-juan-carlos-shield 0.9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.boss-skin--juan-carlos {
+  width: 118%;
+  height: 118%;
+  left: 50%;
+  top: 50%;
+  object-fit: contain;
+  object-position: center center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px rgba(249, 115, 22, 0.45));
+  transform-origin: center center;
+}
+
+@keyframes boss-juan-carlos-float {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-6px) scale(1.015); }
+}
+
+@keyframes boss-juan-carlos-shield {
+  from { opacity: 0.55; transform: scale(1); }
+  to   { opacity: 1; transform: scale(1.06); }
 }
 
 .slash-container {

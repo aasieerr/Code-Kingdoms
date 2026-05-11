@@ -1,0 +1,37 @@
+Code Kingdoms — prompts de arte (PixelLab / SpriteLab / Gemini).
+
+Shared style:
+Top-down 3/4 pixel art game sprite, Code Kingdoms arena enemy, crisp outlines, limited palette, transparent background, no UI, no text, single character centered, readable at 36-82px in-game, one idle pose.
+
+PHP faction palette: electric blue, cyan, soft purple; motifs <?php, {}, mechanical elePHPant.
+Java faction palette: warm orange, amber, coffee brown; motifs coffee cup, steam, JVM gears.
+
+PHP — existing
+garbage_collector: Small armored PHP elePHPant drone with a rolling trash-compactor belly and glowing cyan eyes, bulky slow tank, heavy metal plates, subtle {} rivets, menacing but cute.
+thread_spammer: Sleek PHP assassin robot with twin wrist cannons firing </> shards, light frame, cyan visor, agile shooter stance, blue and silver armor.
+boilerplate_guard: Wide PHP riot-shield construct, elephant-snout helmet, huge frontal { shield plate, short legs, defensive idle, scratched blue armor.
+legacy_monolith: Massive ancient PHP server monolith, cracked stone pillar with chained cables, glowing <?php core, moss and rust, very wide silhouette, slow mini-boss.
+microservice: Tiny PHP service drone, single eye, backpack API port, fast runner, minimal body, bright cyan highlights.
+spaghetti_runner: Chaotic PHP coder imp tangled in glowing noodle-like cables, zigzag pose, messy hair, trailing spaghetti code ribbons.
+dependency_injector: PHP alchemist bot with syringe arms and orbiting use/require vials, medium robe-like metal skirt, sinister support caster.
+composer_update: PHP priest drone with Composer scroll halo, healing aura rings, soft cyan particles, supportive backline mage.
+miniboss: PHP section warden, armored elePHPant captain with <?php banner and composer pipes, elite blue-gold trim.
+boss (Andres): Angry middle-aged male wizard king of PHP realm, purple arcane robe, curly hair, large staff with violet orb, 4x4 idle/walk/cast spritesheet.
+
+Java — existing
+garbage_collector: Heavy Java garbage-collector golem made of coffee crates and JVM rune plates, slow tank, orange-brown metal, steam vents.
+thread_spammer: Java thread soldier with six micro-canisters on back, dual coffee-bolt pistols, orange armor, agile shooter, steam puffs.
+boilerplate_guard: Java enterprise knight with oversized boilerplate chestplate and coffee mug tower shield, short wide stance, amber trim.
+legacy_monolith: Ancient Java mainframe obelisk with class engravings, lava-orange core, thick cables, cracked enterprise stone, huge mini-boss.
+microservice: Tiny Java microservice imp, coffee-cup head, wing-like API fins, very fast, minimal orange body.
+spaghetti_runner: Wild Java thread imp sprinting with tangled orange cables and stack frames fluttering behind.
+dependency_injector: Java injector automaton with @Inject needle arms, glass bean pods, amber glow, drops corruption zones.
+composer_update: Java build-priest with coffee halo, repair drones, warm healing steam aura, supportive backline.
+miniboss: Java section warden, coffee knight captain with JVM crest banner and thread cape, elite orange-gold trim.
+boss (Juan Carlos): White-haired Java archmage king in red cape, wooden staff with orange crystal, chibi pixel proportions, idle/fly/cast/cloak poses.
+
+VFX overlays
+corrupted_zone_php: Pixel circle of corrupt {} and ⊗ runes, cyan edge glow.
+corrupted_zone_java: Pixel circle of coffee steam and lock runes, amber edge glow.
+arcane_orb: Large violet arcane orb projectile, purple glow.
+java_orb: Orange coffee-energy orb projectile, warm glow.
