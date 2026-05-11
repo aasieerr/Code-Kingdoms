@@ -2,7 +2,9 @@
   <div class="dialogue-overlay" @click.self="$emit('close')">
     <div class="dialogue-card">
       <div class="npc-info">
-        <div class="npc-avatar" :class="npc.tipo"></div>
+        <div class="npc-avatar" :class="npc.tipo">
+          <img v-if="npcImage" :src="npcImage" alt="npc" style="width:40px;height:40px;object-fit:contain;border-radius:6px;" />
+        </div>
         <div class="npc-meta">
           <h3>{{ npc.nombre }}</h3>
           <span class="npc-type">{{ npc.tipo }}</span>
@@ -17,9 +19,16 @@
         <button 
           v-if="['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
           class="shop-btn" 
-          @click="$emit('open-shop')"
+          @click="$emit('open-shop', npc)"
         >
           Comerciar
+        </button>
+        <button 
+          v-if="!['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
+          class="shop-btn stage-btn" 
+          @click="$emit('open-stage-selector', npc)"
+        >
+          Viajar
         </button>
         <button class="next-btn" @click="nextDialogue">
           {{ isTyping ? 'Saltar' : (isLastDialogue ? 'Cerrar' : 'Siguiente') }}
@@ -32,6 +41,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import npcSprites from '../constants/npcSprites'
 
 const props = defineProps({
   npc: {
@@ -40,7 +50,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'open-shop'])
+const emit = defineEmits(['close', 'open-shop', 'open-stage-selector'])
 
 const currentIndex = ref(0)
 const displayedText = ref('')
@@ -50,6 +60,7 @@ let typingInterval = null
 const dialogues = computed(() => props.npc.dialogos || [])
 const currentDialogue = computed(() => dialogues.value[currentIndex.value] || '...')
 const isLastDialogue = computed(() => currentIndex.value >= dialogues.value.length - 1)
+const npcImage = computed(() => npcSprites[props.npc?.nombre] || null)
 
 function startTyping() {
   isTyping.value = true
@@ -147,12 +158,21 @@ onUnmounted(() => {
 .npc-avatar {
   width: 50px;
   height: 50px;
-  background: #4a90e2;
+  background: transparent;
   border-radius: 8px;
-}
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  }
 
 .vendedor.npc-avatar {
-  background: #f5a623;
+  /* keep avatar background transparent so the NPC image shows through */
+  background: transparent;
+}
+
+.npc-avatar img {
+  display: block;
+  background: transparent;
 }
 
 .npc-meta h3 {
@@ -222,6 +242,13 @@ onUnmounted(() => {
 .shop-btn:hover {
   background: #ffb142;
   transform: translateY(-2px);
+}
+.stage-btn {
+  background: #4a90e2;
+  color: #fff;
+}
+.stage-btn:hover {
+  background: #357abd;
 }
 
 .btn-hint {

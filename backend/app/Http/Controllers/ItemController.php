@@ -35,6 +35,16 @@ class ItemController extends Controller
             }
         }
 
+        // Filtrar por shop_type (si la tienda fue abierta por un NPC con shop_type)
+        if ($request->has('shop_type')) {
+            $shopType = $request->input('shop_type');
+            if ($shopType === 'gear') {
+                $query->whereIn('type', ['weapon', 'armor']);
+            } elseif ($shopType === 'consumables') {
+                $query->where('type', 'consumable');
+            }
+        }
+
         $items = $query->get();
 
         // Agregar detalles específicos a cada item

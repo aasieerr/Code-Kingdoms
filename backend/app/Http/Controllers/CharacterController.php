@@ -74,7 +74,7 @@ class CharacterController extends Controller
 
         // Selección de arma
         $weaponName = match ($charClass->name) {
-            'Guerrero' => 'Espada de Entrenamiento',
+            'Guerrero' => 'Arma Definitiva de JD',
             'Mago' => 'Varita de Madera',
             'Arquero' => 'Arco de Iniciado',
             'Paladín' => 'Hacha de Piedra',

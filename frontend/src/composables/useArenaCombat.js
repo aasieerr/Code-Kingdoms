@@ -4,7 +4,7 @@ import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 const PLAYER_SIZE = 40
 // Hitbox ligeramente menor que el sprite para evitar atascos en bordes.
 const PLAYER_COLLISION_SIZE = 34
-const BASE_MOVE_SPEED = 3.8
+const BASE_MOVE_SPEED = 2.2
 const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
@@ -363,7 +363,7 @@ export function useArenaCombat(options = {}) {
     else speed -= 0.15
 
     speed *= Math.max(0.3, Number(characterMoveSpeed.value || 1))
-    return Math.max(2.8, Math.min(6.4, speed))
+    return Math.max(1.2, Math.min(6.4, speed))
   }
 
   function canPlayerStandAt(nextX, nextY) {
@@ -493,8 +493,27 @@ export function useArenaCombat(options = {}) {
           ny = e.y + dy * e.speed
         }
 
+        // Separación entre enemigos para evitar superposición intensa
+        let sepX = 0, sepY = 0
+        for (const other of enemies.value) {
+          if (other.id === e.id) continue
+          const osize = other.size || ENEMY_SIZE
+          const odx = e.x - other.x
+          const ody = e.y - other.y
+          const dist = Math.hypot(odx, ody)
+          const minDist = (esize + osize) / 2
+          if (dist > 0 && dist < minDist) {
+            const force = (minDist - dist) / dist
+            sepX += odx * force * 0.15
+            sepY += ody * force * 0.15
+          }
+        }
+        nx += sepX
+        ny += sepY
+
         nx = Math.max(0, Math.min(WORLD_W - esize, nx))
         ny = Math.max(0, Math.min(WORLD_H - esize, ny))
+
         let nextEnemy = { ...e, x: nx, y: ny }
 
         const heal = supportHealMap.get(e.id) || 0
@@ -585,28 +604,25 @@ export function useArenaCombat(options = {}) {
       })
       enemies.value = elist
 
+      let maxContactDamage = 0
+      let contacting = false
       for (const e of elist) {
         const esize = e.size || ENEMY_SIZE
         const ecx = e.x + esize / 2
         const ecy = e.y + esize / 2
-        if (e.type === 'garbage_collector') {
-          const dragDist = Math.hypot(ecx - pcx, ecy - pcy)
-          if (dragDist < 210 && dragDist > 0) {
-            const pullStrength = 0.65 * (1 - dragDist / 210)
-            movePlayerConstrained(
-              x.value + ((ecx - pcx) / dragDist) * pullStrength,
-              y.value + ((ecy - pcy) / dragDist) * pullStrength
-            )
-          }
-        }
 
         const dist = Math.hypot(ecx - pcx, ecy - pcy)
-        if (dist < (esize / 2 + 10) && now - lastContactAt > CONTACT_COOLDOWN_MS) {
+        if (dist < (esize / 2 + 10)) {
+          contacting = true
           const sectionContactDamage = Math.max(1, Math.round(e.contactDamage || BASE_CONTACT_DAMAGE))
-          applyPlayerDamage(sectionContactDamage)
-          lastContactAt = now
-          break
+          if (sectionContactDamage > maxContactDamage) {
+            maxContactDamage = sectionContactDamage
+          }
         }
+      }
+      if (contacting && now - lastContactAt > CONTACT_COOLDOWN_MS) {
+        applyPlayerDamage(maxContactDamage || BASE_CONTACT_DAMAGE)
+        lastContactAt = now
       }
 
       // Calcular intervalo y daño según el arma
@@ -694,10 +710,11 @@ export function useArenaCombat(options = {}) {
                 const localT = (now + (e.ghostPhaseOffset || 0)) % cycle
                 if (localT < GHOST_INTANGIBLE_MS) continue
               }
+              let dmgToApply = currentDamage
               if (e.type === 'boilerplate_guard' && angleDiff < Math.PI / 2.1) {
-                continue
+                dmgToApply = Math.max(1, Math.round(currentDamage * 0.25))
               }
-              const nh = e.hp - currentDamage
+              const nh = e.hp - dmgToApply
               if (nh <= 0) {
                 grantEnemyKillExperience(e.type)
                 newCoins.push({
@@ -796,6 +813,7 @@ export function useArenaCombat(options = {}) {
             continue
           }
         }
+        let bulletDamageToApply = b.damage || BULLET_DAMAGE
         if (e.type === 'boilerplate_guard') {
           const esize = e.size || ENEMY_SIZE
           const ecx = e.x + esize / 2
@@ -806,10 +824,10 @@ export function useArenaCombat(options = {}) {
           const toBulletY = b.y - ecy
           const frontDot = toPlayerX * toBulletX + toPlayerY * toBulletY
           if (frontDot > 0) {
-            continue
+            bulletDamageToApply = Math.max(1, Math.round(bulletDamageToApply * 0.25))
           }
         }
-        const nh = e.hp - (b.damage || BULLET_DAMAGE)
+        const nh = e.hp - bulletDamageToApply
         if (nh <= 0) {
           grantEnemyKillExperience(e.type)
           newCoins.push({

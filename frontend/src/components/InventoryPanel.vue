@@ -55,26 +55,32 @@
           </div>
           <ul v-else class="item-list">
             <li
-              v-for="ci in filteredItems"
-              :key="ci.item.id_item"
+              v-for="(ci, idx) in filteredItems"
+              :key="ci.item?.id_item || ci.id || idx"
               :class="{ 
-                'selected': selectedItem?.item?.id_item === ci.item.id_item,
+                'selected': selectedItem?.item?.id_item === ci.item?.id_item,
                 'equipped': ci.is_equipped 
               }"
               @click="selectedItem = ci"
             >
               <div class="item-icon-box">
-                <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
+                <img 
+                  v-if="ci.item?.type === 'weapon'" 
+                  :src="getItemSprite(ci.item)" 
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <span v-else class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
                 <div class="item-name-row">
-                  <span class="item-name">{{ ci.item.name.toUpperCase() }}</span>
+                  <span class="item-name">{{ ci.item?.name?.toUpperCase() }}</span>
                   <span v-if="ci.is_equipped" class="equipped-tag">E</span>
                 </div>
                 <div class="item-meta">
-                  <span class="meta-type">{{ labelsByType[ci.item.type] }}</span>
+                  <span class="meta-type">{{ labelsByType[ci.item?.type] }}</span>
                   <span class="meta-qty" v-if="ci.id">CANT: {{ ci.quantity }}</span>
-                  <span class="meta-price" v-else>{{ ci.item.price }} 🪙</span>
+                  <span class="meta-price" v-else>{{ ci.item?.price }} 🪙</span>
                 </div>
               </div>
             </li>
@@ -86,7 +92,13 @@
       <aside class="item-preview" v-if="selectedItem?.item">
         <div class="preview-header-box">
           <div class="sprite-display">
-            <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <img 
+              v-if="selectedItem.item.type === 'weapon'" 
+              :src="getItemSprite(selectedItem.item)" 
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <span v-else class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
             <div class="display-glow"></div>
           </div>
           <div class="preview-info">
@@ -117,7 +129,7 @@
                 <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
               </li>
             </template>
-            <template v-if="selectedItem.item.type === 'armor'">
+            <template v-else-if="selectedItem.item.type === 'armor'">
               <li class="stat-item">
                 <span class="stat-label">NIVEL DE DEFENSA:</span> 
                 <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
@@ -131,7 +143,7 @@
                 <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
               </li>
             </template>
-            <template v-if="selectedItem.item.type === 'consumable'">
+            <template v-else-if="selectedItem.item.type === 'consumable'">
               <li class="stat-item">
                 <span class="stat-label">EFECTO PRIMARIO:</span> 
                 <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
@@ -206,6 +218,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+  ,
+  shopType: {
+    type: String,
+    default: null
+  }
 })
 
 defineEmits(['close', 'switch-panel'])
@@ -236,9 +253,18 @@ watch(() => props.isShop, async () => {
   // Resetear selección ANTES de cargar para evitar que un item con id real
   // quede seleccionado mientras llegan los datos de la tienda
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
+  }
+})
+
+// Si cambia el tipo de tienda mientras está abierta, recargar catálogo
+watch(() => props.shopType, async (t) => {
+  if (props.isShop) {
+    selectedItem.value = null
+    await fetchInventoryData(true, t)
+    if (filteredItems.value.length > 0) selectedItem.value = filteredItems.value[0]
   }
 })
 
@@ -247,7 +273,7 @@ const filteredItems = computed(() => {
     ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
     : myCharacterItems.value
 
-  let list = source
+  let list = source.filter(ci => ci && ci.item)
   
   if (activeFilter.value !== 'all') {
     list = list.filter((ci) => ci.item?.type === activeFilter.value)
@@ -263,7 +289,7 @@ const filteredItems = computed(() => {
 
 onMounted(async () => {
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }
@@ -348,6 +374,23 @@ async function handleSell(ci) {
     }
   }
 }
+function getItemSprite(item) {
+  if (!item || item.type !== 'weapon') return null
+
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const classMap = { 1: 'guerrero', 2: 'mago', 3: 'arquero', 4: 'paladin', 5: 'asesino' }
+
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  const clase = classMap[item.id_class] || 'comun'
+  
+  // Normalizar nombre: minúsculas, reemplazar espacios por guiones
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '') // Eliminar caracteres especiales
+  
+  return `/src/sprites/weapons/${reino}/${clase}/${filename}.png`
+}
 </script>
 
 <style>
@@ -381,5 +424,18 @@ async function handleSell(ci) {
 .retry-btn {
   padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
   color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
+}
+.item-pixel-sprite {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.display-pixel-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(250,204,21,0.5));
 }
 </style>

@@ -321,6 +321,36 @@ async function logout() {
   height: 3px;
 }
 
+.char-card__avatar {
+  width: 48px;
+  height: 48px;
+  background: #0f172a;
+  border: 2px solid #854d0e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.char-card__placeholder {
+  font-size: 14px;
+  color: #854d0e;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2px);
+  grid-template-rows: repeat(16, 2px);
+  width: 32px;
+  height: 32px;
+}
+
+.mini-grid__pixel {
+  width: 2px;
+  height: 2px;
+}
+
 /* Buttons */
 .btn-play {
   width: 120px;
