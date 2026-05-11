@@ -1,5 +1,12 @@
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
+import {
+  BASE_CONTACT_DAMAGE,
+  ENEMY_SIZE,
+  getRoundConfig,
+  typeBaseStats,
+  xpForEnemyType,
+} from './arenaEnemies'
 
 const PLAYER_SIZE = 40
 // Hitbox ligeramente menor que el sprite para evitar atascos en bordes.
@@ -9,47 +16,35 @@ const MELEE_TYPES = ['daga', 'espada', 'hacha']
 const MELEE_RANGE = 135
 const MELEE_LIFETIME = 250
 const COIN_PICKUP_R = 52
-const BASE_CONTACT_DAMAGE = 10
 const CONTACT_COOLDOWN_MS = 480
 const BULLET_SPEED = 6.5
 const BULLET_LIFETIME_MS = 2200
 const FIRE_INTERVAL_MS = 320
 const BULLET_DAMAGE = 12
-const ENEMY_SIZE = 36
 const ENEMY_HIT_R = 16
 const MAGNET_RANGE = 120
 const MAGNET_SPEED = 2.2
 const TOTAL_SECTIONS = 7
 const INTERMEDIATE_SECTIONS = 6
 const WAVES_PER_SECTION = 10
-const GHOST_TANGIBLE_MS = 2000
-const GHOST_INTANGIBLE_MS = 3000
 const CORRUPTED_ZONE_LIFETIME_MS = 4200
 const SECTION_GROWTH = 0.34
 const WAVE_GROWTH = 0.035
 const LEVEL_DAMAGE_BONUS = 0.055
+const JAVA_BOSS_SHIELD_MS = 1800
+const JAVA_BOSS_SHIELD_GAP_MS = 6500
+const DEPENDENCY_MARK_RANGE = 235
+const DEPENDENCY_MARK_DURATION_MS = 2600
+const DEPENDENCY_MARK_MOVE_THRESHOLD = 44
+const DEPENDENCY_MARK_PUSH_PX = 22
 
-const ENEMY_XP_REWARD = {
-  microservice: 8,
-  spaghetti_runner: 11,
-  composer_update: 14,
-  dependency_injector: 18,
-  thread_spammer: 22,
-  boilerplate_guard: 24,
-  garbage_collector: 28,
-  global_ghost: 32,
-  legacy_monolith: 65,
-  boss: 240,
+function isJavaFinalBoss(enemy, faction) {
+  return enemy?.type === 'boss' && faction === 'java'
 }
 
-const ROUND_ENEMY_CONFIG = [
-  { garbage_collector: 3, thread_spammer: 2 },
-  { global_ghost: 3, dependency_injector: 2, thread_spammer: 2 },
-  { garbage_collector: 3, boilerplate_guard: 2, legacy_monolith: 1, thread_spammer: 3 },
-  { global_ghost: 3, spaghetti_runner: 3, dependency_injector: 3, thread_spammer: 2 },
-  { dependency_injector: 4, composer_update: 2, spaghetti_runner: 4, boilerplate_guard: 2 },
-  { legacy_monolith: 1, dependency_injector: 5, composer_update: 3, spaghetti_runner: 5, boilerplate_guard: 2 },
-]
+function isJavaBossShielded(enemy, now) {
+  return isJavaFinalBoss(enemy, 'java') && now < Number(enemy?.shieldUntil || 0)
+}
 
 const JAVA_ROUTE_STEPS = ['BAJAR', 'IZQUIERDA', 'BAJAR', 'DERECHA']
 const PHP_ROUTE_STEPS = ['SUBIR', 'DERECHA', 'SUBIR', 'IZQUIERDA']
@@ -99,35 +94,6 @@ function earlyWaveEnemyCountMultiplier(sectionValue, waveValue) {
 
 function maxWavesForSection(sectionValue) {
   return Number(sectionValue) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
-}
-
-function typeBaseStats(type) {
-  switch (type) {
-    case 'garbage_collector':
-      return { hp: 220, speed: 1.2, contactDamage: 32 }
-    case 'boilerplate_guard':
-      return { hp: 170, speed: 2.5, contactDamage: 16 }
-    case 'thread_spammer':
-      return { hp: 95, speed: 1.7, contactDamage: 10, fireInterval: 1800, bulletDamage: 14 }
-    case 'legacy_monolith':
-      return { hp: 720, speed: 0.9, contactDamage: 24, size: 82 }
-    case 'microservice':
-      return { hp: 34, speed: 4.7, contactDamage: 8 }
-    case 'global_ghost':
-      return { hp: 120, speed: 2.3, contactDamage: 15 }
-    case 'spaghetti_runner':
-      return { hp: 80, speed: 4.3, contactDamage: 17 }
-    case 'dependency_injector':
-      return { hp: 130, speed: 2.1, contactDamage: 10, fireInterval: 2300, bulletDamage: 8 }
-    case 'composer_update':
-      return { hp: 100, speed: 2.1, contactDamage: 0 }
-    default:
-      return { hp: 100, speed: 2.3, contactDamage: BASE_CONTACT_DAMAGE }
-  }
-}
-
-function xpForEnemyType(type) {
-  return ENEMY_XP_REWARD[type] ?? 12
 }
 
 function randomSpawnEdgePosition(worldW, worldH, pad = 80) {
@@ -187,6 +153,7 @@ export function useArenaCombat(options = {}) {
   const playerMaxHp = ref(100)
   /** Oro recogido en esta sesión de arena (antes de sincronizar con API) */
   const sessionGold = ref(0)
+  const dependencyMark = ref(null)
 
   const enemies = shallowRef([])
   const bullets = shallowRef([])
@@ -228,6 +195,44 @@ export function useArenaCombat(options = {}) {
     playerHp.value = Math.max(0, playerHp.value - mitigatedDamage)
   }
 
+  function clearDependencyMark() {
+    dependencyMark.value = null
+  }
+
+  function applyDependencyMark(now, pcx, pcy, damage, sourceX, sourceY) {
+    dependencyMark.value = {
+      expiresAt: now + DEPENDENCY_MARK_DURATION_MS,
+      anchorX: pcx,
+      anchorY: pcy,
+      sourceX,
+      sourceY,
+      damage: Math.max(4, Math.round(Number(damage) || 0)),
+    }
+  }
+
+  function resolveDependencyMark(now) {
+    const mark = dependencyMark.value
+    if (!mark || now < Number(mark.expiresAt || 0)) return
+    const pcx = x.value + PLAYER_SIZE / 2
+    const pcy = y.value + PLAYER_SIZE / 2
+    const moved = Math.hypot(pcx - mark.anchorX, pcy - mark.anchorY)
+    dependencyMark.value = null
+    if (moved >= DEPENDENCY_MARK_MOVE_THRESHOLD) return
+    applyPlayerDamage(mark.damage)
+    let pushX = pcx - mark.anchorX
+    let pushY = pcy - mark.anchorY
+    let len = Math.hypot(pushX, pushY)
+    if (len < 4) {
+      pushX = pcx - mark.sourceX
+      pushY = pcy - mark.sourceY
+      len = Math.hypot(pushX, pushY) || 1
+    }
+    movePlayerConstrained(
+      x.value + (pushX / len) * DEPENDENCY_MARK_PUSH_PX,
+      y.value + (pushY / len) * DEPENDENCY_MARK_PUSH_PX,
+    )
+  }
+
   function resolveRouteContext() {
     const kingdomRaw = resolveOptionValue(options.startKingdom, startKingdom.value)
     const isPhpStart = isPhpKingdom(kingdomRaw)
@@ -238,6 +243,87 @@ export function useArenaCombat(options = {}) {
     const idx = (section.value - 2) % pattern.length
     routeInstruction.value = section.value <= 1 ? 'SALIDA DEL REINO' : section.value >= TOTAL_SECTIONS ? 'TRONO ENEMIGO' : pattern[idx]
     return { isPhpStart, pattern }
+  }
+
+  function spawnMicroservicesFromMonolith(elist, source, now) {
+    for (let i = 0; i < 4; i++) {
+      const ang = (Math.PI * 2 * i) / 4
+      const base = typeBaseStats('microservice')
+      const mhp = Math.round(base.hp * sectionMultiplier(section.value))
+      elist.push({
+        id: enemyId++,
+        x: source.x + Math.cos(ang) * 24,
+        y: source.y + Math.sin(ang) * 24,
+        hp: mhp,
+        maxHp: mhp,
+        speed: base.speed,
+        size: 22,
+        type: 'microservice',
+        contactDamage: Math.round(base.contactDamage * sectionMultiplier(section.value)),
+        fireInterval: null,
+        bulletDamage: 0,
+        lastFireAt: now,
+      })
+    }
+  }
+
+  function pushEnemyCoin(newCoins, enemy, bonus = 0) {
+    newCoins.push({
+      id: coinId++,
+      x: enemy.x + 8,
+      y: enemy.y + 8,
+      value: 2 + Math.floor(Math.random() * 2) + bonus,
+    })
+  }
+
+  function killEnemyAt(elist, index, now, newCoins) {
+    const enemy = elist[index]
+    if (!enemy) return
+    grantEnemyKillExperience(enemy.type)
+    pushEnemyCoin(newCoins, enemy)
+    if (enemy.type === 'legacy_monolith') {
+      spawnMicroservicesFromMonolith(elist, enemy, now)
+    }
+    elist.splice(index, 1)
+  }
+
+  function applyDamageToEnemy(elist, index, rawDamage, now, newCoins) {
+    const enemy = elist[index]
+    if (!enemy || enemy.hp <= 0) return false
+    if (isJavaBossShielded(enemy, now)) return false
+    const damage = Math.max(1, Math.round(rawDamage))
+    const nextHp = enemy.hp - damage
+    if (nextHp <= 0) {
+      killEnemyAt(elist, index, now, newCoins)
+    } else {
+      elist[index] = { ...enemy, hp: nextHp }
+    }
+    return true
+  }
+
+  function createSpawnedEnemy(type, spawnPos, multiplier, earlyMult, now, extra = {}) {
+    const base = typeBaseStats(type)
+    const hp = Math.max(24, Math.round(base.hp * multiplier * earlyMult))
+    const fireInterval = base.fireInterval
+      ? Math.max(1100, Math.round((base.fireInterval * (1 / multiplier)) / earlyMult))
+      : null
+    return {
+      id: enemyId++,
+      x: spawnPos.x,
+      y: spawnPos.y,
+      hp,
+      maxHp: hp,
+      speed: base.speed,
+      size: base.size || ENEMY_SIZE,
+      type,
+      contactDamage: Math.max(3, Math.round((base.contactDamage || BASE_CONTACT_DAMAGE) * multiplier * earlyMult)),
+      fireInterval,
+      bulletDamage: Math.max(2, Math.round((base.bulletDamage || 12) * multiplier * earlyMult)),
+      lastFireAt: now + Math.random() * 1200,
+      zigSeed: Math.random() * Math.PI * 2,
+      auraRange: 170,
+      ...extra,
+    }
   }
 
   function spawnWave() {
@@ -266,6 +352,8 @@ export function useArenaCombat(options = {}) {
         lastFireAt: performance.now() + 1100,
         zigSeed: Math.random() * Math.PI * 2,
         bossShotIndex: 0,
+        shieldUntil: 0,
+        nextShieldAt: performance.now() + 7000,
       })
       for (let i = 0; i < 8; i++) {
         const angle = (Math.PI * 2 * i) / 8
@@ -289,34 +377,14 @@ export function useArenaCombat(options = {}) {
       return
     }
 
-    const cfg = ROUND_ENEMY_CONFIG[Math.max(0, Math.min(INTERMEDIATE_SECTIONS - 1, section.value - 1))]
+    const cfg = getRoundConfig()[Math.max(0, Math.min(INTERMEDIATE_SECTIONS - 1, section.value - 1))]
+    const now = performance.now()
     const types = Object.entries(cfg)
     for (const [type, count] of types) {
       const adjustedCount = Math.max(1, Math.round(count * enemyCountMult))
       for (let i = 0; i < adjustedCount; i++) {
-        const base = typeBaseStats(type)
         const spawnPos = randomSpawnEdgePosition(WORLD_W, WORLD_H, pad)
-        const hp = Math.max(24, Math.round(base.hp * multiplier * earlyMult))
-        const fireInterval = base.fireInterval
-          ? Math.max(1100, Math.round((base.fireInterval * (1 / multiplier)) / earlyMult))
-          : null
-        list.push({
-          id: enemyId++,
-          x: spawnPos.x,
-          y: spawnPos.y,
-          hp,
-          maxHp: hp,
-          speed: base.speed,
-          size: base.size || ENEMY_SIZE,
-          type,
-          contactDamage: Math.max(3, Math.round((base.contactDamage || BASE_CONTACT_DAMAGE) * multiplier * earlyMult)),
-          fireInterval,
-          bulletDamage: Math.max(2, Math.round((base.bulletDamage || 12) * multiplier * earlyMult)),
-          lastFireAt: performance.now() + Math.random() * 1200,
-          zigSeed: Math.random() * Math.PI * 2,
-          ghostPhaseOffset: Math.random() * (GHOST_INTANGIBLE_MS + GHOST_TANGIBLE_MS),
-          auraRange: 170,
-        })
+        list.push(createSpawnedEnemy(type, spawnPos, multiplier, earlyMult, now))
       }
     }
     enemies.value = list
@@ -327,13 +395,7 @@ export function useArenaCombat(options = {}) {
     let bestD = Infinity
     const pcx = px + PLAYER_SIZE / 2
     const pcy = py + PLAYER_SIZE / 2
-    const now = performance.now()
     for (const e of enemies.value) {
-      if (e.type === 'global_ghost') {
-        const cycle = GHOST_INTANGIBLE_MS + GHOST_TANGIBLE_MS
-        const localT = (now + (e.ghostPhaseOffset || 0)) % cycle
-        if (localT < GHOST_INTANGIBLE_MS) continue
-      }
       const esize = e.size || ENEMY_SIZE
       const ecx = e.x + esize / 2
       const ecy = e.y + esize / 2
@@ -425,6 +487,8 @@ export function useArenaCombat(options = {}) {
       const pcx = px + PLAYER_SIZE / 2
       const pcy = py + PLAYER_SIZE / 2
 
+      resolveDependencyMark(now)
+
       const supportHealMap = new Map()
       for (const supporter of enemies.value) {
         if (supporter.type !== 'composer_update') continue
@@ -464,14 +528,14 @@ export function useArenaCombat(options = {}) {
             nx = e.x + (-dy) * strafeAmt * 1.2
             ny = e.y + (dx) * strafeAmt * 1.2
           }
-        } else if (e.type === 'dependency_injector' || e.type === 'thread_spammer') {
-          const preferred = 260
+        } else if (e.type === 'dependency_injector' || e.type === 'thread_spammer' || e.type === 'miniboss') {
+          const preferred = e.type === 'miniboss' ? 185 : 195
           if (len > preferred + 20) {
-            nx = e.x + dx * e.speed
-            ny = e.y + dy * e.speed
+            nx = e.x + dx * (e.speed * 0.72)
+            ny = e.y + dy * (e.speed * 0.72)
           } else if (len < preferred - 20) {
-            nx = e.x - dx * e.speed
-            ny = e.y - dy * e.speed
+            nx = e.x - dx * (e.speed * 0.88)
+            ny = e.y - dy * (e.speed * 0.88)
           }
         } else if (e.type === 'composer_update') {
           const retreat = 280
@@ -515,6 +579,13 @@ export function useArenaCombat(options = {}) {
         ny = Math.max(0, Math.min(WORLD_H - esize, ny))
 
         let nextEnemy = { ...e, x: nx, y: ny }
+        if (e.type === 'boss') {
+          nextEnemy.isMoving = Math.hypot(nx - e.x, ny - e.y) > 0.15
+          if (isJavaFinalBoss(e, enemyFaction.value) && !isJavaBossShielded(e, now) && now >= Number(e.nextShieldAt || 0)) {
+            nextEnemy.shieldUntil = now + JAVA_BOSS_SHIELD_MS
+            nextEnemy.nextShieldAt = now + JAVA_BOSS_SHIELD_GAP_MS
+          }
+        }
 
         const heal = supportHealMap.get(e.id) || 0
         if (heal > 0 && e.hp > 0) {
@@ -522,23 +593,82 @@ export function useArenaCombat(options = {}) {
         }
         
         // Enemy firing logic
-        if (e.fireInterval && now - e.lastFireAt > e.fireInterval) {
-          nextEnemy.lastFireAt = now
+        const bossShielded = isJavaBossShielded(nextEnemy, now)
+        if (e.fireInterval && now - e.lastFireAt > e.fireInterval && !bossShielded) {
           const fireX = e.x + esize / 2
           const fireY = e.y + esize / 2
           const fdx = pcx - fireX
           const fdy = pcy - fireY
           const flen = Math.hypot(fdx, fdy) || 1
           const fAngle = Math.atan2(fdy, fdx)
-          
+
+          if (e.type === 'dependency_injector') {
+            if (Math.hypot(pcx - fireX, pcy - fireY) <= DEPENDENCY_MARK_RANGE) {
+              nextEnemy.lastFireAt = now
+              applyDependencyMark(now, pcx, pcy, e.bulletDamage || 12, fireX, fireY)
+            }
+          } else {
+          nextEnemy.lastFireAt = now
           const newEBullets = []
           if (e.type === 'boss') {
-            // Mago boss: orbe arcano grande. Cada 4ª salva, abanico de 5 orbes.
-            const burstCount = (e.bossShotIndex || 0) % 4 === 3 ? 5 : 1
-            const spread = burstCount === 5 ? 0.34 : 0
-            const half = (burstCount - 1) / 2
-            for (let i = 0; i < burstCount; i++) {
-              const ang = fAngle + (i - half) * spread
+            if (enemyFaction.value === 'java') {
+              const phase = (e.bossShotIndex || 0) % 4
+              const bulletDamage = e.bulletDamage || 24
+              const pushJavaOrb = (ang, speed) => {
+                newEBullets.push({
+                  id: bulletId++,
+                  x: fireX,
+                  y: fireY,
+                  vx: Math.cos(ang) * speed,
+                  vy: Math.sin(ang) * speed,
+                  born: now,
+                  damage: bulletDamage,
+                  faction: enemyFaction.value,
+                  kind: 'java_orb',
+                })
+              }
+              if (phase === 0) {
+                for (const spread of [-0.24, 0, 0.24]) {
+                  pushJavaOrb(fAngle + spread, 5.4)
+                }
+              } else if (phase === 1) {
+                for (let i = 0; i < 8; i++) {
+                  pushJavaOrb(fAngle + (Math.PI * 2 * i) / 8, 3.7)
+                }
+              } else if (phase === 2) {
+                for (let i = -2; i <= 2; i++) {
+                  pushJavaOrb(fAngle + i * 0.2, 5.8)
+                }
+              } else {
+                for (let i = 0; i < 6; i++) {
+                  pushJavaOrb(fAngle + (Math.PI * 2 * i) / 6 + 0.18, 4.2)
+                }
+              }
+              nextEnemy.bossShotIndex = (e.bossShotIndex || 0) + 1
+            } else {
+              // Mago boss PHP: orbe arcano grande. Cada 4ª salva, abanico de 5 orbes.
+              const burstCount = (e.bossShotIndex || 0) % 4 === 3 ? 5 : 1
+              const spread = burstCount === 5 ? 0.34 : 0
+              const half = (burstCount - 1) / 2
+              for (let i = 0; i < burstCount; i++) {
+                const ang = fAngle + (i - half) * spread
+                newEBullets.push({
+                  id: bulletId++,
+                  x: fireX,
+                  y: fireY,
+                  vx: Math.cos(ang) * 4.6,
+                  vy: Math.sin(ang) * 4.6,
+                  born: now,
+                  damage: e.bulletDamage || 24,
+                  faction: enemyFaction.value,
+                  kind: 'arcane_orb',
+                })
+              }
+              nextEnemy.bossShotIndex = (e.bossShotIndex || 0) + 1
+            }
+          } else if (e.type === 'thread_spammer') {
+            for (let i = -1; i <= 1; i++) {
+              const ang = fAngle + i * 0.22
               newEBullets.push({
                 id: bulletId++,
                 x: fireX,
@@ -546,58 +676,24 @@ export function useArenaCombat(options = {}) {
                 vx: Math.cos(ang) * 4.6,
                 vy: Math.sin(ang) * 4.6,
                 born: now,
-                damage: e.bulletDamage || 24,
+                damage: e.bulletDamage || 14,
                 faction: enemyFaction.value,
-                kind: 'arcane_orb',
               })
             }
-            nextEnemy.bossShotIndex = (e.bossShotIndex || 0) + 1
-          } else if (e.type === 'thread_spammer') {
-            // Burst of 3 projectiles
-            for (let i = -1; i <= 1; i++) {
-              const ang = fAngle + i * 0.25
-              newEBullets.push({
-                id: bulletId++,
-                x: fireX,
-                y: fireY,
-                vx: Math.cos(ang) * 6,
-                vy: Math.sin(ang) * 6,
-                born: now,
-                damage: e.bulletDamage || 17,
-                faction: enemyFaction.value,
-                symbol: enemyFaction.value === 'java' ? '☕' : '</>',
-              })
-            }
-          } else if (e.type === 'dependency_injector') {
-            newEBullets.push({
-              id: bulletId++,
-              x: pcx + (Math.random() * 140 - 70),
-              y: pcy + (Math.random() * 140 - 70),
-              vx: 0,
-              vy: 0,
-              born: now,
-              damage: e.bulletDamage || 8,
-              faction: enemyFaction.value,
-              symbol: '⊗',
-              isZone: true,
-              radius: 58,
-              expiresAt: now + CORRUPTED_ZONE_LIFETIME_MS,
-            })
           } else {
-            // Single projectile
             newEBullets.push({
               id: bulletId++,
               x: fireX,
               y: fireY,
-              vx: (fdx / flen) * 4.8,
-              vy: (fdy / flen) * 4.8,
+              vx: (fdx / flen) * 4.1,
+              vy: (fdy / flen) * 4.1,
               born: now,
               damage: e.bulletDamage || 14,
               faction: enemyFaction.value,
-              symbol: enemyFaction.value === 'java' ? '☕' : '{}',
             })
           }
           enemyBullets.value = [...enemyBullets.value, ...newEBullets]
+          }
         }
 
         return nextEnemy
@@ -705,50 +801,13 @@ export function useArenaCombat(options = {}) {
 
             // Solo dañar si está en rango Y dentro de un arco de ~120 grados
             if (dist < MELEE_RANGE && angleDiff < Math.PI / 1.5) {
-              if (e.type === 'global_ghost') {
-                const cycle = GHOST_INTANGIBLE_MS + GHOST_TANGIBLE_MS
-                const localT = (now + (e.ghostPhaseOffset || 0)) % cycle
-                if (localT < GHOST_INTANGIBLE_MS) continue
-              }
               let dmgToApply = currentDamage
               if (e.type === 'boilerplate_guard' && angleDiff < Math.PI / 2.1) {
                 dmgToApply = Math.max(1, Math.round(currentDamage * 0.25))
               }
-              const nh = e.hp - dmgToApply
-              if (nh <= 0) {
-                grantEnemyKillExperience(e.type)
-                newCoins.push({
-                  id: coinId++,
-                  x: e.x + 8,
-                  y: e.y + 8,
-                  value: 2 + Math.floor(Math.random() * 2),
-                })
-                if (e.type === 'legacy_monolith') {
-                  for (let j = 0; j < 4; j++) {
-                    const ang = (Math.PI * 2 * j) / 4
-                    const base = typeBaseStats('microservice')
-                    const mhp = Math.round(base.hp * sectionMultiplier(section.value))
-                    elist.push({
-                      id: enemyId++,
-                      x: e.x + Math.cos(ang) * 24,
-                      y: e.y + Math.sin(ang) * 24,
-                      hp: mhp,
-                      maxHp: mhp,
-                      speed: base.speed,
-                      size: 22,
-                      type: 'microservice',
-                      contactDamage: Math.round(base.contactDamage * sectionMultiplier(section.value)),
-                      fireInterval: null,
-                      bulletDamage: 0,
-                      lastFireAt: now,
-                    })
-                  }
-                }
-                elist.splice(i, 1)
-              } else {
-                elist[i] = { ...e, hp: nh }
+              if (applyDamageToEnemy(elist, i, dmgToApply, now, newCoins)) {
+                changed = true
               }
-              changed = true
             }
           }
           if (changed) enemies.value = elist
@@ -805,13 +864,9 @@ export function useArenaCombat(options = {}) {
           continue
         }
         const e = elist[hitIndex]
-        if (e.type === 'global_ghost') {
-          const cycle = GHOST_INTANGIBLE_MS + GHOST_TANGIBLE_MS
-          const localT = (now + (e.ghostPhaseOffset || 0)) % cycle
-          if (localT < GHOST_INTANGIBLE_MS) {
-            keptBullets.push(b)
-            continue
-          }
+        if (isJavaBossShielded(e, now)) {
+          keptBullets.push(b)
+          continue
         }
         let bulletDamageToApply = b.damage || BULLET_DAMAGE
         if (e.type === 'boilerplate_guard') {
@@ -827,40 +882,7 @@ export function useArenaCombat(options = {}) {
             bulletDamageToApply = Math.max(1, Math.round(bulletDamageToApply * 0.25))
           }
         }
-        const nh = e.hp - bulletDamageToApply
-        if (nh <= 0) {
-          grantEnemyKillExperience(e.type)
-          newCoins.push({
-            id: coinId++,
-            x: e.x + 8,
-            y: e.y + 8,
-            value: 2 + Math.floor(Math.random() * 2),
-          })
-          if (e.type === 'legacy_monolith') {
-            for (let i = 0; i < 4; i++) {
-              const ang = (Math.PI * 2 * i) / 4
-              const base = typeBaseStats('microservice')
-              const mhp = Math.round(base.hp * sectionMultiplier(section.value))
-              elist.push({
-                id: enemyId++,
-                x: e.x + Math.cos(ang) * 24,
-                y: e.y + Math.sin(ang) * 24,
-                hp: mhp,
-                maxHp: mhp,
-                speed: base.speed,
-                size: 22,
-                type: 'microservice',
-                contactDamage: Math.round(base.contactDamage * sectionMultiplier(section.value)),
-                fireInterval: null,
-                bulletDamage: 0,
-                lastFireAt: now,
-              })
-            }
-          }
-          elist.splice(hitIndex, 1)
-        } else {
-          elist[hitIndex] = { ...e, hp: nh }
-        }
+        applyDamageToEnemy(elist, hitIndex, bulletDamageToApply, now, newCoins)
       }
 
       bullets.value = keptBullets
@@ -882,6 +904,7 @@ export function useArenaCombat(options = {}) {
         let hitRadius
         if (b.isZone) hitRadius = b.radius || 58
         else if (b.kind === 'arcane_orb') hitRadius = 30
+        else if (b.kind === 'java_orb') hitRadius = 26
         else hitRadius = 25
         if (dist < hitRadius) {
           applyPlayerDamage(b.damage || 15)
@@ -926,6 +949,7 @@ export function useArenaCombat(options = {}) {
 
 
       if (playerHp.value <= 0) {
+        clearDependencyMark()
         phase.value = 'gameover'
       } else if (enemies.value.length === 0 && phase.value === 'fighting') {
         if (section.value >= TOTAL_SECTIONS) {
@@ -935,6 +959,7 @@ export function useArenaCombat(options = {}) {
           enemyBullets.value = []
           options.onVictory?.()
         } else {
+          clearDependencyMark()
           phase.value = 'between'
         }
       }
@@ -960,6 +985,7 @@ export function useArenaCombat(options = {}) {
     resolveRouteContext()
     playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
     playerHp.value = Math.min(playerMaxHp.value, playerHp.value + Math.floor(playerMaxHp.value * 0.12))
+    clearDependencyMark()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -971,6 +997,7 @@ export function useArenaCombat(options = {}) {
     resolveRouteContext()
     playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
     playerHp.value = playerMaxHp.value
+    clearDependencyMark()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -982,6 +1009,7 @@ export function useArenaCombat(options = {}) {
     sectionWave.value = safeWave
     wave.value = safeWave
     resolveRouteContext()
+    clearDependencyMark()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -1045,6 +1073,7 @@ export function useArenaCombat(options = {}) {
     playerHp,
     playerMaxHp,
     sessionGold,
+    dependencyMark,
     enemies,
     bullets,
     enemyBullets,
