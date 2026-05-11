@@ -38,5 +38,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CosmeticSkinSeeder::class);
         $this->call(CharacterSeeder::class);
         $this->call(CharacterItemSeeder::class);
+        $this->call(CommunityPostSeeder::class);
     }
 }

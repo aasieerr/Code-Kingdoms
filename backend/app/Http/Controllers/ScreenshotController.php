@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Screenshot;
+use App\Support\PublicStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -12,10 +13,11 @@ class ScreenshotController extends Controller
     public function index(Request $request)
     {
         $screenshots = Screenshot::where('user_id', $request->user()->id)
+            ->withExists('communityPost as is_published')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($screenshot) {
-                $screenshot->image_url = Storage::disk('public')->url($screenshot->image_path);
+                $screenshot->image_url = PublicStorage::url($screenshot->image_path);
                 return $screenshot;
             });
 
@@ -52,7 +54,7 @@ class ScreenshotController extends Controller
             'image_path' => $path,
         ]);
 
-        $screenshot->image_url = Storage::disk('public')->url($screenshot->image_path);
+        $screenshot->image_url = PublicStorage::url($screenshot->image_path);
 
         return response()->json([
             'message' => 'Screenshot saved successfully',
