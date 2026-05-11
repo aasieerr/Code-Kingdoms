@@ -18,7 +18,7 @@
       </div>
       <div class="npc-shadow"></div>
       <div class="npc-body">
-        <img v-if="getNpcImage()" :src="getNpcImage()" alt="npc" style="width:100%; height:100%; object-fit:contain;" />
+        <img v-if="currentSrc" :src="currentSrc" alt="npc" style="width:100%; height:100%; object-fit:contain;" />
         <div v-else class="npc-head"></div>
       </div>
     </div>
@@ -43,13 +43,10 @@ const props = defineProps({
 
 defineEmits(['interact'])
 
-// expose reactive bindings used in the template
 const npc = computed(() => props.npc)
 const isNear = computed(() => props.isNear)
-
-function getNpcImage() {
-  return npcSprites[npc.value?.nombre] || null
-}
+const npcName = computed(() => npc.value?.nombre || '')
+const currentSrc = computed(() => npcSprites[npcName.value] || null)
 </script>
 
 <style scoped>
