@@ -128,7 +128,7 @@ const currentSrc = computed(() => npcSprites[npcName.value] || null)
 
 .npc-indicator {
   position: absolute;
-  top: -60px;
+  top: -24px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

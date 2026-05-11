@@ -34,7 +34,7 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
-                'x' => 660,
+                'x' => 810,
                 'y' => 600,
             ]);
 
@@ -51,8 +51,8 @@ class NPCSeeder extends Seeder
                 'id_kingdom' => $php->id_kingdom,
                 // Mercader vende consumibles en PHP
                 'shop_type' => 'consumables',
-                'x' => 180,
-                'y' => 740,
+                'x' => 758,
+                'y' => 272,
             ]);
 
             \App\Models\NPC::create([
@@ -66,8 +66,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
-                'x' => 900,
-                'y' => 300,
+                'x' => 704,
+                'y' => 430,
             ]);
 
             \App\Models\NPC::create([
@@ -83,8 +83,8 @@ class NPCSeeder extends Seeder
                 'id_kingdom' => $php->id_kingdom,
                 // Herrero vende armas y armaduras en PHP
                 'shop_type' => 'gear',
-                'x' => 760,
-                'y' => 430,
+                'x' => 622,
+                'y' => 536,
             ]);
 
             // NPCs adicionales para PHP
@@ -99,8 +99,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
-                'x' => 320,
-                'y' => 520,
+                'x' => 634,
+                'y' => 688,
             ]);
 
             \App\Models\NPC::create([
@@ -114,8 +114,8 @@ class NPCSeeder extends Seeder
                 'tipo' => 'normal',
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
-                'x' => 520,
-                'y' => 400,
+                'x' => 1004,
+                'y' => 752,
             ]);
 
             // Mercader adicional para PHP (consumibles)
@@ -131,8 +131,8 @@ class NPCSeeder extends Seeder
                 'map' => 'MainGame',
                 'id_kingdom' => $php->id_kingdom,
                 'shop_type' => 'consumables',
-                'x' => 240,
-                'y' => 680,
+                'x' => 966,
+                'y' => 428,
             ]);
         }
 
