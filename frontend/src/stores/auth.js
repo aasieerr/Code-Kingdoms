@@ -44,6 +44,12 @@ export const useAuthStore = defineStore('auth', () => {
     persist()
   }
 
+  function updateUser(nextUser) {
+    if (!user.value) return
+    user.value = { ...user.value, ...nextUser }
+    persist()
+  }
+
   function clearSession() {
     token.value = null
     user.value = null
@@ -63,5 +69,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, hydrateFromStorage, setSession, clearSession, logout }
+  return { token, user, hydrateFromStorage, setSession, updateUser, clearSession, logout }
 })
