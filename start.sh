@@ -62,7 +62,7 @@ echo -e "${YELLOW}🗄  Ejecutando migraciones...${NC}"
 docker compose exec -T laravel.test php artisan migrate --force
 
 echo -e "${YELLOW}🖼  Enlazando almacenamiento público...${NC}"
-rm -f backend/public/storage
+rm -rf backend/public/storage
 ln -sfn ../storage/app/public backend/public/storage
 
 # ── 7. (Opcional) Seeders ─────────────────────────────────────────────────────
