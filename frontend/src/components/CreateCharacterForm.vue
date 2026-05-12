@@ -18,27 +18,30 @@
 
       <div class="field">
         <label class="field__label">REINO</label>
-        <select v-model="id_kingdom" required class="field__input">
-          <option v-for="k in kingdoms" :key="k.id_kingdom" :value="k.id_kingdom">
-            {{ k.name }}
+        <select v-model="id_kingdom" required class="field__input" :disabled="kingdoms.length === 0">
+          <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO REINOS...' : 'SELECCIONA UN REINO' }}</option>
+          <option v-for="k in kingdoms" :key="getId(k, 'id_kingdom')" :value="getId(k, 'id_kingdom')">
+            {{ k.name ?? k.nombre ?? 'Sin nombre' }}
           </option>
         </select>
       </div>
 
       <div class="field">
         <label class="field__label">RAZA</label>
-        <select v-model="id_race" required class="field__input">
-          <option v-for="r in races" :key="r.id_race" :value="r.id_race">
-            {{ r.name }}
+        <select v-model="id_race" required class="field__input" :disabled="races.length === 0">
+          <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO RAZAS...' : 'SELECCIONA UNA RAZA' }}</option>
+          <option v-for="r in races" :key="getId(r, 'id_race')" :value="getId(r, 'id_race')">
+            {{ r.name ?? r.nombre ?? 'Sin nombre' }}
           </option>
         </select>
       </div>
 
       <div class="field">
         <label class="field__label">CLASE</label>
-        <select v-model="id_class" required class="field__input">
-          <option v-for="c in classes" :key="c.id_class" :value="c.id_class">
-            {{ c.name }}
+        <select v-model="id_class" required class="field__input" :disabled="classes.length === 0">
+          <option value="" disabled>{{ loadingCatalogs ? 'CARGANDO CLASES...' : 'SELECCIONA UNA CLASE' }}</option>
+          <option v-for="c in classes" :key="getId(c, 'id_class')" :value="getId(c, 'id_class')">
+            {{ c.name ?? c.nombre ?? 'Sin nombre' }}
           </option>
         </select>
       </div>
@@ -49,7 +52,7 @@
 
       <p v-if="err" class="create-form__err">{{ err }}</p>
 
-      <button class="create-form__btn" type="submit" :disabled="sending">
+      <button class="create-form__btn" type="submit" :disabled="sending || loadingCatalogs || !kingdoms.length || !races.length || !classes.length || !id_kingdom || !id_race || !id_class">
         {{ sending ? 'FORJANDO...' : submitLabel }}
       </button>
 
@@ -58,7 +61,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import api from '../api/axios'
 import { createCharacter } from '../api/character'
 import PixelArtEditor from './PixelArtEditor.vue'
@@ -71,9 +74,9 @@ const props = defineProps({
 const emit = defineEmits(['created'])
 
 const name = ref('')
-const id_kingdom = ref(null)
-const id_race = ref(null)
-const id_class = ref(null)
+const id_kingdom = ref('')
+const id_race = ref('')
+const id_class = ref('')
 
 function getStickman() {
   const s = Array(256).fill('')
@@ -100,38 +103,72 @@ const classes = ref([])
 
 const err = ref(null)
 const sending = ref(false)
+const loadingCatalogs = ref(false)
 
 onMounted(async () => {
   err.value = null
-  try {
-    const [k, r, cl] = await Promise.all([api.get('/kingdoms'), api.get('/races'), api.get('/classes')])
-    kingdoms.value = Array.isArray(k.data) ? k.data : []
-    races.value = Array.isArray(r.data) ? r.data : []
-    classes.value = Array.isArray(cl.data) ? cl.data : []
-    if (kingdoms.value[0]) id_kingdom.value = kingdoms.value[0].id_kingdom
-    if (races.value[0]) id_race.value = races.value[0].id_race
-    if (classes.value[0]) id_class.value = classes.value[0].id_class
-  } catch (e) {
-    err.value = e?.response?.data?.message ?? e?.message ?? 'No se han podido cargar los datos.'
-  }
+  loadingCatalogs.value = true
+  await loadCatalogs()
+  loadingCatalogs.value = false
 })
 
-watch([kingdoms, races, classes], () => {
-  if (id_kingdom.value == null && kingdoms.value[0]) id_kingdom.value = kingdoms.value[0].id_kingdom
-  if (id_race.value == null && races.value[0]) id_race.value = races.value[0].id_race
-  if (id_class.value == null && classes.value[0]) id_class.value = classes.value[0].id_class
-}, { deep: true })
+function extractCollection(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.results)) return payload.results
+  return []
+}
+
+async function loadCatalogs() {
+  const results = await Promise.allSettled([
+    api.get('/kingdoms', { timeout: 8000 }),
+    api.get('/races', { timeout: 8000 }),
+    api.get('/classes', { timeout: 8000 }),
+  ])
+
+  const [kingdomsResult, racesResult, classesResult] = results
+
+  kingdoms.value = kingdomsResult.status === 'fulfilled'
+    ? extractCollection(kingdomsResult.value?.data)
+    : []
+  races.value = racesResult.status === 'fulfilled'
+    ? extractCollection(racesResult.value?.data)
+    : []
+  classes.value = classesResult.status === 'fulfilled'
+    ? extractCollection(classesResult.value?.data)
+    : []
+
+  const errors = results
+    .filter(result => result.status === 'rejected')
+    .map(result => result.reason?.response?.data?.message ?? result.reason?.message)
+    .filter(Boolean)
+
+  if (errors.length > 0 && !kingdoms.value.length && !races.value.length && !classes.value.length) {
+    err.value = errors[0] ?? 'No se han podido cargar los datos.'
+  }
+}
+
+function getId(item, preferredKey) {
+  if (!item || typeof item !== 'object') return null
+  const raw = item[preferredKey] ?? item.id ?? null
+  if (raw == null || raw === '') return null
+  return String(raw)
+}
 
 async function onSubmit() {
   if (sending.value) return
+  if (!id_kingdom.value || !id_race.value || !id_class.value) {
+    err.value = 'Selecciona reino, raza y clase.'
+    return
+  }
   err.value = null
   sending.value = true
   try {
     const ch = await createCharacter({
       name: name.value,
-      id_kingdom: id_kingdom.value,
-      id_race: id_race.value,
-      id_class: id_class.value,
+      id_kingdom: Number(id_kingdom.value),
+      id_race: Number(id_race.value),
+      id_class: Number(id_class.value),
       sprite_data: JSON.stringify(sprite.value)
     })
     emit('created', ch)

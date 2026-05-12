@@ -74,20 +74,20 @@ class CharacterController extends Controller
 
         // Selección de arma
         $weaponName = match ($charClass->name) {
-            'Guerrero' => 'Espada del Guerrero',
-            'Mago' => 'Varita Arcana',
-            'Arquero' => 'Arco de Roble',
-            'Paladín' => 'Hacha de Batalla',
-            'Asesino' => 'Daga Asesina',
-            default => 'Espada del Guerrero',
+            'Guerrero' => 'Arma Definitiva de JD',
+            'Mago' => 'Varita de Madera',
+            'Arquero' => 'Arco de Iniciado',
+            'Paladín' => 'Hacha de Piedra',
+            'Asesino' => 'Daga de Práctica',
+            default => 'Espada de Entrenamiento',
         };
 
         // Selección de armadura
         $armorName = match ($charClass->name) {
-            'Guerrero', 'Paladín' => 'Armadura de Placas',
-            'Mago' => 'Túnica Mágica',
-            'Arquero', 'Asesino' => 'Armadura de Cuero',
-            default => 'Armadura de Cuero',
+            'Mago', 'Asesino' => 'Ropas de Viajero',
+            'Arquero', 'Guerrero' => 'Peto de Cuero Viejo',
+            'Paladín' => 'Escudo de Madera Circular',
+            default => 'Ropas de Viajero',
         };
 
         $this->giveAndEquipItem($character->id, $weaponName);
@@ -144,6 +144,9 @@ class CharacterController extends Controller
             'health' => 'sometimes|integer|min:0',
             'mana' => 'sometimes|integer|min:0',
             'gold' => 'sometimes|integer|min:0',
+            'arena_section' => 'sometimes|integer|min:1|max:8',
+            'arena_wave' => 'sometimes|integer|min:1|max:20',
+            'arena_in_progress' => 'sometimes|boolean',
         ]);
         $data = $request->all();
         unset($data['id_user']);

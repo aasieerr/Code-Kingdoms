@@ -2,8 +2,10 @@
   <div
     class="viewport"
     ref="arenaRef"
+    :style="viewportBgStyle"
     tabindex="0"
     @click="arenaRef.focus()"
+    @keydown="onArenaPanelHotkey"
     @focus="focused = true"
     @blur="focused = false"
   >
@@ -12,17 +14,55 @@
     <div class="game-bg"></div>
 
     <div class="world" :style="{ transform: cameraTransform }">
-      <div class="grid"></div>
-      <div class="arena-floor"></div>
+      <div class="grid" :style="arenaGridStyle"></div>
+      <div class="arena-floor" :style="arenaFloorStyle"></div>
 
       <div
         v-for="e in enemies"
         :key="e.id"
         class="enemy"
-        :class="{ 'boss-enemy': e.type === 'boss' || e.type === 'miniboss' }"
+        :class="[enemyFactionClass, `enemy-type--${e.type}`, {
+          'boss-enemy': e.type === 'boss',
+          'boss--andres': isAndresBoss(e),
+          'boss--juan-carlos': isJuanCarlosBoss(e),
+          'boss--juan-carlos--moving': isJuanCarlosBoss(e) && isJuanCarlosFlying(e),
+          'boss--juan-carlos--defending': isJuanCarlosDefending(e),
+          'enemy--with-image': hasEnemySprite(e),
+        }]"
         :style="{ left: e.x + 'px', top: e.y + 'px', width: (e.size || ENEMY_SIZE) + 'px', height: (e.size || ENEMY_SIZE) + 'px' }"
       >
-        <span class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
+        <div
+          v-if="isAndresBoss(e)"
+          class="boss-skin boss-skin--andres"
+          :style="bossAndresStyle(e)"
+        ></div>
+        <img
+          v-else-if="isJuanCarlosBoss(e)"
+          class="boss-skin boss-skin--juan-carlos"
+          :src="bossJuanCarlosImg(e)"
+          :style="bossJuanCarlosStyle(e)"
+          alt="Juan Carlos"
+        />
+        <img
+          v-else-if="enemySpriteSrc(e)"
+          class="enemy-skin"
+          :src="enemySpriteSrc(e)"
+          :style="enemySpriteStyle(e)"
+          :alt="e.type"
+        />
+        <div
+          v-if="e.type === 'boss' || e.type === 'miniboss'"
+          class="boss-enemy-hp"
+          :class="{
+            'boss-enemy-hp--java': isJuanCarlosBoss(e) || isJavaMiniboss(e),
+            'boss-enemy-hp--php': isAndresBoss(e) || isPhpMiniboss(e),
+          }"
+        >
+          <div class="boss-enemy-hp-track">
+            <div class="boss-enemy-hp-fill" :style="{ width: hpBarPct(e) + '%' }"></div>
+          </div>
+        </div>
+        <span v-else class="enemy-hp" :style="{ width: hpBarPct(e) + '%' }"></span>
       </div>
 
       <div
@@ -45,8 +85,17 @@
         v-for="b in enemyBullets"
         :key="b.id"
         class="enemy-bullet"
+        :class="[enemyBulletClass(b), { 'enemy-bullet--with-sprite': enemyBulletImg(b) }]"
         :style="{ left: b.x + 'px', top: b.y + 'px' }"
-      />
+      >
+        <img
+          v-if="enemyBulletImg(b)"
+          class="enemy-bullet-skin"
+          :src="enemyBulletImg(b)"
+          alt=""
+        />
+        <template v-else>{{ b.symbol }}</template>
+      </div>
 
       <div
         v-for="s in slashes"
@@ -84,6 +133,11 @@
           class="player__fallback"
           :style="{ background: moving ? colorMoving : colorStill }"
         ></div>
+        <div
+          v-if="dependencyMark"
+          class="player__dependency-mark"
+          aria-hidden="true"
+        ></div>
       </div>
     </div>
 
@@ -92,8 +146,21 @@
       <!-- Wave Info -->
       <div class="hud-top-center">
         <div class="wave-display">
-          <span class="wave-label">RONDA</span>
-          <span class="wave-number">{{ wave }}</span>
+          <span class="wave-label">{{ hudMapLabel }}</span>
+          <span class="wave-label-sub">{{ hudSectionLabel }}</span>
+          <template v-if="isFinalKingdomSection">
+            <div class="boss-hud">
+              <span class="boss-name">{{ finalBossName }}</span>
+              <div class="boss-hp-frame">
+                <div class="boss-hp-fill" :style="{ width: `${finalBossHpPct}%` }"></div>
+              </div>
+              <span class="boss-hp-text">{{ finalBossHp }} / {{ finalBossMaxHp }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <span class="wave-number">{{ sectionWave }} / {{ maxWavesInSection }}</span>
+            <span class="route-label">{{ startKingdom }} → {{ targetKingdom }} · {{ routeInstruction }}</span>
+          </template>
         </div>
       </div>
 
@@ -113,7 +180,7 @@
         </div>
 
         <div class="hp-container">
-          <div class="hp-label">SISTEMA VITAL</div>
+          <div class="hp-label">VIDA</div>
           <div class="hp-bar-frame">
             <div class="hp-bar-fill" :style="{ width: playerHpPct + '%' }">
               <div class="hp-glow"></div>
@@ -121,21 +188,28 @@
           </div>
           <div class="hp-numeric">{{ playerHp }} / {{ playerMaxHp }}</div>
         </div>
+        <div class="xp-container">
+          <div class="xp-label">NIVEL {{ levelState.level }}</div>
+          <div class="xp-bar-frame">
+            <div class="xp-bar-fill" :style="{ width: xpProgressPct + '%' }"></div>
+          </div>
+          <div class="xp-numeric">{{ levelState.experience }} / {{ levelState.nextLevelXp }} XP</div>
+        </div>
       </div>
 
       <!-- Controls Hint (Bottom) -->
       <div class="hud-bottom-hints">
         <div class="hint-pill">
-          <span class="key">WASD</span> MOVIMIENTO
+          <span class="key">{{ keyLabel(settings.keybinds.moveUp) }}/{{ keyLabel(settings.keybinds.moveLeft) }}/{{ keyLabel(settings.keybinds.moveDown) }}/{{ keyLabel(settings.keybinds.moveRight) }}</span> MOVIMIENTO
         </div>
         <div class="hint-pill">
-          <span class="key">I</span> MOCHILA
+          <span class="key">{{ keyLabel(settings.keybinds.inventory) }}</span> MOCHILA
         </div>
         <div class="hint-pill">
-          <span class="key">K</span> EQUIPO
+          <span class="key">{{ keyLabel(settings.keybinds.equipment) }}</span> EQUIPO
         </div>
         <div class="hint-pill">
-          <span class="key">M</span> MAPA
+          <span class="key">{{ keyLabel(settings.keybinds.map) }}</span> MAPA
         </div>
       </div>
     </div>
@@ -143,6 +217,7 @@
     <WalletBar
       :gold="characterStore.gold + sessionGold"
       :code-coins="characterStore.codeCoins"
+      :level="levelState.level"
       @open-micropay="showMicropay = !showMicropay"
     />
 
@@ -159,12 +234,17 @@
     />
 
     <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
 
     <MapPanel
       v-if="showMapPanel"
       :player-x="x"
       :player-y="y"
       :npcs="[]"
+      :map-image="currentArenaMapImage"
+      :map-name="currentArenaMapName"
+      :world-width="ARENA_WORLD_WIDTH"
+      :world-height="ARENA_WORLD_HEIGHT"
       @close="showMapPanel = false"
     />
 
@@ -172,8 +252,9 @@
     <div v-if="phase === 'between'" class="premium-overlay">
       <div class="premium-modal victory-wave">
         <div class="modal-shine"></div>
-        <h2 class="modal-title">¡RONDA {{ wave }} COMPLETADA!</h2>
+        <h2 class="modal-title">OLEADA {{ sectionWave }} / {{ WAVES_PER_SECTION }} COMPLETADA</h2>
         <div class="modal-body">
+          <p class="summary">SECCIÓN ACTUAL: <span>{{ section }}</span> / {{ TOTAL_SECTIONS }}</p>
           <p class="reward-text">HAS RECOLECTADO <span>{{ sessionGold }}</span> MONEDAS DE ORO</p>
           <p class="action-hint">EQUIPA ÍTEMS EN EL PANEL O SIGUE LUCHANDO</p>
         </div>
@@ -191,7 +272,7 @@
         <div class="victory-crown">👑</div>
         <h2 class="modal-title">¡VICTORIA ABSOLUTA!</h2>
         <div class="modal-body">
-          <p class="summary">HAS SUPERADO TODAS LAS OLEADAS</p>
+          <p class="summary">HAS CONQUISTADO EL REINO {{ conqueredKingdomLabel }}</p>
           <p class="reward-text">ORO TOTAL CONSEGUIDO: <span>{{ sessionGold }}</span> 🪙</p>
           <p class="congrats">ERES EL VERDADERO REY DE LA ARENA</p>
         </div>
@@ -207,7 +288,7 @@
         <div class="modal-shine"></div>
         <h2 class="modal-title">DERROTA EN COMBATE</h2>
         <div class="modal-body">
-          <p class="summary">CAÍSTE EN LA RONDA <span>{{ wave }}</span></p>
+          <p class="summary">CAÍSTE EN LA SECCIÓN <span>{{ section }}</span>, OLEADA <span>{{ sectionWave }}</span></p>
           <p class="reward-text">ORO ASEGURADO: <span>{{ sessionGold }}</span> 🪙</p>
         </div>
         <div class="modal-footer">
@@ -223,17 +304,48 @@
 
 <script setup>
 import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useArenaCombat } from './composables/useArenaCombat'
+import { getArenaEnemySprite } from './constants/arenaEnemySprites'
+import { getEnemyBulletSprite } from './constants/arenaEnemyBulletSprites'
 import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
-import { lastTransition, activeCharacterId } from './gameState'
-import { ensureActiveCharacterId, fetchCharacter, addCharacterGold } from './api/character'
+import { SECTION_MAPS } from './constants/maps'
+import arrayIslandsMap from './assets/maps/array-islands-map.png'
+import jvmVolcanoMap from './assets/maps/jvm-volcano-map.png'
+import mavenMountainsMap from './assets/maps/maven-mountains-map.png'
+import springBootCityMap from './assets/maps/spring-boot-city-map.png'
+import gcSwampMap from './assets/maps/gc-swamp-map.png'
+import hibernateRuinsMap from './assets/maps/hibernate-ruins-map.png'
+import springBorderGateMap from './assets/maps/spring-border-gate-map.png'
+import eloquentSwampsMap from './assets/maps/eloquent-swamps-map.png'
+import bladeForestMap from './assets/maps/blade-forest-map.png'
+import composerDesertMap from './assets/maps/composer-desert-map.png'
+import laravelCitadelMap from './assets/maps/laravel-citadel-map.png'
+import phpFrontierMarshesMap from './assets/maps/php-frontier-marshes-map.png'
+import javaKingdomMap from './assets/maps/java-kingdom-map.png'
+import phpKingdomMap from './assets/maps/php-kingdom-map.png'
+import bossAndresSheet from './assets/characters/pixellab-angry-middle-aged-male-wizard--1778238468527-3x.png'
+import javaBossIdle1 from './assets/characters/java-boss/1.png'
+import javaBossIdle2 from './assets/characters/java-boss/2.png'
+import javaBossIdle3 from './assets/characters/java-boss/3.png'
+import javaBossCast from './assets/characters/java-boss/4.png'
+import javaBossIdle5 from './assets/characters/java-boss/5.png'
+import javaBossIdle6 from './assets/characters/java-boss/6.png'
+import javaBossFly from './assets/characters/java-boss/7.png'
+import javaBossIdle8 from './assets/characters/java-boss/8.png'
+import javaBossCloak from './assets/characters/java-boss/9.png'
+import { lastTransition } from './gameState'
+import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
+import api from './api/axios'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel from './components/MapPanel.vue'
 import WalletBar from './components/WalletBar.vue'
 import MicropayModal from './components/MicropayModal.vue'
+import SettingsModal from './components/SettingsModal.vue'
 import { useCharacterStore } from './stores/character'
+import { confirmCodeCoinsCheckout } from './api/micropay'
+import { useGameSettings } from './composables/useGameSettings'
 
 function parseSprite(data) {
   try {
@@ -249,22 +361,354 @@ function isEmptySprite(data) {
   return !pixels.some(p => p && p !== '')
 }
 
+function xpRequiredForLevel(levelValue) {
+  const safeLevel = Math.max(1, Number(levelValue) || 1)
+  return Math.round(85 * Math.pow(safeLevel, 1.35) + safeLevel * 42)
+}
+
+
+
 
 const router = useRouter()
-const worldEdgePx = `${WORLD_EDGE}px`
+const route = useRoute()
+const ARENA_WORLD_WIDTH = 1700
+const ARENA_WORLD_HEIGHT = WORLD_EDGE
+const ARENA_ENTRY_TARGET_Y = ARENA_WORLD_HEIGHT / 2
+const ARRAY_ISLANDS_ENTRY_Y = ARENA_WORLD_HEIGHT / 2 - 90
+const JVM_VOLCANO_ENTRY_Y = ARENA_WORLD_HEIGHT - 240
+const LARAVEL_CITADEL_ENTRY_Y = ARENA_WORLD_HEIGHT - 220
+const COMPOSER_DESERT_ENTRY_Y = ARENA_WORLD_HEIGHT - 260
+const worldWidthPx = `${ARENA_WORLD_WIDTH}px`
+const worldHeightPx = `${ARENA_WORLD_HEIGHT}px`
 const isFading = ref(lastTransition.value === 'main-to-second')
-const startY = lastTransition.value === 'main-to-second' ? -50 : WORLD_EDGE / 2
+const startY = ref(lastTransition.value === 'main-to-second' ? -50 : ARENA_WORLD_HEIGHT / 2)
 
 const showPanel = ref(null)
 const showMapPanel = ref(false)
 const showMicropay = ref(false)
+const showSettings = ref(false)
 
 const characterStore = useCharacterStore()
+const { keyMatches, settings, keyLabel } = useGameSettings()
 const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
+const arenaFaction = computed(() => (isPhpKingdomSelected() ? 'java' : 'php'))
+const currentMap = computed(() => {
+  const idx = Math.min((section.value || 1) - 1, 5)
+  return SECTION_MAPS[arenaFaction.value][idx]
+})
+const mapImageByName = {
+  'Array Islands': arrayIslandsMap,
+  'JVM Volcano': jvmVolcanoMap,
+  'Maven Mountains': mavenMountainsMap,
+  'Spring Boot City': springBootCityMap,
+  'GC Swamp': gcSwampMap,
+  'Hibernate Ruins': hibernateRuinsMap,
+  'Spring Border Gate': springBorderGateMap,
+  'Eloquent Swamps': eloquentSwampsMap,
+  'Blade Forest': bladeForestMap,
+  'Composer Desert': composerDesertMap,
+  'Laravel Citadel': laravelCitadelMap,
+  'PHP Frontier Marshes': phpFrontierMarshesMap,
+}
+const currentArenaMapImage = computed(() => {
+  if (isFinalKingdomSection.value) {
+    return arenaFaction.value === 'php' ? phpKingdomMap : javaKingdomMap
+  }
+  return mapImageByName[currentMap.value?.name] || ''
+})
+const currentArenaMapName = computed(() => {
+  if (isFinalKingdomSection.value) {
+    return arenaFaction.value === 'php' ? 'REINO PHP (BOSS FINAL)' : 'REINO JAVA (BOSS FINAL)'
+  }
+  return currentMap.value?.name?.toUpperCase() || 'MAPA DESCONOCIDO'
+})
+
+const isArrayIslandsSection = computed(() => currentMap.value?.name === 'Array Islands')
+const isJvmVolcanoSection = computed(() => currentMap.value?.name === 'JVM Volcano')
+const isMavenMountainsSection = computed(() => currentMap.value?.name === 'Maven Mountains')
+const isSpringBootCitySection = computed(() => currentMap.value?.name === 'Spring Boot City')
+const isGcSwampSection = computed(() => currentMap.value?.name === 'GC Swamp')
+const isHibernateRuinsSection = computed(() => currentMap.value?.name === 'Hibernate Ruins')
+const isSpringBorderGateSection = computed(() => currentMap.value?.name === 'Spring Border Gate')
+const isEloquentSwampsSection = computed(() => currentMap.value?.name === 'Eloquent Swamps')
+const isBladeForestSection = computed(() => currentMap.value?.name === 'Blade Forest')
+const isComposerDesertSection = computed(() => currentMap.value?.name === 'Composer Desert')
+const isLaravelCitadelSection = computed(() => currentMap.value?.name === 'Laravel Citadel')
+const isPhpFrontierMarshesSection = computed(() => currentMap.value?.name === 'PHP Frontier Marshes')
+const isFinalKingdomSection = computed(() => Number(section.value || 1) === TOTAL_SECTIONS)
+const currentKingdomHudName = computed(() => (arenaFaction.value === 'php' ? 'REINO DE PHP' : 'REINO DE JAVA'))
+const hudMapLabel = computed(() => (
+  isFinalKingdomSection.value
+    ? `${currentKingdomHudName.value} · BOSS FINAL`
+    : currentMap.value.name.toUpperCase()
+))
+const hudSectionLabel = computed(() => (
+  isFinalKingdomSection.value
+    ? 'BATALLA FINAL'
+    : `SECCIÓN ${section.value} / ${TOTAL_SECTIONS}`
+))
+const maxWavesInSection = computed(() => (
+  Number(section.value || 1) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
+))
+const finalBossName = computed(() => (arenaFaction.value === 'php' ? 'ANDRÉS' : 'JUAN CARLOS'))
+const finalBossEnemy = computed(() => (
+  enemies.value.find((enemy) => enemy.type === 'boss') || null
+))
+const finalBossMaxHp = computed(() => (
+  Math.max(1, Number(finalBossEnemy.value?.maxHp || 1))
+))
+const finalBossHp = computed(() => (
+  Math.max(0, Math.round(Number(finalBossEnemy.value?.hp || 0)))
+))
+const finalBossHpPct = computed(() => (
+  Math.max(0, Math.min(100, Math.round((100 * finalBossHp.value) / finalBossMaxHp.value)))
+))
+const ARRAY_ISLANDS_INNER_BOUNDS = {
+  // Con `background-size: auto 100%` el mapa cuadrado queda centrado en X.
+  left: 300,
+  right: 1400,
+  top: 70,
+  bottom: 1130,
+}
+
+const arenaFloorStyle = computed(() => {
+  if (isFinalKingdomSection.value) {
+    return {
+      backgroundImage: `url(${currentArenaMapImage.value})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isArrayIslandsSection.value) {
+    return {
+      backgroundImage: `url(${arrayIslandsMap})`,
+      backgroundRepeat: 'no-repeat',
+      // Evita deformación: mantiene ratio original del PNG.
+      backgroundSize: 'auto 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isJvmVolcanoSection.value) {
+    return {
+      backgroundImage: `url(${jvmVolcanoMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isMavenMountainsSection.value) {
+    return {
+      backgroundImage: `url(${mavenMountainsMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isSpringBootCitySection.value) {
+    return {
+      backgroundImage: `url(${springBootCityMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isGcSwampSection.value) {
+    return {
+      backgroundImage: `url(${gcSwampMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isHibernateRuinsSection.value) {
+    return {
+      backgroundImage: `url(${hibernateRuinsMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isSpringBorderGateSection.value) {
+    return {
+      backgroundImage: `url(${springBorderGateMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isEloquentSwampsSection.value) {
+    return {
+      backgroundImage: `url(${eloquentSwampsMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isBladeForestSection.value) {
+    return {
+      backgroundImage: `url(${bladeForestMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isComposerDesertSection.value) {
+    return {
+      backgroundImage: `url(${composerDesertMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isLaravelCitadelSection.value) {
+    return {
+      backgroundImage: `url(${laravelCitadelMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+  if (isPhpFrontierMarshesSection.value) {
+    return {
+      backgroundImage: `url(${phpFrontierMarshesMap})`,
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+    }
+  }
+
+  return {
+    background: `
+      radial-gradient(ellipse 80% 50% at 50% 50%, ${currentMap.value.accent}33, transparent 55%),
+      linear-gradient(180deg, ${currentMap.value.floor} 0%, ${currentMap.value.floorAlt} 100%)
+    `
+  }
+})
+
+const arenaGridStyle = computed(() => ({
+  backgroundImage: `
+    linear-gradient(${currentMap.value.gridColor} 1px, transparent 1px),
+    linear-gradient(90deg, ${currentMap.value.gridColor} 1px, transparent 1px)
+  `,
+  backgroundSize: '50px 50px'
+}))
+
+const viewportBgStyle = computed(() => ({
+  backgroundColor: currentMap.value.bg
+}))
 const navigating = ref(false)
 const portalCooldown = ref(true)
 const showVictoryModal = ref(true)
+const arenaCharacterId = ref(null)
+const progressHydrated = ref(false)
+const levelState = ref({
+  level: 1,
+  experience: 0,
+  nextLevelXp: xpRequiredForLevel(1),
+  maxHealth: 100,
+  armor: 0,
+  attackSpeed: 1,
+  moveSpeed: 1,
+  baseDamage: 12,
+})
+
+function syncLevelStateFromStore() {
+  const level = Math.max(1, Number(characterStore.level || 1) || 1)
+  const experience = Math.max(0, Math.floor(Number(characterStore.experience || 0) || 0))
+  levelState.value = {
+    level,
+    experience,
+    nextLevelXp: xpRequiredForLevel(level),
+    maxHealth: Math.max(1, Number(characterStore.maxHealth || 100) || 100),
+    armor: Math.max(0, Number(characterStore.armor || 0) || 0),
+    attackSpeed: Math.max(0.1, Number(characterStore.attackSpeed || 1) || 1),
+    moveSpeed: Math.max(0.1, Number(characterStore.moveSpeed || 1) || 1),
+    baseDamage: Math.max(1, Number(characterStore.baseDamage || 12) || 12),
+  }
+}
+
+function applyLevelUpRewards(levelUps = 1) {
+  for (let i = 0; i < levelUps; i++) {
+    levelState.value.maxHealth += 12
+    levelState.value.armor += 3
+    levelState.value.attackSpeed = Math.min(2.4, Number((levelState.value.attackSpeed + 0.025).toFixed(3)))
+    levelState.value.moveSpeed = Math.min(1.45, Number((levelState.value.moveSpeed + 0.01).toFixed(3)))
+    levelState.value.baseDamage += 3
+  }
+}
+
+function gainExperience(amount) {
+  const safeAmount = Math.max(0, Math.floor(Number(amount) || 0))
+  if (safeAmount <= 0) return
+  levelState.value.experience += safeAmount
+  let pendingLevelUps = 0
+  while (levelState.value.experience >= levelState.value.nextLevelXp) {
+    levelState.value.experience -= levelState.value.nextLevelXp
+    levelState.value.level += 1
+    pendingLevelUps += 1
+    levelState.value.nextLevelXp = xpRequiredForLevel(levelState.value.level)
+  }
+  if (pendingLevelUps > 0) {
+    applyLevelUpRewards(pendingLevelUps)
+    playerMaxHp.value = Math.round(levelState.value.maxHealth)
+    playerHp.value = Math.min(playerMaxHp.value, playerHp.value + pendingLevelUps * 14)
+  }
+}
+
+function isTruthyQueryFlag(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return ['1', 'true', 'yes', 'on', 'si', 'sí'].includes(normalized)
+}
+
+const devImmortalMode = computed(() => import.meta.env.DEV && isTruthyQueryFlag(route.query.dev_immortal))
+const devMaxDamageMode = computed(() => import.meta.env.DEV && isTruthyQueryFlag(route.query.dev_max_damage))
+const xpProgressPct = computed(() => {
+  const total = Math.max(1, Number(levelState.value.nextLevelXp || 1))
+  return Math.max(0, Math.min(100, Math.round((100 * Number(levelState.value.experience || 0)) / total)))
+})
+
+function isPhpKingdomSelected() {
+  const kName = String(characterStore.kingdomName || '').toLowerCase()
+  if (kName.includes('php') || kName.includes('peachepe')) return true
+  if (kName.includes('java')) return false
+  const kId = Number(characterStore.kingdomId)
+  // En este backend: 1 = Peachepe/PHP, 2 = Java.
+  return kId === 1
+}
+
+function getSectionMapNameByIndex(faction, sectionNumber) {
+  const sectionIndex = Math.min(Math.max(Number(sectionNumber || 1) - 1, 0), 5)
+  return SECTION_MAPS[faction]?.[sectionIndex]?.name || ''
+}
+
+function getArenaEntryPoint(mapName) {
+  if (mapName === 'Array Islands') {
+    return { x: ARENA_WORLD_WIDTH / 2, y: ARRAY_ISLANDS_ENTRY_Y }
+  }
+  if (mapName === 'JVM Volcano') {
+    // Entrada arriba del mapa, pero siempre dentro del terreno jugable.
+    return { x: ARENA_WORLD_WIDTH / 2, y: JVM_VOLCANO_ENTRY_Y }
+  }
+  if (mapName === 'Laravel Citadel') {
+    return { x: ARENA_WORLD_WIDTH / 2, y: LARAVEL_CITADEL_ENTRY_Y }
+  }
+  if (mapName === 'Composer Desert') {
+    return { x: ARENA_WORLD_WIDTH / 2, y: COMPOSER_DESERT_ENTRY_Y }
+  }
+  return { x: ARENA_WORLD_WIDTH / 2, y: ARENA_ENTRY_TARGET_Y }
+}
+
+function isArrayIslandsWalkable(nextX, nextY, ctx = {}) {
+  const playerSize = Number(ctx.playerSize || 40)
+  return (
+    nextX >= ARRAY_ISLANDS_INNER_BOUNDS.left
+    && nextY >= ARRAY_ISLANDS_INNER_BOUNDS.top
+    && (nextX + playerSize) <= ARRAY_ISLANDS_INNER_BOUNDS.right
+    && (nextY + playerSize) <= ARRAY_ISLANDS_INNER_BOUNDS.bottom
+  )
+}
 
 
 const {
@@ -274,13 +718,22 @@ const {
   focused,
   moving,
   locked,
-  WORLD,
+  WORLD_W,
+  WORLD_H,
   ENEMY_SIZE,
-  wave,
+  section,
+  sectionWave,
+  routeInstruction,
+  startKingdom,
+  targetKingdom,
+  enemyFaction,
+  TOTAL_SECTIONS,
+  WAVES_PER_SECTION,
   phase,
   playerHp,
   playerMaxHp,
   sessionGold,
+  dependencyMark,
   enemies,
   bullets,
   enemyBullets,
@@ -288,16 +741,114 @@ const {
   slashes,
   startNextWave,
   beginFirstWave,
+  resumeAt,
 } = useArenaCombat({
-  startX: WORLD_EDGE / 2,
-  startY,
+  worldWidth: ARENA_WORLD_WIDTH,
+  worldHeight: ARENA_WORLD_HEIGHT,
+  startX: ARENA_WORLD_WIDTH / 2,
+  startY: startY.value,
+  // Debe ser el reino del jugador (no arenaFaction: ese valor ya es el espejo enemigo).
+  // Si esto va mal, useArenaCombat invierte enemigos y el boss PHP (Andrés) sale como Java.
+  startKingdom: computed(() => (isPhpKingdomSelected() ? 'PHP' : 'Java')),
   equippedWeapon: computed(() => characterStore.equippedWeapon),
   characterClass: computed(() => characterStore.characterClass),
+  characterRace: computed(() => characterStore.kingdomName || characterStore.kingdomId),
+  characterLevel: computed(() => levelState.value.level),
+  characterArmor: computed(() => levelState.value.armor),
+  characterAttackSpeed: computed(() => levelState.value.attackSpeed),
+  characterMoveSpeed: computed(() => levelState.value.moveSpeed),
+  characterBaseDamage: computed(() => levelState.value.baseDamage),
+  playerMaxHp: computed(() => levelState.value.maxHealth),
+  isWalkable: isArrayIslandsWalkable,
+  debugImmortal: devImmortalMode,
+  debugMaxDamage: devMaxDamageMode,
+  debugDamage: 99999,
+  onExperienceGain: ({ amount }) => gainExperience(amount),
   onVictory: () => {
     showVictoryModal.value = true
     syncRunGoldOnce()
   }
 })
+
+function parsePositiveInt(value, fallback = null) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? normalized : fallback
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function getArenaStartFromQuery() {
+  const rawSection = parsePositiveInt(route.query.section, null)
+  if (rawSection == null) return null
+  const safeSection = clamp(rawSection, 1, TOTAL_SECTIONS)
+  const rawWave = parsePositiveInt(route.query.wave, 1)
+  return {
+    section: safeSection,
+    wave: clamp(rawWave, 1, safeSection >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION),
+  }
+}
+
+let lastSavedProgressKey = ''
+
+function progressSnapshotForSave() {
+  let nextSection = section.value
+  let maxWavesInNextSection = nextSection >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
+  if (phase.value === 'between' && sectionWave.value >= maxWavesInNextSection) {
+    nextSection = Math.min(TOTAL_SECTIONS, nextSection + 1)
+  }
+  
+  return { arena_section: nextSection, arena_wave: 1, arena_in_progress: true }
+}
+
+async function saveArenaProgress(force = false) {
+  try {
+    const id = arenaCharacterId.value
+    if (!id) return
+    if (!force && !progressHydrated.value) return
+    const payload = {
+      ...progressSnapshotForSave(),
+      level: levelState.value.level,
+      experience: levelState.value.experience,
+      xp: levelState.value.experience,
+      max_health: Math.round(levelState.value.maxHealth),
+      armor: Math.round(levelState.value.armor),
+      attack_speed: Number(levelState.value.attackSpeed.toFixed(3)),
+      move_speed: Number(levelState.value.moveSpeed.toFixed(3)),
+      base_damage: Math.round(levelState.value.baseDamage),
+    }
+    const key = [
+      payload.arena_section,
+      payload.arena_wave,
+      payload.arena_in_progress ? 1 : 0,
+      payload.level,
+      payload.experience,
+      payload.max_health,
+      payload.armor,
+      payload.attack_speed,
+      payload.move_speed,
+      payload.base_damage,
+    ].join(':')
+    if (!force && key === lastSavedProgressKey) return
+    await api.patch(`/characters/${id}`, payload)
+    characterStore.arenaSection = payload.arena_section
+    characterStore.arenaWave = payload.arena_wave
+    characterStore.arenaInProgress = payload.arena_in_progress
+    characterStore.level = payload.level
+    characterStore.experience = payload.experience
+    characterStore.maxHealth = payload.max_health
+    characterStore.armor = payload.armor
+    characterStore.attackSpeed = payload.attack_speed
+    characterStore.moveSpeed = payload.move_speed
+    characterStore.baseDamage = payload.base_damage
+    lastSavedProgressKey = key
+  } catch (err) {
+    console.error('No se pudo guardar progreso de arena:', err)
+  }
+}
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
 if (lastTransition.value === 'main-to-second') {
@@ -318,12 +869,12 @@ function toggleMap() {
   showMapPanel.value = !showMapPanel.value
 }
 
-// Bloquear movimiento si hay paneles abiertos
+// Bloquear movimiento solo en estados críticos (no al abrir paneles/mapa).
 watch(
-  [showPanel, showMapPanel, showMicropay, phase, showVictoryModal],
-  ([p, m, mi, ph, svm]) => {
+  [showPanel, showMapPanel, showMicropay, showSettings, phase, showVictoryModal],
+  ([p, m, mi, st, ph, svm]) => {
     const isVictoryBlocking = ph === 'victory' && svm
-    if (p || m || mi || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
+    if (mi || st || ph === 'between' || ph === 'gameover' || isVictoryBlocking) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -332,28 +883,48 @@ watch(
 )
 
 function onArenaPanelHotkey(e) {
-  if (!focused.value || locked.value) {
+  if (route.name !== 'SecondGame') return
+  const tag = String(e.target?.tagName || '').toUpperCase()
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return
+  const phaseBlocksUi = phase.value === 'between' || phase.value === 'gameover' || (phase.value === 'victory' && showVictoryModal.value)
+  if (isFading.value || navigating.value || phaseBlocksUi) {
     return
   }
   if (showMicropay.value) {
     return
   }
-  const k = e.key.toLowerCase()
-  if (!['i', 'k', 'm'].includes(k)) {
+  const key = String(e.key || '').toLowerCase()
+  if (key === 'escape') {
+    e.preventDefault()
+    showSettings.value = true
+    showMapPanel.value = false
+    showPanel.value = null
+    return
+  }
+  if (key === 'i') {
+    e.preventDefault()
+    showMapPanel.value = false
+    showPanel.value = showPanel.value === 'inventory' ? null : 'inventory'
+    return
+  }
+  const isInventory = keyMatches(e, 'inventory')
+  const isEquipment = keyMatches(e, 'equipment')
+  const isMap = keyMatches(e, 'map')
+  if (!isInventory && !isEquipment && !isMap) {
     return
   }
   e.preventDefault()
-  if (k === 'i') {
+  if (isInventory) {
     showPanel.value = showPanel.value === 'inventory' ? null : 'inventory'
     if (showPanel.value) {
       showMapPanel.value = false
     }
-  } else if (k === 'k') {
+  } else if (isEquipment) {
     showPanel.value = showPanel.value === 'equipment' ? null : 'equipment'
     if (showPanel.value) {
       showMapPanel.value = false
     }
-  } else if (k === 'm') {
+  } else if (isMap) {
     showMapPanel.value = !showMapPanel.value
     if (showMapPanel.value) {
       showPanel.value = null
@@ -366,8 +937,116 @@ const playerHpPct = computed(() => {
   return Math.min(100, Math.round((100 * playerHp.value) / max))
 })
 
+const conqueredKingdomLabel = computed(() => (
+  enemyFaction.value === 'java' ? 'Java' : 'PHP'
+))
+
+const enemyFactionClass = computed(() =>
+  enemyFaction.value === 'java' ? 'enemy--java' : 'enemy--php'
+)
+
 function hpBarPct(e) {
   return Math.max(8, Math.round((100 * e.hp) / (e.maxHp || 1)))
+}
+
+function enemySpriteSrc(e) {
+  if (e.type === 'boss') return null
+  return getArenaEnemySprite(enemyFaction.value, e.type)
+}
+
+function hasEnemySprite(e) {
+  return Boolean(enemySpriteSrc(e))
+}
+
+function enemySpriteStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    transform: `translate(-50%, -50%) scaleX(${flipX})`,
+  }
+}
+
+function isPhpMiniboss(e) {
+  return e.type === 'miniboss' && enemyFaction.value === 'php'
+}
+
+function isJavaMiniboss(e) {
+  return e.type === 'miniboss' && enemyFaction.value === 'java'
+}
+
+function isAndresBoss(e) {
+  return e.type === 'boss' && enemyFaction.value === 'php'
+}
+
+const JAVA_BOSS_IDLE_FRAMES = [
+  javaBossIdle1,
+  javaBossIdle2,
+  javaBossIdle3,
+  javaBossIdle5,
+  javaBossIdle6,
+  javaBossIdle8,
+]
+const JAVA_BOSS_ATTACK_MS = 700
+
+function isJuanCarlosBoss(e) {
+  return e.type === 'boss' && enemyFaction.value === 'java'
+}
+
+function isJuanCarlosDefending(e, now = performance.now()) {
+  return isJuanCarlosBoss(e) && now < Number(e.shieldUntil || 0)
+}
+
+function isJuanCarlosAttacking(e, now = performance.now()) {
+  return isJuanCarlosBoss(e) && now - Number(e.lastFireAt || 0) < JAVA_BOSS_ATTACK_MS
+}
+
+function isJuanCarlosFlying(e, now = performance.now()) {
+  return isJuanCarlosBoss(e)
+    && Boolean(e.isMoving)
+    && !isJuanCarlosAttacking(e, now)
+    && !isJuanCarlosDefending(e, now)
+}
+
+function bossJuanCarlosImg(e) {
+  const now = performance.now()
+  if (isJuanCarlosDefending(e, now)) return javaBossCloak
+  if (isJuanCarlosAttacking(e, now)) return javaBossCast
+  if (isJuanCarlosFlying(e, now)) return javaBossFly
+  const frameIdx = Math.floor(now / 480) % JAVA_BOSS_IDLE_FRAMES.length
+  return JAVA_BOSS_IDLE_FRAMES[frameIdx]
+}
+
+function bossJuanCarlosStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    transform: `translate(-50%, -50%) scaleX(${flipX})`,
+  }
+}
+
+function bossAndresStyle(e) {
+  const esize = e.size || ENEMY_SIZE
+  const enemyCx = e.x + esize / 2
+  const playerCx = x.value + 20
+  const flipX = playerCx < enemyCx ? -1 : 1
+  return {
+    backgroundImage: `url(${bossAndresSheet})`,
+    transform: `scaleX(${flipX})`,
+  }
+}
+
+function enemyBulletClass(b) {
+  if (b.kind === 'arcane_orb') return 'enemy-bullet--arcane'
+  if (b.kind === 'java_orb') return 'enemy-bullet--java-orb'
+  return b.faction === 'java' ? 'enemy-bullet--java' : 'enemy-bullet--php'
+}
+
+function enemyBulletImg(b) {
+  return getEnemyBulletSprite(b)
 }
 
 /** Menos zoom = más área visible (ver enemigos a distancia). */
@@ -379,8 +1058,8 @@ const cameraTransform = computed(() => {
   const cy = window.innerHeight / 2
   const halfViewW = cx / zoom
   const halfViewH = cy / zoom
-  const targetX = Math.max(halfViewW, Math.min(x.value + 20, WORLD - halfViewW))
-  const targetY = Math.max(halfViewH, Math.min(y.value + 20, WORLD - halfViewH))
+  const targetX = Math.max(halfViewW, Math.min(x.value + 20, WORLD_W - halfViewW))
+  const targetY = Math.max(halfViewH, Math.min(y.value + 20, WORLD_H - halfViewH))
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
 
@@ -388,12 +1067,30 @@ let sessionSynced = false
 
 async function refreshWallet() {
   await characterStore.refresh()
+  syncLevelStateFromStore()
   if (characterStore.equippedSkin) {
     colorStill.value = characterStore.equippedSkin.color_still
     colorMoving.value = characterStore.equippedSkin.color_moving
   } else {
     colorStill.value = '#e94560'
     colorMoving.value = '#f5a623'
+  }
+}
+
+async function handleMicropayReturn() {
+  const status = String(route.query.micropay_status || '')
+  const sessionId = String(route.query.session_id || '')
+  if (status !== 'success' || !sessionId) return
+
+  try {
+    await confirmCodeCoinsCheckout(sessionId)
+    await refreshWallet()
+    playerMaxHp.value = Math.round(levelState.value.maxHealth)
+    playerHp.value = playerMaxHp.value
+  } catch (err) {
+    console.error('Error confirmando micropago en SecondView:', err)
+  } finally {
+    router.replace({ path: route.path, query: {} }).catch(() => {})
   }
 }
 
@@ -406,7 +1103,7 @@ async function syncRunGoldOnce() {
     return
   }
   try {
-    const id = await ensureActiveCharacterId()
+    const id = arenaCharacterId.value
     if (id != null) {
       sessionSynced = true
       await addCharacterGold(id, delta)
@@ -426,6 +1123,7 @@ async function leaveArena() {
   locked.value = true
   
   try {
+    await saveArenaProgress(true)
     await syncRunGoldOnce()
   } catch (err) {
     console.error("Fallo final de sync:", err)
@@ -442,11 +1140,67 @@ async function leaveArena() {
   }, 100)
 }
 
+function startArenaCombat(startOverride = null) {
+  if (phase.value !== 'idle') return
+
+  if (startOverride) {
+    characterStore.arenaInProgress = true
+    characterStore.arenaSection = startOverride.section
+    characterStore.arenaWave = startOverride.wave
+    resumeAt(startOverride.section, startOverride.wave)
+    progressHydrated.value = true
+    return
+  }
+
+  if (characterStore.arenaInProgress) {
+    resumeAt(characterStore.arenaSection, characterStore.arenaWave)
+  } else {
+    beginFirstWave()
+  }
+  progressHydrated.value = true
+}
+
 onMounted(async () => {
-  window.addEventListener('keydown', onArenaPanelHotkey)
+  const queryStart = getArenaStartFromQuery()
+  window.addEventListener('beforeunload', saveArenaProgress, { capture: true })
   
   try {
+    arenaCharacterId.value = await ensureActiveCharacterId()
+    const arenaCharacter = arenaCharacterId.value != null
+      ? await fetchCharacter(arenaCharacterId.value)
+      : null
     await refreshWallet()
+    await handleMicropayReturn()
+    if (arenaCharacter) {
+      characterStore.arenaSection = Number(arenaCharacter.arena_section ?? 1) || 1
+      characterStore.arenaWave = Number(arenaCharacter.arena_wave ?? 1) || 1
+      characterStore.arenaInProgress = Boolean(arenaCharacter.arena_in_progress)
+    }
+    const isPhpKingdom = isPhpKingdomSelected()
+    const faction = isPhpKingdom ? 'java' : 'php'
+    const initialSection = queryStart?.section
+      || (characterStore.arenaInProgress ? Number(characterStore.arenaSection || 1) : 1)
+    const initialMapName = getSectionMapNameByIndex(faction, initialSection)
+    const initialEntry = getArenaEntryPoint(initialMapName)
+    startY.value = initialEntry.y
+    if (lastTransition.value !== 'main-to-second') {
+      y.value = initialEntry.y
+      x.value = initialEntry.x
+    }
+
+    let srcToPreload = ''
+    if (Number(initialSection) >= TOTAL_SECTIONS) {
+      srcToPreload = faction === 'php' ? phpKingdomMap : javaKingdomMap
+    } else {
+      srcToPreload = mapImageByName[initialMapName] || ''
+    }
+    await new Promise(resolve => {
+      if (!srcToPreload) return resolve()
+      const img = new Image()
+      img.onload = resolve
+      img.onerror = resolve
+      img.src = srcToPreload
+    })
   } catch (err) {
     console.error("Error inicial en SecondView:", err)
   }
@@ -455,12 +1209,22 @@ onMounted(async () => {
     locked.value = true
     moving.value = true
     isFading.value = true
+    const isPhpKingdom = isPhpKingdomSelected()
+    y.value = isPhpKingdom ? ARENA_WORLD_HEIGHT + 50 : -50
     
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        // Mover hasta y=180 para alejarnos bien del portal superior (y<=0)
-        if (y.value >= 180) {
+        const mapNameForEntry = getSectionMapNameByIndex(
+          isPhpKingdom ? 'java' : 'php',
+          Number(section.value || characterStore.arenaSection || 1)
+        )
+        const targetY = getArenaEntryPoint(mapNameForEntry).y
+        // Java entra desde arriba. PHP entra desde abajo.
+        const reachedTarget = isPhpKingdom
+          ? y.value <= targetY
+          : y.value >= targetY
+        if (reachedTarget) {
           locked.value = false
           moving.value = false
           lastTransition.value = null
@@ -468,11 +1232,11 @@ onMounted(async () => {
           setTimeout(() => { portalCooldown.value = false }, 500)
           // Retrasar inicio de combate
           setTimeout(() => {
-            if (phase.value === 'idle') beginFirstWave()
+            startArenaCombat(queryStart)
           }, 400)
           return
         }
-        y.value += 5
+        y.value += isPhpKingdom ? -5 : 5
         requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
@@ -481,14 +1245,14 @@ onMounted(async () => {
     isFading.value = false
     locked.value = false
     portalCooldown.value = false
-    if (phase.value === 'idle') beginFirstWave()
+    startArenaCombat(queryStart)
   }
 })
 
 watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
   
-  const cx = WORLD / 2
+  const cx = WORLD_W / 2
   if (
     phase.value === 'idle'
     && newY <= 0
@@ -500,14 +1264,20 @@ watch([x, y], ([newX, newY]) => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onArenaPanelHotkey)
+  window.removeEventListener('beforeunload', saveArenaProgress, { capture: true })
+  saveArenaProgress(true)
   syncRunGoldOnce()
 })
 
 watch(phase, (p) => {
   if (p === 'gameover' || p === 'victory') {
+    saveArenaProgress(true)
     syncRunGoldOnce()
   }
+})
+
+watch([section, sectionWave, phase], () => {
+  saveArenaProgress(false)
 })
 </script>
 
@@ -520,7 +1290,6 @@ watch(phase, (p) => {
   left: 0;
   outline: none;
   overflow: hidden;
-  background-color: #0b0d17;
   font-family: 'Press Start 2P', monospace;
 }
 
@@ -537,13 +1306,15 @@ watch(phase, (p) => {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: radial-gradient(circle at center, #1e3a8a33 0%, #0b0d17 70%);
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(180deg, #4b5563 0%, #374151 100%);
 }
 
 .world {
   position: absolute;
-  width: v-bind(worldEdgePx);
-  height: v-bind(worldEdgePx);
+  width: v-bind(worldWidthPx);
+  height: v-bind(worldHeightPx);
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -601,6 +1372,29 @@ watch(phase, (p) => {
   image-rendering: pixelated;
 }
 
+.player__dependency-mark {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 196, 72, 0.92);
+  box-shadow:
+    0 0 10px rgba(255, 170, 40, 0.55),
+    inset 0 0 12px rgba(255, 210, 90, 0.35);
+  pointer-events: none;
+  animation: dependency-mark-pulse 0.85s ease-in-out infinite alternate;
+}
+
+@keyframes dependency-mark-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.72;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 .mini-grid {
   display: grid;
   grid-template-columns: repeat(16, 2.5px);
@@ -618,10 +1412,44 @@ watch(phase, (p) => {
   position: absolute;
   z-index: 3;
   border-radius: 4px;
-  background: linear-gradient(145deg, #7c2525, #4a1518);
-  border: 2px solid #2a0a0c;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
+}
+
+.enemy--with-image {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.enemy-skin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  object-position: center center;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.enemy--with-image .enemy-hp {
+  bottom: -6px;
+}
+
+.enemy--java {
+  background: linear-gradient(145deg, #f4a340, #cf6d1e);
+  border: 2px solid #6a2e0c;
+}
+
+.enemy--php {
+  background: linear-gradient(145deg, #6ea8ff, #2d5ebd);
+  border: 2px solid #173a7f;
 }
 
 .enemy-hp {
@@ -629,8 +1457,19 @@ watch(phase, (p) => {
   bottom: 0;
   left: 0;
   height: 4px;
-  background: #c62828;
   display: block;
+}
+
+.enemy--java .enemy-hp {
+  background: #ff7b00;
+}
+
+.enemy--php .enemy-hp {
+  background: #1e88e5;
+}
+
+.enemy-type--miniboss {
+  border-width: 3px;
 }
 
 .bullet {
@@ -652,14 +1491,119 @@ watch(phase, (p) => {
   margin-left: -7px;
   margin-top: -7px;
   border-radius: 50%;
-  background: #f44336;
-  box-shadow: 0 0 12px #b71c1c, 0 0 4px #fff;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffffff;
   z-index: 4;
   border: 2px solid #fff;
 }
 
+.enemy-bullet--with-sprite {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+}
+
+.enemy-bullet-skin {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+.enemy-bullet--java {
+  background: #ff8f00;
+  box-shadow: 0 0 12px #e65100, 0 0 4px #fff;
+}
+
+.enemy-bullet--php {
+  background: #1e88e5;
+  box-shadow: 0 0 12px #0d47a1, 0 0 4px #fff;
+}
+
+.enemy-bullet--arcane {
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+}
+
+.enemy-bullet--java-orb {
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+}
+
+.java-orb-core {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff7ed;
+  box-shadow: 0 0 6px #fed7aa, 0 0 12px #fb923c;
+  animation: java-orb-core 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes java-orb-pulse {
+  from {
+    box-shadow:
+      0 0 16px #fb923c,
+      0 0 30px rgba(249, 115, 22, 0.75),
+      inset 0 -3px 8px rgba(124, 45, 18, 0.35);
+    transform: scale(1);
+  }
+  to {
+    box-shadow:
+      0 0 24px #fdba74,
+      0 0 44px rgba(253, 186, 116, 0.95),
+      inset 0 -3px 8px rgba(124, 45, 18, 0.35);
+    transform: scale(1.07);
+  }
+}
+
+@keyframes java-orb-core {
+  from { opacity: 0.65; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1.18); }
+}
+
+.arcane-orb-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px #f5d0fe, 0 0 12px #d8b4fe;
+  animation: arcane-orb-core 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes arcane-orb-pulse {
+  from {
+    box-shadow:
+      0 0 18px #a855f7,
+      0 0 36px rgba(168, 85, 247, 0.75),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1);
+  }
+  to {
+    box-shadow:
+      0 0 26px #d8b4fe,
+      0 0 52px rgba(216, 180, 254, 0.95),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes arcane-orb-core {
+  from { opacity: 0.6; transform: scale(0.8); }
+  to   { opacity: 1;   transform: scale(1.2); }
+}
+
 .boss-enemy {
-  background: linear-gradient(145deg, #4a1518, #1a0505) !important;
   border: 4px solid #facc15 !important;
   box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(0,0,0,0.8) !important;
 }
@@ -673,6 +1617,183 @@ watch(phase, (p) => {
   font-size: 24px;
   color: #facc15;
   opacity: 0.5;
+}
+
+/* Boss Andres (mago PHP) — usa sprite pixel art con aura mágica */
+.boss--andres {
+  background: transparent !important;
+  border: 3px solid rgba(168, 85, 247, 0.55) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    0 0 38px rgba(168, 85, 247, 0.65),
+    inset 0 0 28px rgba(76, 29, 149, 0.45) !important;
+  overflow: visible !important;
+  animation: boss-andres-float 2.4s ease-in-out infinite alternate;
+}
+
+.boss--andres::after { content: none !important; }
+
+.boss--andres::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, rgba(76, 29, 149, 0.15) 45%, transparent 75%);
+  z-index: -1;
+  animation: boss-andres-aura 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.boss-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.boss-skin--andres {
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  background-position: 0% 0%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px rgba(168, 85, 247, 0.55));
+  transform-origin: center;
+  animation:
+    andres-cols 2.4s steps(4, jump-none) infinite,
+    andres-rows 9.6s steps(4, jump-none) infinite;
+}
+
+@keyframes andres-cols {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 100%; }
+}
+
+@keyframes andres-rows {
+  from { background-position-y: 0%; }
+  to   { background-position-y: 100%; }
+}
+
+.boss-enemy-hp {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  transform: translateX(-50%);
+  width: 94%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.boss-enemy-hp-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  padding: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(12, 12, 16, 0.92), rgba(0, 0, 0, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.boss-enemy-hp-fill {
+  position: relative;
+  height: 100%;
+  min-width: 8%;
+  border-radius: 999px;
+  transition: width 0.16s ease-out;
+  overflow: hidden;
+}
+
+.boss-enemy-hp-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 58%);
+  pointer-events: none;
+}
+
+.boss-enemy-hp--java .boss-enemy-hp-fill {
+  background: linear-gradient(90deg, #fdba74 0%, #f97316 52%, #ea580c 100%);
+  box-shadow:
+    0 0 12px rgba(249, 115, 22, 0.55),
+    inset 0 -1px 0 rgba(124, 45, 18, 0.35);
+}
+
+.boss-enemy-hp--php .boss-enemy-hp-fill {
+  background: linear-gradient(90deg, #f0abfc 0%, #c084fc 48%, #a855f7 100%);
+  box-shadow:
+    0 0 12px rgba(168, 85, 247, 0.55),
+    inset 0 -1px 0 rgba(76, 29, 149, 0.35);
+}
+
+@keyframes boss-andres-float {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-6px) scale(1.015); }
+}
+
+@keyframes boss-andres-aura {
+  from { opacity: 0.65; transform: scale(1); }
+  to   { opacity: 1;    transform: scale(1.08); }
+}
+
+.boss--juan-carlos.boss-enemy {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  animation: boss-juan-carlos-float 2.6s ease-in-out infinite alternate;
+}
+
+.boss--juan-carlos--moving {
+  animation: none;
+}
+
+.boss--juan-carlos::after { content: none !important; }
+
+.boss--juan-carlos::before {
+  content: none;
+}
+
+.boss--juan-carlos--defending::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(253, 186, 116, 0.28) 0%, rgba(249, 115, 22, 0.12) 45%, transparent 78%);
+  z-index: -1;
+  animation: boss-juan-carlos-shield 0.9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.boss-skin--juan-carlos {
+  width: 118%;
+  height: 118%;
+  left: 50%;
+  top: 50%;
+  object-fit: contain;
+  object-position: center center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6))
+          drop-shadow(0 0 8px rgba(249, 115, 22, 0.45));
+  transform-origin: center center;
+}
+
+@keyframes boss-juan-carlos-float {
+  from { transform: translateY(0) scale(1); }
+  to   { transform: translateY(-6px) scale(1.015); }
+}
+
+@keyframes boss-juan-carlos-shield {
+  from { opacity: 0.55; transform: scale(1); }
+  to   { opacity: 1; transform: scale(1.06); }
 }
 
 .slash-container {
@@ -745,8 +1866,45 @@ watch(phase, (p) => {
   box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
 }
 
-.wave-label { font-size: 8px; color: #facc15; opacity: 0.7; }
-.wave-number { font-size: 24px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.wave-label { font-size: 8px; color: #facc15; opacity: 0.8; }
+.wave-label-sub {
+  font-size: 7px;
+  color: rgba(250, 204, 21, 0.5);
+  letter-spacing: 0.1em;
+}
+.wave-number { font-size: 22px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.route-label { font-size: 7px; color: #a7f3d0; letter-spacing: 0.08em; }
+.boss-hud {
+  width: min(560px, 70vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.boss-name {
+  font-size: 10px;
+  color: #f8fafc;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(248, 250, 252, 0.35);
+}
+.boss-hp-frame {
+  width: 100%;
+  height: 14px;
+  border: 2px solid #ef4444;
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.boss-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 60%, #f97316 100%);
+  transition: width 160ms linear;
+}
+.boss-hp-text {
+  font-size: 8px;
+  color: #fee2e2;
+  letter-spacing: 0.08em;
+}
 
 .hud-stats-left {
   position: absolute;
@@ -807,6 +1965,30 @@ watch(phase, (p) => {
 }
 
 .hp-numeric { font-size: 7px; text-align: right; color: white; opacity: 0.6; }
+
+.xp-container {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.xp-label { font-size: 7px; color: #a7f3d0; }
+
+.xp-bar-frame {
+  height: 14px;
+  background: #052e2b;
+  border: 2px solid #115e59;
+  padding: 1px;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+  transition: width 0.2s ease-out;
+}
+
+.xp-numeric { font-size: 7px; text-align: right; color: #ccfbf1; opacity: 0.9; }
 
 .hud-bottom-hints {
   position: absolute;

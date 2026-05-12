@@ -21,12 +21,14 @@
           <button
             v-for="c in palette"
             :key="c"
+            type="button"
             class="pixel-editor__color-btn"
             :class="{ 'is-active': selectedColor === c && tool === 'pen' }"
             :style="{ backgroundColor: c }"
             @click="tool = 'pen'; selectedColor = c"
           ></button>
           <button 
+            type="button"
             class="pixel-editor__tool-btn" 
             :class="{ 'is-active': tool === 'eraser' }"
             @click="tool = 'eraser'"
@@ -110,11 +112,6 @@ function applyTool(index) {
 function clearCanvas() {
   pixels.value = Array(size * size).fill('')
   emit('update:modelValue', [...pixels.value])
-}
-
-function selectColor(c) {
-  selectedColor.value = c
-  tool.value = 'pen'
 }
 
 watch(() => props.modelValue, (newVal) => {
