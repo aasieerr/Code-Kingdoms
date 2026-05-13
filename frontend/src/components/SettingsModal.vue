@@ -22,6 +22,40 @@
       </section>
 
       <section class="settings-section">
+        <h3>ARENA — POCIONES (SOLO OLEADAS /game/second)</h3>
+        <p class="settings-hint">
+          Asigna un tipo de poción por ranura y su tecla. Solo funciona durante el combate en oleadas,
+          inventario cerrado.
+        </p>
+        <div class="arena-slot-grid">
+          <div v-for="idx in arenaSlotIndexes" :key="idx" class="arena-slot-row">
+            <span class="arena-slot-label">RANURA {{ idx + 1 }}</span>
+            <select
+              class="arena-select"
+              :value="settings.arenaPotionSlots[idx]?.itemName || ''"
+              @change="setArenaPotionItem(idx, $event.target.value)"
+            >
+              <option v-for="name in ARENA_CONSUMABLE_NAMES" :key="'n-' + idx + '-' + name" :value="name">
+                {{ name === '' ? '(Vacío)' : name }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="bind-btn arena-bind"
+              :class="{ listening: listeningArenaSlot === idx }"
+              @click="startArenaListen(idx)"
+            >
+              {{
+                listeningArenaSlot === idx
+                  ? 'PULSA UNA TECLA...'
+                  : keyLabel(settings.arenaPotionSlots[idx]?.key)
+              }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h3>KEYBINDS</h3>
         <div class="bind-grid">
           <div v-for="bind in binds" :key="bind.action" class="bind-row">
@@ -47,9 +81,11 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useGameSettings } from '../composables/useGameSettings'
+import { useGameSettings, ARENA_CONSUMABLE_NAMES, ARENA_POTION_SLOT_COUNT } from '../composables/useGameSettings'
 
 defineEmits(['close'])
+
+const arenaSlotIndexes = Array.from({ length: ARENA_POTION_SLOT_COUNT }, (_, i) => i)
 
 const binds = [
   { action: 'moveUp', label: 'Mover arriba' },
@@ -63,17 +99,49 @@ const binds = [
 ]
 
 const listeningAction = ref(null)
-const { settings, setVolume, setKeybind, resetSettings, keyLabel, normalizeKey } = useGameSettings()
+const listeningArenaSlot = ref(null)
+
+const {
+  settings,
+  setVolume,
+  setKeybind,
+  setArenaPotionKey,
+  setArenaPotionItem,
+  resetSettings,
+  keyLabel,
+  normalizeKey,
+} = useGameSettings()
 
 function startListening(action) {
+  listeningArenaSlot.value = null
   listeningAction.value = action
+}
+
+function startArenaListen(slotIndex) {
+  listeningAction.value = null
+  listeningArenaSlot.value = slotIndex
 }
 
 function stopListening() {
   listeningAction.value = null
 }
 
+function stopArenaListen() {
+  listeningArenaSlot.value = null
+}
+
 function onKeydown(event) {
+  if (listeningArenaSlot.value !== null) {
+    event.preventDefault()
+    const key = normalizeKey(event.key)
+    if (!key || key === 'escape') {
+      stopArenaListen()
+      return
+    }
+    setArenaPotionKey(listeningArenaSlot.value, key)
+    stopArenaListen()
+    return
+  }
   if (!listeningAction.value) return
   event.preventDefault()
   const key = normalizeKey(event.key)
@@ -88,6 +156,7 @@ function onKeydown(event) {
 function handleReset() {
   resetSettings()
   stopListening()
+  stopArenaListen()
 }
 
 onMounted(() => {
@@ -154,6 +223,43 @@ onBeforeUnmount(() => {
   margin: 0 0 14px;
   font-size: 8px;
   color: #facc15;
+}
+
+.settings-hint {
+  margin: 0 0 12px;
+  font-size: 6px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+.arena-slot-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.arena-slot-row {
+  display: grid;
+  grid-template-columns: 100px 1fr minmax(180px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.arena-slot-label {
+  font-size: 7px;
+  color: #e2e8f0;
+}
+
+.arena-select {
+  font-family: inherit;
+  font-size: 7px;
+  padding: 6px 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 2px solid #334155;
+}
+
+.arena-bind {
+  min-width: 0;
 }
 
 .volume-row {

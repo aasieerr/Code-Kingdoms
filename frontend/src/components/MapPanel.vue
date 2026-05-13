@@ -79,15 +79,15 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { WORLD_EDGE } from '../constants/world'
+import { WORLD_EDGE, WORLD_WIDTH } from '../constants/world'
 
 const props = defineProps({
-  playerX: { type: Number, default: WORLD_EDGE / 2 },
+  playerX: { type: Number, default: WORLD_WIDTH / 2 },
   playerY: { type: Number, default: WORLD_EDGE / 2 },
   npcs:    { type: Array, default: () => [] },
   mapImage: { type: String, default: '' },
   mapName: { type: String, default: 'DESCONOCIDO' },
-  worldWidth: { type: Number, default: WORLD_EDGE },
+  worldWidth: { type: Number, default: WORLD_WIDTH },
   worldHeight: { type: Number, default: WORLD_EDGE },
 })
 
@@ -109,7 +109,7 @@ const mapBackgroundStyle = computed(() => {
 })
 
 const playerMarkerStyle = computed(() => {
-  const worldW = Number(props.worldWidth) || WORLD_EDGE
+  const worldW = Number(props.worldWidth) || WORLD_WIDTH
   const worldH = Number(props.worldHeight) || WORLD_EDGE
   const px = Math.max(0, Math.min(MAP_W - 20, (props.playerX / worldW) * MAP_W))
   const py = Math.max(0, Math.min(MAP_H - 20, (props.playerY / worldH) * MAP_H))
@@ -118,7 +118,7 @@ const playerMarkerStyle = computed(() => {
 
 function getNpcStyle(npc) {
   if (npc.x === undefined || npc.y === undefined) return { display: 'none' }
-  const worldW = Number(props.worldWidth) || WORLD_EDGE
+  const worldW = Number(props.worldWidth) || WORLD_WIDTH
   const worldH = Number(props.worldHeight) || WORLD_EDGE
   const nx = Math.max(0, Math.min(MAP_W - 10, (npc.x / worldW) * MAP_W))
   const ny = Math.max(0, Math.min(MAP_H - 10, (npc.y / worldH) * MAP_H))

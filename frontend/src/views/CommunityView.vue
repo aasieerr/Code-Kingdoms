@@ -38,137 +38,26 @@
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-        <article
+        <CommunityPostCard
           v-for="(post, index) in posts"
           :key="post.id"
-          class="post-card group relative p-5 bg-[#0f172a] border-4 border-[#facc15]/10 hover:border-[#facc15] transition-all duration-300"
-          :style="{ animationDelay: (index * 100) + 'ms' }"
-        >
-          <div class="absolute -top-1 -left-1 w-3 h-3 border-t-4 border-l-4 border-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-4 border-r-4 border-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-          <div
-            v-if="post.has_image && post.image_url"
-            class="aspect-video bg-[#0b0d17] mb-5 overflow-hidden relative border-2 border-[#facc15]/10 group-hover:border-[#facc15]/30"
-          >
-            <img :src="post.image_url" :alt="post.caption || 'Captura de Code & Kingdoms'" class="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 scale-100 group-hover:scale-105 transition-all duration-500" />
-            <div class="absolute inset-0 bg-gradient-to-t from-[#0b0d17] to-transparent opacity-60"></div>
-            <div
-              class="absolute bottom-3 left-3 px-3 py-1 bg-black/80 border border-[#facc15]/20 text-[6px] tracking-widest"
-              :class="post.faction === 'PHP' ? 'text-[#3b82f6]' : 'text-[#ef4444]'"
-            >
-              REGION: {{ post.faction }}
-            </div>
-          </div>
-
-          <div
-            v-else
-            class="mb-5 p-5 bg-[#0b0d17] border-2 border-[#facc15]/10 group-hover:border-[#facc15]/30 min-h-[120px] flex flex-col justify-between"
-          >
-            <span class="text-[6px] tracking-[0.3em] text-[#facc15]/40 uppercase">Crónica del reino</span>
-            <div
-              class="mt-3 px-3 py-1 self-start bg-black/80 border border-[#facc15]/20 text-[6px] tracking-widest"
-              :class="post.faction === 'PHP' ? 'text-[#3b82f6]' : 'text-[#ef4444]'"
-            >
-              REGION: {{ post.faction }}
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-4">
-            <div class="flex items-center gap-3">
-              <UserAvatar :name="post.author" :avatar-url="post.author_avatar_url" size="sm" />
-              <div class="flex flex-col gap-1">
-                <span class="text-[#facc15] text-[8px] tracking-widest font-bold">{{ post.author }}</span>
-                <span class="text-[#facc15]/30 text-[6px] uppercase">{{ formatDate(post.created_at) }}</span>
-              </div>
-            </div>
-
-            <p class="text-[8px] text-white/80 leading-6 italic" :class="post.has_image ? 'line-clamp-3' : ''">
-              "{{ post.caption || 'Una nueva leyenda escrita en el reino.' }}"
-            </p>
-            <p v-if="post.character_name" class="text-[7px] text-[#facc15]/40 tracking-widest uppercase">HÉROE: {{ post.character_name }}</p>
-
-            <div class="flex items-center gap-4 border-t-2 border-[#facc15]/5 pt-4">
-              <button
-                class="engagement-button"
-                :class="{ active: post.viewer_has_liked }"
-                :disabled="likePendingId === post.id"
-                @click="toggleLike(post)"
-              >
-                <span>{{ post.viewer_has_liked ? '♥' : '♡' }}</span>
-                <span>{{ post.likes_count || 0 }}</span>
-              </button>
-
-              <button class="engagement-button" @click="toggleComments(post.id)">
-                <span>💬</span>
-                <span>{{ post.comments_count || 0 }}</span>
-              </button>
-            </div>
-
-            <div v-if="expandedComments[post.id]" class="comments-panel">
-              <div v-if="commentsState[post.id]?.loading" class="text-[7px] text-[#facc15]/40 tracking-widest py-2">
-                CARGANDO COMENTARIOS...
-              </div>
-
-              <div v-else-if="(commentsState[post.id]?.items || []).length === 0" class="text-[7px] text-[#facc15]/30 tracking-widest py-2">
-                SÉ EL PRIMERO EN COMENTAR ESTA CRÓNICA.
-              </div>
-
-              <div v-else class="flex flex-col gap-3">
-                <div
-                  v-for="comment in commentsState[post.id].items"
-                  :key="comment.id"
-                  class="comment-item"
-                >
-                  <div class="flex items-start gap-3">
-                    <UserAvatar :name="comment.author" :avatar-url="comment.author_avatar_url" size="sm" />
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="text-[7px] text-[#facc15] tracking-widest font-bold">{{ comment.author }}</span>
-                        <span class="text-[6px] text-[#facc15]/30 uppercase">{{ formatDate(comment.created_at) }}</span>
-                      </div>
-                      <p class="text-[7px] text-white/75 leading-6 mt-1 break-words">{{ comment.body }}</p>
-                      <button
-                        v-if="comment.is_mine"
-                        class="text-[#ef4444]/60 hover:text-[#ef4444] text-[6px] tracking-widest mt-2"
-                        @click="removeComment(post.id, comment.id)"
-                      >
-                        BORRAR
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="authStore.token" class="mt-4 flex flex-col gap-3">
-                <textarea
-                  v-model="commentDrafts[post.id]"
-                  rows="2"
-                  maxlength="500"
-                  class="publish-caption"
-                  placeholder="Escribe tu comentario sobre esta crónica..."
-                ></textarea>
-                <button
-                  class="btn-pixel-gold text-[8px] px-4 py-2 self-end"
-                  :disabled="!commentDrafts[post.id]?.trim() || commentSubmittingId === post.id"
-                  @click="submitComment(post.id)"
-                >
-                  {{ commentSubmittingId === post.id ? 'ENVIANDO...' : 'COMENTAR' }}
-                </button>
-              </div>
-              <p v-else class="text-[7px] text-[#facc15]/30 tracking-widest mt-4">
-                <router-link to="/login" class="text-[#facc15]/60 hover:text-[#facc15] underline">Inicia sesión</router-link>
-                para comentar.
-              </p>
-            </div>
-
-            <div v-if="post.is_mine" class="flex justify-end border-t-2 border-[#facc15]/5 pt-4">
-              <button class="text-[#ef4444]/60 hover:text-[#ef4444] text-[7px] tracking-widest" @click="removePost(post.id)">
-                RETIRAR PUBLICACIÓN
-              </button>
-            </div>
-          </div>
-        </article>
+          :post="post"
+          :index="index"
+          :expanded="!!expandedComments[post.id]"
+          :comments-loading="commentsState[post.id]?.loading"
+          :comments="commentsState[post.id]?.items || []"
+          :comment-draft="commentDrafts[post.id] ?? ''"
+          :like-pending="likePendingId === post.id"
+          :comment-submitting="commentSubmittingId === post.id"
+          :is-logged-in="!!authStore.token"
+          :format-date="formatDate"
+          @like="toggleLike(post)"
+          @toggle-comments="toggleComments(post.id)"
+          @remove-post="removePost(post.id)"
+          @remove-comment="(commentId) => removeComment(post.id, commentId)"
+          @submit-comment="submitComment(post.id)"
+          @update:comment-draft="(v) => { commentDrafts[post.id] = v }"
+        />
       </div>
 
       <div v-if="!loading && currentPage < lastPage" class="text-center mt-24">
@@ -183,115 +72,23 @@
     </main>
 
     <Transition name="fade">
-      <div v-if="publishModalOpen" class="fixed inset-0 z-[120] flex items-center justify-center p-6">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="closePublishModal"></div>
-
-        <div class="relative z-10 w-full max-w-3xl bg-[#0f172a] border-4 border-[#facc15] p-6 shadow-[0_0_50px_rgba(250,204,21,0.15)]">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-[#facc15] text-[12px] tracking-[0.2em]">NUEVA PUBLICACIÓN</h2>
-            <button class="text-[#facc15]/60 hover:text-[#facc15] text-xl" @click="closePublishModal">×</button>
-          </div>
-
-          <p v-if="!authStore.token" class="text-[8px] text-white/70 leading-6 mb-6">
-            Debes iniciar sesión para publicar en el tablón.
-          </p>
-          <router-link v-if="!authStore.token" to="/login" class="btn-pixel-gold text-[9px] px-6 py-3 inline-block">
-            ENTRAR AL REINO
-          </router-link>
-
-          <template v-else>
-            <div class="publish-tabs">
-              <button
-                type="button"
-                class="publish-tab"
-                :class="{ active: publishMode === 'text' }"
-                @click="publishMode = 'text'"
-              >
-                CRÓNICA
-              </button>
-              <button
-                type="button"
-                class="publish-tab"
-                :class="{ active: publishMode === 'screenshot' }"
-                @click="publishMode = 'screenshot'"
-              >
-                CAPTURA
-              </button>
-            </div>
-
-            <div v-if="publishMode === 'text'" class="mt-6 flex flex-col gap-4">
-              <label class="text-[#facc15]/60 text-[7px] tracking-[0.2em] uppercase">Comparte algo del juego</label>
-              <textarea
-                v-model="publishCaption"
-                rows="5"
-                maxlength="500"
-                class="publish-caption"
-                placeholder="Pregunta, consejo, teoría, reto o lo que estés jugando ahora mismo..."
-              ></textarea>
-
-              <div class="flex justify-end gap-4">
-                <button class="text-[#facc15]/50 text-[8px] tracking-widest" @click="closePublishModal">CANCELAR</button>
-                <button
-                  class="btn-pixel-gold text-[9px] px-6 py-3"
-                  :disabled="!publishCaption.trim() || publishing"
-                  @click="publishTextPost"
-                >
-                  {{ publishing ? 'PUBLICANDO...' : 'PUBLICAR CRÓNICA' }}
-                </button>
-              </div>
-            </div>
-
-            <div v-else class="mt-6">
-              <div v-if="loadingScreenshots" class="text-[#facc15]/50 text-[8px] tracking-widest py-10 text-center">
-                CARGANDO TUS CAPTURAS...
-              </div>
-
-              <div v-else-if="unpublishedScreenshots.length === 0" class="text-[8px] text-white/70 leading-6">
-                No tienes capturas pendientes de publicar. Pulsa <span class="text-[#facc15]">F8</span> en el juego para guardar una nueva.
-              </div>
-
-              <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2">
-                <button
-                  v-for="screenshot in unpublishedScreenshots"
-                  :key="screenshot.id"
-                  type="button"
-                  class="publish-option"
-                  :class="{ active: selectedScreenshotId === screenshot.id }"
-                  @click="selectedScreenshotId = screenshot.id"
-                >
-                  <img :src="screenshot.image_url" alt="" class="publish-option__image" />
-                  <div class="publish-option__meta">
-                    <span>{{ screenshot.character_name || 'Sin héroe' }}</span>
-                    <span>{{ formatDate(screenshot.created_at) }}</span>
-                  </div>
-                </button>
-              </div>
-
-              <div v-if="unpublishedScreenshots.length > 0" class="mt-6 flex flex-col gap-4">
-                <label class="text-[#facc15]/60 text-[7px] tracking-[0.2em] uppercase">Crónica opcional</label>
-                <textarea
-                  v-model="publishCaption"
-                  rows="3"
-                  maxlength="500"
-                  class="publish-caption"
-                  placeholder="Describe el momento épico que quieres compartir..."
-                ></textarea>
-
-                <div class="flex justify-end gap-4">
-                  <button class="text-[#facc15]/50 text-[8px] tracking-widest" @click="closePublishModal">CANCELAR</button>
-                  <button
-                    class="btn-pixel-gold text-[9px] px-6 py-3"
-                    :disabled="!selectedScreenshotId || publishing"
-                    @click="publishSelectedScreenshot"
-                  >
-                    {{ publishing ? 'PUBLICANDO...' : 'PUBLICAR CAPTURA' }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
+      <CommunityPublishModal
+        v-if="publishModalOpen"
+        :has-token="!!authStore.token"
+        :publish-mode="publishMode"
+        :publish-caption="publishCaption"
+        :loading-screenshots="loadingScreenshots"
+        :unpublished-screenshots="unpublishedScreenshots"
+        :selected-screenshot-id="selectedScreenshotId"
+        :publishing="publishing"
+        :format-date="formatDate"
+        @close="closePublishModal"
+        @update:publish-mode="(v) => { publishMode = v }"
+        @update:publish-caption="(v) => { publishCaption = v }"
+        @update:selected-screenshot-id="(v) => { selectedScreenshotId = v }"
+        @publish-text="publishTextPost"
+        @publish-screenshot="publishSelectedScreenshot"
+      />
     </Transition>
 
     <AppFooter />
@@ -303,7 +100,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
-import UserAvatar from '../components/UserAvatar.vue'
+import CommunityPostCard from '../components/community/CommunityPostCard.vue'
+import CommunityPublishModal from '../components/community/CommunityPublishModal.vue'
 import communityApi from '../api/community'
 import screenshotsApi from '../api/screenshots'
 import { fetchCharacters } from '../api/character'
@@ -588,137 +386,3 @@ function formatDate(dateString) {
 
 onMounted(loadInitialPosts)
 </script>
-
-<style scoped>
-.post-card {
-  opacity: 0;
-  transform: translateY(20px);
-  animation: cardEntry 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-@keyframes cardEntry {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.publish-tabs {
-  display: flex;
-  gap: 8px;
-}
-
-.publish-tab {
-  flex: 1;
-  padding: 10px 12px;
-  border: 2px solid rgba(250, 204, 21, 0.15);
-  background: rgba(11, 13, 23, 0.8);
-  color: rgba(250, 204, 21, 0.55);
-  font-size: 8px;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.publish-tab.active,
-.publish-tab:hover {
-  border-color: #facc15;
-  color: #facc15;
-  box-shadow: 0 0 20px rgba(250, 204, 21, 0.12);
-}
-
-.publish-option {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  border: 2px solid rgba(250, 204, 21, 0.15);
-  background: rgba(11, 13, 23, 0.8);
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.publish-option.active,
-.publish-option:hover {
-  border-color: #facc15;
-  box-shadow: 0 0 20px rgba(250, 204, 21, 0.15);
-}
-
-.publish-option__image {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-}
-
-.publish-option__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  color: rgba(250, 204, 21, 0.6);
-  font-size: 7px;
-  letter-spacing: 0.08em;
-}
-
-.publish-caption {
-  width: 100%;
-  background: rgba(11, 13, 23, 0.9);
-  border: 2px solid rgba(250, 204, 21, 0.2);
-  color: #fef9c3;
-  padding: 12px;
-  font-family: inherit;
-  font-size: 8px;
-  line-height: 1.7;
-  resize: vertical;
-}
-
-.publish-caption:focus {
-  outline: none;
-  border-color: #facc15;
-}
-
-.engagement-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(250, 204, 21, 0.55);
-  font-size: 7px;
-  letter-spacing: 0.08em;
-  transition: color 0.2s ease;
-}
-
-.engagement-button:hover,
-.engagement-button.active {
-  color: #facc15;
-}
-
-.comments-panel {
-  border-top: 2px solid rgba(250, 204, 21, 0.08);
-  padding-top: 12px;
-}
-
-.comment-item {
-  padding: 10px;
-  background: rgba(11, 13, 23, 0.65);
-  border: 1px solid rgba(250, 204, 21, 0.08);
-}
-</style>

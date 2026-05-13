@@ -1,5 +1,6 @@
 import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
+import { getArenaWalkBoundsRect } from '../constants/arenaWalkBounds'
 import {
   BASE_CONTACT_DAMAGE,
   ENEMY_SIZE,
@@ -7,103 +8,44 @@ import {
   typeBaseStats,
   xpForEnemyType,
 } from './arenaEnemies'
-
-const PLAYER_SIZE = 40
-// Hitbox ligeramente menor que el sprite para evitar atascos en bordes.
-const PLAYER_COLLISION_SIZE = 34
-const BASE_MOVE_SPEED = 2.2
-const MELEE_TYPES = ['daga', 'espada', 'hacha']
-const MELEE_RANGE = 135
-const MELEE_LIFETIME = 250
-const COIN_PICKUP_R = 52
-const CONTACT_COOLDOWN_MS = 480
-const BULLET_SPEED = 6.5
-const BULLET_LIFETIME_MS = 2200
-const FIRE_INTERVAL_MS = 320
-const BULLET_DAMAGE = 12
-const ENEMY_HIT_R = 16
-const MAGNET_RANGE = 120
-const MAGNET_SPEED = 2.2
-const TOTAL_SECTIONS = 7
-const INTERMEDIATE_SECTIONS = 6
-const WAVES_PER_SECTION = 10
-const CORRUPTED_ZONE_LIFETIME_MS = 4200
-const SECTION_GROWTH = 0.34
-const WAVE_GROWTH = 0.035
-const LEVEL_DAMAGE_BONUS = 0.055
-const JAVA_BOSS_SHIELD_MS = 1800
-const JAVA_BOSS_SHIELD_GAP_MS = 6500
-const DEPENDENCY_MARK_RANGE = 235
-const DEPENDENCY_MARK_DURATION_MS = 2600
-const DEPENDENCY_MARK_MOVE_THRESHOLD = 44
-const DEPENDENCY_MARK_PUSH_PX = 22
-
-function isJavaFinalBoss(enemy, faction) {
-  return enemy?.type === 'boss' && faction === 'java'
-}
-
-function isJavaBossShielded(enemy, now) {
-  return isJavaFinalBoss(enemy, 'java') && now < Number(enemy?.shieldUntil || 0)
-}
-
-const JAVA_ROUTE_STEPS = ['BAJAR', 'IZQUIERDA', 'BAJAR', 'DERECHA']
-const PHP_ROUTE_STEPS = ['SUBIR', 'DERECHA', 'SUBIR', 'IZQUIERDA']
-
-function resolveOptionValue(option, fallback = '') {
-  if (option && typeof option === 'object' && 'value' in option) {
-    return option.value ?? fallback
-  }
-  return option ?? fallback
-}
-
-function normalizeKingdomName(value) {
-  return String(value || '').trim().toLowerCase()
-}
-
-function isPhpKingdom(value) {
-  const normalized = normalizeKingdomName(value)
-  if (normalized.includes('php') || normalized.includes('peachepe')) return true
-  if (normalized.includes('java')) return false
-  // En este backend: 1 = Peachepe/PHP, 2 = Java.
-  return normalized === '1'
-}
-
-function sectionMultiplier(sectionValue) {
-  return 1 + Math.max(0, sectionValue - 1) * SECTION_GROWTH
-}
-
-function waveMultiplier(waveValue) {
-  return 1 + Math.max(0, waveValue - 1) * WAVE_GROWTH
-}
-
-function earlyWaveMultiplier(sectionValue, waveValue) {
-  if (sectionValue !== 1) return 1
-  if (waveValue <= 2) return 0.45
-  if (waveValue <= 4) return 0.65
-  if (waveValue <= 6) return 0.82
-  return 1
-}
-
-function earlyWaveEnemyCountMultiplier(sectionValue, waveValue) {
-  if (sectionValue !== 1) return 1
-  if (waveValue <= 2) return 0.5
-  if (waveValue <= 4) return 0.7
-  if (waveValue <= 6) return 0.85
-  return 1
-}
-
-function maxWavesForSection(sectionValue) {
-  return Number(sectionValue) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
-}
-
-function randomSpawnEdgePosition(worldW, worldH, pad = 80) {
-  const edge = Math.floor(Math.random() * 4)
-  if (edge === 0) return { x: Math.random() * (worldW - pad * 2) + pad, y: pad }
-  if (edge === 1) return { x: worldW - pad, y: Math.random() * (worldH - pad * 2) + pad }
-  if (edge === 2) return { x: Math.random() * (worldW - pad * 2) + pad, y: worldH - pad }
-  return { x: pad, y: Math.random() * (worldH - pad * 2) + pad }
-}
-
+import {
+  BASE_MOVE_SPEED,
+  BULLET_DAMAGE,
+  BULLET_LIFETIME_MS,
+  BULLET_SPEED,
+  COIN_PICKUP_R,
+  CONTACT_COOLDOWN_MS,
+  DEPENDENCY_MARK_DURATION_MS,
+  DEPENDENCY_MARK_MOVE_THRESHOLD,
+  DEPENDENCY_MARK_PUSH_PX,
+  DEPENDENCY_MARK_RANGE,
+  earlyWaveEnemyCountMultiplier,
+  earlyWaveMultiplier,
+  FIRE_INTERVAL_MS,
+  INTERMEDIATE_SECTIONS,
+  isJavaBossShielded,
+  isJavaFinalBoss,
+  isPhpKingdom,
+  JAVA_BOSS_SHIELD_GAP_MS,
+  JAVA_BOSS_SHIELD_MS,
+  JAVA_ROUTE_STEPS,
+  LEVEL_DAMAGE_BONUS,
+  MAGNET_RANGE,
+  MAGNET_SPEED,
+  maxWavesForSection,
+  MELEE_LIFETIME,
+  MELEE_RANGE,
+  MELEE_TYPES,
+  PHP_ROUTE_STEPS,
+  PLAYER_COLLISION_SIZE,
+  PLAYER_SIZE,
+  randomSpawnEdgePosition,
+  resolveOptionValue,
+  sectionMultiplier,
+  TOTAL_SECTIONS,
+  waveMultiplier,
+  WAVES_PER_SECTION,
+} from './arenaCombatShared'
 
 /** Combate en arena por rondas: WASD, disparo automático al enemigo más cercano, monedas al eliminar. */
 export function useArenaCombat(options = {}) {
@@ -124,12 +66,7 @@ export function useArenaCombat(options = {}) {
   const characterMoveSpeed = options.characterMoveSpeed ?? ref(1)
   const characterBaseDamage = options.characterBaseDamage ?? ref(BULLET_DAMAGE)
   const isWalkable = typeof options.isWalkable === 'function' ? options.isWalkable : null
-  const debugImmortal = Boolean(resolveOptionValue(options.debugImmortal, false))
-  const debugMaxDamage = Boolean(resolveOptionValue(options.debugMaxDamage, false))
-  const resolvedDebugDamage = Number(resolveOptionValue(options.debugDamage, BULLET_DAMAGE))
-  const debugDamage = Number.isFinite(resolvedDebugDamage) && resolvedDebugDamage > 0
-    ? resolvedDebugDamage
-    : BULLET_DAMAGE
+  const getWalkMapName = typeof options.getWalkMapName === 'function' ? options.getWalkMapName : () => ''
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -154,6 +91,59 @@ export function useArenaCombat(options = {}) {
   /** Oro recogido en esta sesión de arena (antes de sincronizar con API) */
   const sessionGold = ref(0)
   const dependencyMark = ref(null)
+
+  function getWalkRectForSpawn() {
+    if (section.value >= TOTAL_SECTIONS) return null
+    return getArenaWalkBoundsRect(getWalkMapName())
+  }
+
+  /** Buff temporal de daño (Elixir de fuerza, etc.); milisegundos con performance.now(). */
+  let strengthBuffFlat = 0
+  let strengthBuffUntil = 0
+
+  function resetArenaConsumableBuffs() {
+    strengthBuffFlat = 0
+    strengthBuffUntil = 0
+  }
+
+  /**
+   * Aplica efecto de consumible en la sesión de arena (vida, buff, marca, etc.).
+   * `duration` en BD es “turnos”; aquí se interpreta como ~2.5s por turno.
+   */
+  function applyArenaConsumable(payload) {
+    const effect = String(payload?.effect || '')
+    const power = Math.max(0, Math.round(Number(payload?.power) || 0))
+    const duration = payload?.duration
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
+
+    switch (effect) {
+      case 'heal': {
+        playerHp.value = Math.min(playerMaxHp.value, playerHp.value + power)
+        break
+      }
+      case 'mana_restore':
+        break
+      case 'buff_strength': {
+        const turns = Number(duration)
+        const msExtra = Number.isFinite(turns) && turns > 0 ? turns * 2500 : 10000
+        strengthBuffFlat = power
+        strengthBuffUntil = nowMs + msExtra
+        break
+      }
+      case 'cure_poison':
+        clearDependencyMark()
+        break
+      case 'revive':
+        if (playerHp.value <= 0) {
+          playerHp.value = Math.min(playerMaxHp.value, Math.max(1, power))
+        } else {
+          playerHp.value = Math.min(playerMaxHp.value, playerHp.value + power)
+        }
+        break
+      default:
+        break
+    }
+  }
 
   const enemies = shallowRef([])
   const bullets = shallowRef([])
@@ -187,7 +177,6 @@ export function useArenaCombat(options = {}) {
   }
 
   function applyPlayerDamage(rawDamage) {
-    if (debugImmortal) return
     const safeDamage = Math.max(0, Math.round(Number(rawDamage) || 0))
     if (safeDamage <= 0) return
     const armorReduction = Math.min(0.55, Math.max(0, Number(characterArmor.value || 0) * 0.006))
@@ -383,7 +372,8 @@ export function useArenaCombat(options = {}) {
     for (const [type, count] of types) {
       const adjustedCount = Math.max(1, Math.round(count * enemyCountMult))
       for (let i = 0; i < adjustedCount; i++) {
-        const spawnPos = randomSpawnEdgePosition(WORLD_W, WORLD_H, pad)
+        const sz = Math.max(ENEMY_SIZE, Number(typeBaseStats(type).size) || ENEMY_SIZE)
+        const spawnPos = randomSpawnEdgePosition(WORLD_W, WORLD_H, pad, sz, getWalkRectForSpawn)
         list.push(createSpawnedEnemy(type, spawnPos, multiplier, earlyMult, now))
       }
     }
@@ -428,16 +418,36 @@ export function useArenaCombat(options = {}) {
     return Math.max(1.2, Math.min(6.4, speed))
   }
 
-  function canPlayerStandAt(nextX, nextY) {
+  function entityWalkable(nextX, nextY, size) {
     if (!isWalkable) return true
     return Boolean(isWalkable(nextX, nextY, {
-      playerSize: PLAYER_COLLISION_SIZE,
+      playerSize: size,
+      entitySize: size,
       worldWidth: WORLD_W,
       worldHeight: WORLD_H,
       section: section.value,
+      mapName: getWalkMapName(),
       startKingdom: startKingdom.value,
       enemyFaction: enemyFaction.value,
     }))
+  }
+
+  function canPlayerStandAt(nextX, nextY) {
+    return entityWalkable(nextX, nextY, PLAYER_COLLISION_SIZE)
+  }
+
+  function clampEntityWalkable(prevX, prevY, nx, ny, size) {
+    const bx = Math.max(0, Math.min(WORLD_W - size, nx))
+    const by = Math.max(0, Math.min(WORLD_H - size, ny))
+    if (!isWalkable) {
+      return { x: bx, y: by }
+    }
+    if (entityWalkable(bx, by, size)) {
+      return { x: bx, y: by }
+    }
+    const canX = entityWalkable(bx, prevY, size)
+    const canY = entityWalkable(prevX, by, size)
+    return { x: canX ? bx : prevX, y: canY ? by : prevY }
   }
 
   function movePlayerConstrained(nextX, nextY) {
@@ -575,8 +585,9 @@ export function useArenaCombat(options = {}) {
         nx += sepX
         ny += sepY
 
-        nx = Math.max(0, Math.min(WORLD_W - esize, nx))
-        ny = Math.max(0, Math.min(WORLD_H - esize, ny))
+        const pos = clampEntityWalkable(e.x, e.y, nx, ny, esize)
+        nx = pos.x
+        ny = pos.y
 
         let nextEnemy = { ...e, x: nx, y: ny }
         if (e.type === 'boss') {
@@ -731,9 +742,6 @@ export function useArenaCombat(options = {}) {
       } else {
         currentDamage = Number(characterBaseDamage.value || BULLET_DAMAGE)
       }
-      if (debugMaxDamage) {
-        currentDamage = debugDamage
-      }
       const levelBonus = 1 + (Math.max(1, Number(characterLevel.value) || 1) - 1) * LEVEL_DAMAGE_BONUS
       currentDamage = Math.max(1, Math.round(currentDamage * levelBonus))
 
@@ -758,6 +766,13 @@ export function useArenaCombat(options = {}) {
       // Reducir daño melee un poco para equilibrar
       if (MELEE_TYPES.includes(effectiveType)) {
         currentDamage = Math.ceil(currentDamage * 0.75)
+      }
+
+      const nowCombat = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      if (nowCombat < strengthBuffUntil) {
+        currentDamage = Math.max(1, currentDamage + strengthBuffFlat)
+      } else if (strengthBuffUntil > 0) {
+        resetArenaConsumableBuffs()
       }
 
       if (tgt && now - lastFireAt >= currentFireInterval) {
@@ -998,6 +1013,7 @@ export function useArenaCombat(options = {}) {
     playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
     playerHp.value = playerMaxHp.value
     clearDependencyMark()
+    resetArenaConsumableBuffs()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -1010,6 +1026,7 @@ export function useArenaCombat(options = {}) {
     wave.value = safeWave
     resolveRouteContext()
     clearDependencyMark()
+    resetArenaConsumableBuffs()
     phase.value = 'fighting'
     spawnWave()
   }
@@ -1082,5 +1099,7 @@ export function useArenaCombat(options = {}) {
     startNextWave,
     beginFirstWave,
     resumeAt,
+    applyArenaConsumable,
+    resetArenaConsumableBuffs,
   }
 }

@@ -35,17 +35,15 @@
 import { computed } from 'vue'
 import { SECTION_MAPS } from '../constants/maps'
 import { useCharacterStore } from '../stores/character'
+import { isPlayerPhpKingdom } from '../utils/realm'
 
 const emit = defineEmits(['close', 'select-stage'])
 
 const characterStore = useCharacterStore()
 
-const isPhp = computed(() => {
-  const kName = String(characterStore.kingdomName || '').toLowerCase()
-  if (kName.includes('php') || kName.includes('peachepe')) return true
-  if (kName.includes('java')) return false
-  return Number(characterStore.kingdomId) === 1
-})
+const isPhp = computed(() =>
+  isPlayerPhpKingdom(characterStore.kingdomName, characterStore.kingdomId),
+)
 
 const enemyFaction = computed(() => (isPhp.value ? 'java' : 'php'))
 const maps = computed(() => SECTION_MAPS[enemyFaction.value])

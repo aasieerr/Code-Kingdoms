@@ -1,11 +1,9 @@
 import api from './axios'
-import { activeCharacterId } from '../gameState'
 import { fetchInventoryData } from './inventario'
-import { fetchCharacter } from './character'
+import { requireActiveCharacterId } from './requireActiveCharacter'
 
 export async function purchaseItem(id_item, quantity = 1) {
-  const cid = activeCharacterId.value
-  if (!cid) throw new Error('No hay personaje activo')
+  const cid = requireActiveCharacterId()
 
   const { data } = await api.post('/shop/purchase', {
     id_character: cid,
@@ -19,8 +17,7 @@ export async function purchaseItem(id_item, quantity = 1) {
 }
 
 export async function sellItem(id_character_item, quantity = 1) {
-  const cid = activeCharacterId.value
-  if (!cid) throw new Error('No hay personaje activo')
+  const cid = requireActiveCharacterId()
 
   const { data } = await api.post('/shop/sell', {
     id_character: cid,

@@ -16,7 +16,6 @@
         <div class="avatar-scanlines"></div>
       </div>
       <div class="hud-info">
-        <span class="hud-label">SISTEMA</span>
         <div class="hud-name-wrapper">
           <span class="hud-name text-truncate">{{ characterStore.name.toUpperCase() }}</span>
           <span class="hud-status-dot animate-pulse"></span>
@@ -138,13 +137,6 @@ const characterStore = useCharacterStore()
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.hud-label {
-  font-size: 6px;
-  color: #facc15;
-  opacity: 0.5;
-  letter-spacing: 0.1em;
 }
 
 .hud-name-wrapper {
