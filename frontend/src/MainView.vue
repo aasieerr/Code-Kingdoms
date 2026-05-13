@@ -111,7 +111,7 @@
       :npcs="npcs"
       :map-image="currentLobbyMapImage"
       :map-name="currentLobbyMapName"
-      :world-width="MAIN_WORLD_WIDTH"
+      :world-width="WORLD_WIDTH"
       :world-height="MAIN_WORLD_HEIGHT"
       @close="showMapPanel = false"
     />
@@ -140,7 +140,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
-import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
+import { WORLD_EDGE, WORLD_WIDTH, PORTAL_HALF_WIDTH } from './constants/world'
 import { lastTransition, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
 import { ensureActiveCharacterId, fetchCharacter } from './api/character'
@@ -157,31 +157,16 @@ import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
 import StageSelectorPanel from './components/StageSelectorPanel.vue'
 import { useCharacterStore } from './stores/character'
-import { confirmCodeCoinsCheckout } from './api/micropay'
 import { useGameSettings } from './composables/useGameSettings'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
-
+import { parseSprite, isEmptySprite } from './utils/sprite'
+import { isPlayerPhpKingdom } from './utils/realm'
 
 const router        = useRouter()
 const route = useRoute()
-const MAIN_WORLD_WIDTH = 1700
 const MAIN_WORLD_HEIGHT = WORLD_EDGE
-const worldWidthPx = `${MAIN_WORLD_WIDTH}px`
+const worldWidthPx = `${WORLD_WIDTH}px`
 const worldHeightPx = `${MAIN_WORLD_HEIGHT}px`
 const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
 const startY   = lastTransition.value === 'second-to-main' ? MAIN_WORLD_HEIGHT + 50 : MAIN_WORLD_HEIGHT / 2
@@ -194,6 +179,9 @@ const showMicropay = ref(false)
 const showSettings = ref(false)
 const authStore = useAuthStore()
 const characterStore = useCharacterStore()
+const isPlayerPhp = computed(() =>
+  isPlayerPhpKingdom(characterStore.kingdomName, characterStore.kingdomId),
+)
 const { keyMatches, keyLabel, settings } = useGameSettings()
 const lastOpenedShopType = ref(null)
 
@@ -205,9 +193,9 @@ const colorMoving = ref('#f5a623')
 
 // Movimiento del personaje
 const { arenaRef, x, y, focused, moving, locked } = useWasd(
-  MAIN_WORLD_WIDTH / 2,
+  WORLD_WIDTH / 2,
   startY,
-  MAIN_WORLD_WIDTH,
+  WORLD_WIDTH,
   MAIN_WORLD_HEIGHT
 )
 
@@ -246,7 +234,7 @@ const cameraTransform = computed(() => {
   const cy        = window.innerHeight / 2
   const halfW     = cx / zoom
   const halfH     = cy / zoom
-  const targetX   = Math.max(halfW, Math.min(x.value + 20, MAIN_WORLD_WIDTH - halfW))
+  const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_WIDTH - halfW))
   const targetY   = Math.max(halfH, Math.min(y.value + 20, MAIN_WORLD_HEIGHT - halfH))
   return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
 })
@@ -258,22 +246,6 @@ async function refreshWallet() {
     colorMoving.value = characterStore.equippedSkin.color_moving
   }
 }
-
-async function handleMicropayReturn() {
-  const status = String(route.query.micropay_status || '')
-  const sessionId = String(route.query.session_id || '')
-  if (status !== 'success' || !sessionId) return
-
-  try {
-    await confirmCodeCoinsCheckout(sessionId)
-    await refreshWallet()
-  } catch (err) {
-    console.error('Error confirmando micropago en MainView:', err)
-  } finally {
-    router.replace({ path: route.path, query: {} }).catch(() => {})
-  }
-}
-
 
 // Bloquear movimiento si hay paneles abiertos
 watch(
@@ -287,11 +259,6 @@ watch(
     }
   }
 )
-
-// Observar NPCs para depuración
-watch(npcs, (list) => {
-  console.log(`NPCs cargados en ${npcsManager.mapName || 'mapa'}: ${list.length}`, list)
-})
 
 function openPanel(name) {
   if (showPanel.value === name) {
@@ -378,26 +345,17 @@ function onMainPanelHotkey(e) {
 const navigating = ref(false)
 const portalCooldown = ref(true)
 
-function isPhpKingdomSelected() {
-  const kName = String(characterStore.kingdomName || '').toLowerCase()
-  if (kName.includes('php') || kName.includes('peachepe')) return true
-  if (kName.includes('java')) return false
-  const kId = Number(characterStore.kingdomId)
-  // En este backend: 1 = Peachepe/PHP, 2 = Java.
-  return kId === 1
-}
-
 const kingdomLobbyStyle = computed(() => ({
-  backgroundImage: `url(${isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap})`,
+  backgroundImage: `url(${isPlayerPhp.value ? phpKingdomMap : javaKingdomMap})`,
   backgroundRepeat: 'no-repeat',
   backgroundSize: '100% 100%',
   backgroundPosition: 'center',
 }))
 const currentLobbyMapImage = computed(() => (
-  isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap
+  isPlayerPhp.value ? phpKingdomMap : javaKingdomMap
 ))
 const currentLobbyMapName = computed(() => (
-  isPhpKingdomSelected() ? 'REINO PHP (LOBBY)' : 'REINO JAVA (LOBBY)'
+  isPlayerPhp.value ? 'REINO PHP (LOBBY)' : 'REINO JAVA (LOBBY)'
 ))
 
 // Entrada desde SecondView o CharacterMenu (transición)
@@ -406,8 +364,7 @@ onMounted(async () => {
   
   try {
     await refreshWallet()
-    await handleMicropayReturn()
-    const imgSrc = isPhpKingdomSelected() ? phpKingdomMap : javaKingdomMap
+    const imgSrc = isPlayerPhp.value ? phpKingdomMap : javaKingdomMap
     await new Promise(resolve => {
       if (!imgSrc) return resolve()
       const img = new Image()
@@ -419,9 +376,9 @@ onMounted(async () => {
     console.error("Error inicial en MainView:", err)
   }
 
-  const isPhpKingdom = isPhpKingdomSelected()
+  const playerPhp = isPlayerPhp.value
   if (lastTransition.value === 'second-to-main') {
-    y.value = isPhpKingdom ? -50 : MAIN_WORLD_HEIGHT + 50
+    y.value = playerPhp ? -50 : MAIN_WORLD_HEIGHT + 50
   }
 
   if (lastTransition.value === 'second-to-main') {
@@ -433,7 +390,7 @@ onMounted(async () => {
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        const reachedTarget = isPhpKingdom ? y.value >= 180 : y.value <= MAIN_WORLD_HEIGHT - 180
+        const reachedTarget = playerPhp ? y.value >= 180 : y.value <= MAIN_WORLD_HEIGHT - 180
         if (reachedTarget) {
           locked.value = false
           moving.value = false
@@ -441,7 +398,7 @@ onMounted(async () => {
           setTimeout(() => { portalCooldown.value = false }, 500)
           return
         }
-        y.value += isPhpKingdom ? 5 : -5
+        y.value += playerPhp ? 5 : -5
         requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
@@ -504,12 +461,12 @@ watchEffect(() => {
   if (locked.value || navigating.value || portalCooldown.value) return
 
   const PLAYER = 40
-  const cx = MAIN_WORLD_WIDTH / 2
-  const isPhpKingdom = isPhpKingdomSelected()
+  const cx = WORLD_WIDTH / 2
+  const playerPhp = isPlayerPhp.value
   const curX = x.value
   const curY = y.value
   const inPortalX = curX > cx - PORTAL_HALF_WIDTH && curX < cx + PORTAL_HALF_WIDTH
-  const isAtPortalEdge = isPhpKingdom ? curY <= 0 : curY >= MAIN_WORLD_HEIGHT - PLAYER
+  const isAtPortalEdge = playerPhp ? curY <= 0 : curY >= MAIN_WORLD_HEIGHT - PLAYER
 
   if (isAtPortalEdge && inPortalX) {
     navigating.value = true
@@ -518,8 +475,8 @@ watchEffect(() => {
     isFading.value = true
 
     const exitLoop = () => {
-      y.value += isPhpKingdom ? -5 : 5
-      const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= MAIN_WORLD_HEIGHT + 80
+      y.value += playerPhp ? -5 : 5
+      const outOfBounds = playerPhp ? y.value <= -80 : y.value >= MAIN_WORLD_HEIGHT + 80
       if (outOfBounds) {
         lastTransition.value = 'main-to-second'
         router.push({ name: 'SecondGame' }).catch(() => {

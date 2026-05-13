@@ -118,6 +118,7 @@ import { fetchCharacters, deleteCharacter } from '../api/character'
 import CreateCharacterForm from '../components/CreateCharacterForm.vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
+import { parseSprite, isEmptySprite } from '../utils/sprite'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -153,20 +154,6 @@ function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
 function charLevel(c) { return Math.max(1, Number(c?.level ?? 1) || 1) }
 function charExperience(c) { return Math.max(0, Number(c?.experience ?? c?.xp ?? 0) || 0) }
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
 
 const isZooming = ref(false)
 const zoomOrigin = ref('center center')

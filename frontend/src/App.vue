@@ -96,6 +96,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (notificationTimeout) clearTimeout(notificationTimeout)
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('mousedown', handleMouseDown)
 })
