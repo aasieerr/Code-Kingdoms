@@ -42,7 +42,7 @@ class ItemSeeder extends Seeder
             ['name' => 'Hacha de Piedra', 'description' => 'Tosca hacha.', 'damage' => 18, 'weapon_type' => 'hacha', 'durability' => 65, 'price' => 55, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idGuerrero],
             ['name' => 'Hacha de Recluta', 'description' => 'Hacha para paladines novatos.', 'damage' => 17, 'weapon_type' => 'hacha', 'durability' => 60, 'price' => 52, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idPaladin],
             ['name' => 'Daga de Práctica', 'description' => 'Daga pequeña.', 'damage' => 10, 'weapon_type' => 'daga', 'durability' => 40, 'price' => 35, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idAsesino],
-            ['name' => 'Arma Definitiva de JD', 'description' => 'Un arma devastadora con daño inigualable.', 'damage' => 999, 'weapon_type' => 'varita', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => true, 'id_class' => null],
+            ['name' => 'Arma Definitiva de JD', 'description' => 'Solo para pruebas locales; no aparece en la tienda.', 'damage' => 999, 'weapon_type' => 'varita', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
 
             // ======================== REINO JAVA (30 Armas) ========================
             
@@ -172,7 +172,7 @@ class ItemSeeder extends Seeder
             ['name' => 'Ropas de Viajero', 'description' => 'Protección mínima.', 'defense' => 5, 'armor_type' => 'armadura_ligera', 'durability' => 50, 'price' => 40, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
             ['name' => 'Peto de Cuero Viejo', 'description' => 'Cuero desgastado.', 'defense' => 10, 'armor_type' => 'armadura_media', 'durability' => 80, 'price' => 120, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
             ['name' => 'Escudo de Madera Circular', 'description' => 'Escudo simple.', 'defense' => 8, 'armor_type' => 'escudo', 'durability' => 70, 'price' => 90, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => $idPaladin],
-            ['name' => 'Armadura Definitiva de JD', 'description' => 'Te hace inmatable. Solo para pruebas.', 'defense' => 99999, 'armor_type' => 'armadura_pesada', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => true, 'id_class' => null],
+            ['name' => 'Armadura Definitiva de JD', 'description' => 'Solo para pruebas locales; no aparece en la tienda.', 'defense' => 99999, 'armor_type' => 'armadura_pesada', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
 
             // --- REINO JAVA ---
             ['name' => 'Coraza de Tipado Estático', 'description' => 'Validada.', 'defense' => 25, 'armor_type' => 'armadura_pesada', 'durability' => 180, 'price' => 450, 'id_kingdom' => $idJava, 'id_class' => $idGuerrero],
@@ -219,6 +219,15 @@ class ItemSeeder extends Seeder
     private function createConsumables()
     {
         $consumables = [
+            [
+                'name' => 'Poción de vida pequeña',
+                'description' => 'Restaura poca vida al instante.',
+                'effect' => 'heal',
+                'power' => 35,
+                'duration' => null,
+                'quantity' => 5,
+                'price' => 12,
+            ],
             [
                 'name' => 'Poción de Curación',
                 'description' => 'Restaura puntos de vida al instante.',

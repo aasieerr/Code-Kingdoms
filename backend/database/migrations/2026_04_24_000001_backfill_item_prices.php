@@ -20,6 +20,7 @@ return new class extends Migration
             'Túnica Mágica' => 140,
             'Escudo de Acero' => 160,
             'Armadura de Cuero' => 150,
+            'Poción de vida pequeña' => 12,
             'Poción de Curación' => 25,
             'Poción de Maná' => 22,
             'Elixir de Fuerza' => 45,
