@@ -70,6 +70,12 @@
                   class="item-pixel-sprite"
                   @error="(e) => e.target.src = '/vite.svg'"
                 />
+                <img
+                  v-else-if="ci.item?.type === 'armor'"
+                  :src="getArmourSprite(ci.item)"
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
                 <span v-else class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
@@ -95,6 +101,12 @@
             <img 
               v-if="selectedItem.item.type === 'weapon'" 
               :src="getItemSprite(selectedItem.item)" 
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <img
+              v-else-if="selectedItem.item.type === 'armor'"
+              :src="getArmourSprite(selectedItem.item)"
               class="display-pixel-sprite"
               @error="(e) => e.target.src = '/vite.svg'"
             />
@@ -390,6 +402,17 @@ function getItemSprite(item) {
     .replace(/[^\w-]/g, '') // Eliminar caracteres especiales
   
   return `/src/sprites/weapons/${reino}/${clase}/${filename}.png`
+}
+
+function getArmourSprite(item) {
+  if (!item || item.type !== 'armor') return null
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '')
+  return `/src/sprites/armours/${reino}/${filename}.png`
 }
 </script>
 
