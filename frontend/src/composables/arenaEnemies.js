@@ -3,7 +3,6 @@ export const ENEMY_SIZE = 36
 
 export const ENEMY_XP_REWARD = {
   microservice: 8,
-  spaghetti_runner: 11,
   composer_update: 14,
   dependency_injector: 18,
   thread_spammer: 22,
@@ -18,9 +17,9 @@ const ROUND_ENEMY_CONFIG = [
   { garbage_collector: 3, thread_spammer: 2 },
   { dependency_injector: 2, thread_spammer: 2 },
   { garbage_collector: 3, boilerplate_guard: 2, legacy_monolith: 1, miniboss: 1, thread_spammer: 3 },
-  { spaghetti_runner: 3, dependency_injector: 3, thread_spammer: 2 },
-  { dependency_injector: 4, composer_update: 2, spaghetti_runner: 4, boilerplate_guard: 2 },
-  { legacy_monolith: 1, dependency_injector: 5, composer_update: 3, spaghetti_runner: 5, boilerplate_guard: 2, miniboss: 1 },
+  { microservice: 3, dependency_injector: 3, thread_spammer: 2 },
+  { dependency_injector: 4, composer_update: 2, microservice: 4, boilerplate_guard: 2 },
+  { legacy_monolith: 1, dependency_injector: 5, composer_update: 3, microservice: 5, boilerplate_guard: 2, miniboss: 1 },
 ]
 
 export const RANGED_ENEMY_TYPES = new Set([
@@ -47,8 +46,6 @@ export function typeBaseStats(type) {
       return { hp: 720, speed: 0.9, contactDamage: 24, size: 82 }
     case 'microservice':
       return { hp: 34, speed: 4.7, contactDamage: 8 }
-    case 'spaghetti_runner':
-      return { hp: 80, speed: 4.3, contactDamage: 17 }
     case 'dependency_injector':
       return { hp: 130, speed: 1.75, contactDamage: 10, fireInterval: 3200, bulletDamage: 12 }
     case 'composer_update':
