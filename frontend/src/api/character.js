@@ -1,5 +1,5 @@
 import api from './axios'
-import { activeCharacterId, setActiveCharacterId } from '../gameState'
+import { activeCharacterId } from '../gameState'
 
 /**
  * Personajes del usuario (requiere token Sanctum).

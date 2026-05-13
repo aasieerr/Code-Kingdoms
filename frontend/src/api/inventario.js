@@ -1,6 +1,5 @@
 import api from './axios'
 import { ref, computed } from 'vue'
-import { activeCharacterId } from '../gameState'
 import { ensureActiveCharacterId } from './character'
 
 export const globalItems = ref([])
@@ -10,15 +9,22 @@ export const lastInventoryError = ref(null)
 
 let lastLoadedCharacterId = null
 
-// Inventario cruzado para el UI (catálogo + posesiones)
-export const mergedInventoryItems = computed(() => {
-  return myCharacterItems.value
-})
-
 // Solo lo que tenemos equipado para el panel de equipo
 export const equippedItems = computed(() => {
   return myCharacterItems.value.filter(ci => ci.is_equipped)
 })
+
+async function loadInventoryPayload(cid, shopType) {
+  const params = { id_character: cid }
+  if (shopType) params.shop_type = shopType
+  const [resItems, resChar] = await Promise.all([
+    api.get('/items', { params }),
+    api.get('/character-items', { params: { id_character: cid } }),
+  ])
+  globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
+  myCharacterItems.value = Array.isArray(resChar.data) ? resChar.data : []
+  lastLoadedCharacterId = cid
+}
 
 export async function fetchInventoryData(force = false, shopType = null) {
   const cid = await ensureActiveCharacterId()
@@ -31,15 +37,7 @@ export async function fetchInventoryData(force = false, shopType = null) {
       isInventoryLoading.value = false
       return
     }
-    const params = { id_character: cid }
-    if (shopType) params.shop_type = shopType
-    const [resItems, resChar] = await Promise.all([
-      api.get('/items', { params }),
-      api.get('/character-items', { params: { id_character: cid } })
-    ])
-    globalItems.value = Array.isArray(resItems.data) ? resItems.data : []
-    myCharacterItems.value = Array.isArray(resChar.data) ? resChar.data : []
-    lastLoadedCharacterId = cid
+    await loadInventoryPayload(cid, shopType)
   } catch (err) {
     lastInventoryError.value = err?.response?.data?.message ?? 'Error de red.'
   } finally {
@@ -48,11 +46,10 @@ export async function fetchInventoryData(force = false, shopType = null) {
 }
 
 export async function toggleEquipItem(id, equip, id_item = null) {
-  const ensured = await ensureActiveCharacterId()
-  if (ensured == null) {
+  const cid = await ensureActiveCharacterId()
+  if (cid == null) {
     return
   }
-  const cid = activeCharacterId.value
   if (!id && equip && id_item) {
     await api.post(`/character-items`, {
       id_character: cid,
