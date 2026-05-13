@@ -6,8 +6,8 @@
         <button type="button" class="mp-x" @click="$emit('close')">×</button>
       </header>
       <p class="mp-p">
-        Elige un pack de <strong>CodeCoins</strong>. Las compras son cosméticas y no afectan
-        al balance del combate.
+        Elige un pack: al pulsarlo se suman <strong>CodeCoins</strong> a tu cuenta (solo cosméticas,
+        no afectan al oro del combate).
       </p>
 
       <div class="mp-packs">
@@ -17,11 +17,11 @@
           type="button"
           class="mp-pack"
           :disabled="loading"
-          @click="buyPack(pack.id)"
+          @click="claimPack(pack.id)"
         >
-          <span class="pack-coins">◆ {{ pack.coins }}</span>
+          <span class="pack-coins">◆ +{{ pack.coins }}</span>
           <span class="pack-name">{{ pack.name }}</span>
-          <span class="pack-price">{{ pack.price }}</span>
+          <span class="pack-action">Añadir</span>
         </button>
       </div>
 
@@ -37,37 +37,36 @@
 
 <script setup>
 import { ref } from 'vue'
-import { createCodeCoinsCheckout } from '../api/micropay'
+import { claimCodeCoinsPack } from '../api/micropay'
+import { useCharacterStore } from '../stores/character'
 
 defineEmits(['close'])
 
+const characterStore = useCharacterStore()
 const loading = ref(false)
 const statusMessage = ref('')
 const errorMessage = ref('')
 
 const packs = [
-  { id: 'starter', name: 'Starter', coins: 100, price: '0.99 EUR' },
-  { id: 'pro', name: 'Pro', coins: 275, price: '1.99 EUR' },
-  { id: 'legend', name: 'Legend', coins: 750, price: '4.99 EUR' },
+  { id: 'starter', name: 'Starter', coins: 100 },
+  { id: 'pro', name: 'Pro', coins: 275 },
+  { id: 'legend', name: 'Legend', coins: 750 },
 ]
 
-async function buyPack(packId) {
+async function claimPack(packId) {
   if (loading.value) return
   loading.value = true
-  statusMessage.value = 'Procesando micropago...'
+  statusMessage.value = 'Añadiendo CodeCoins…'
   errorMessage.value = ''
 
   try {
-    const returnPath = window.location.pathname
-    const response = await createCodeCoinsCheckout(packId, returnPath)
-    if (!response?.checkout_url) {
-      throw new Error('No checkout URL')
-    }
-    window.location.assign(response.checkout_url)
+    const data = await claimCodeCoinsPack(packId)
+    statusMessage.value = data?.message || 'Listo.'
+    await characterStore.refresh()
   } catch (error) {
     const serverMessage = error?.response?.data?.message
       || error?.response?.data?.errors?.package?.[0]
-    errorMessage.value = serverMessage || 'No se pudo procesar el micropago.'
+    errorMessage.value = serverMessage || 'No se pudieron añadir las CodeCoins.'
     statusMessage.value = ''
   } finally {
     loading.value = false
@@ -162,11 +161,12 @@ async function buyPack(packId) {
   color: #d1c4e9;
 }
 
-.pack-price {
+.pack-action {
   grid-column: 2;
   grid-row: 1 / span 2;
-  font-size: 8px;
+  font-size: 7px;
   color: #fff8e1;
+  text-transform: uppercase;
 }
 
 .mp-ok {
