@@ -61,8 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shop/sell', [ShopController::class, 'sell']);
     Route::post('/skins/purchase', [CosmeticSkinController::class, 'purchase']);
     Route::post('/characters/{id}/equip-skin', [CosmeticSkinController::class, 'equip']);
-    Route::post('/micropay/code-coins/checkout', [MicropayController::class, 'createCheckoutSession']);
-    Route::post('/micropay/code-coins/confirm', [MicropayController::class, 'confirmCheckoutSession']);
+    Route::post('/micropay/code-coins/claim', [MicropayController::class, 'claimCodeCoinsPack']);
 
     Route::get('/characters', [CharacterController::class, 'index']);
     Route::get('/characters/{id}', [CharacterController::class, 'show']);
@@ -71,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/characters/{id}', [CharacterController::class, 'update']);
     Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
     Route::delete('/character-items/{id}', [CharacterItemController::class, 'destroy']);
+    Route::post('/character-items/{id}/consume', [CharacterItemController::class, 'consume']);
 
     Route::get('/screenshots', [ScreenshotController::class, 'index']);
     Route::post('/screenshots', [ScreenshotController::class, 'store']);
