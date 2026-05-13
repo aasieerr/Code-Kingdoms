@@ -1,6 +1,6 @@
 <template>
   <div class="settings-overlay" @click.self="$emit('close')">
-    <div class="settings-modal">
+    <div class="settings-modal" @click.stop>
       <div class="settings-header">
         <h2>AJUSTES</h2>
         <button type="button" class="close-btn" @click="$emit('close')">X</button>
@@ -34,6 +34,7 @@
               class="arena-select"
               :value="settings.arenaPotionSlots[idx]?.itemName || ''"
               @change="setArenaPotionItem(idx, $event.target.value)"
+              @mousedown.stop
             >
               <option v-for="name in ARENA_CONSUMABLE_NAMES" :key="'n-' + idx + '-' + name" :value="name">
                 {{ name === '' ? '(Vacío)' : name }}

@@ -53,6 +53,12 @@
                   class="item-pixel-sprite"
                   @error="(e) => e.target.src = '/vite.svg'"
                 />
+                <img
+                  v-else-if="ci.item?.type === 'consumable'"
+                  :src="getConsumableSprite(ci.item)"
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
                 <span v-else class="item-icon">{{ SPRITES[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
@@ -83,6 +89,12 @@
             <img
               v-else-if="selectedItem.item.type === 'armor'"
               :src="getArmourSprite(selectedItem.item)"
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <img
+              v-else-if="selectedItem.item.type === 'consumable'"
+              :src="getConsumableSprite(selectedItem.item)"
               class="display-pixel-sprite"
               @error="(e) => e.target.src = '/vite.svg'"
             />
@@ -211,6 +223,15 @@ function getArmourSprite(item) {
     .replace(/\s+/g, '-')
     .replace(/[^\w-]/g, '')
   return `/src/sprites/armours/${reino}/${filename}.png`
+}
+
+function getConsumableSprite(item) {
+  if (!item || item.type !== 'consumable') return null
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '')
+  return `/src/sprites/objects/${filename}.png`
 }
 </script>
 
