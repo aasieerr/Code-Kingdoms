@@ -17,13 +17,27 @@ class CharacterController extends Controller
      */
     public function index()
     {
+        $userId = (int) Auth::id();
         $characters = Character::query()
-            ->where('id_user', (int) Auth::id())
-            ->with(['kingdom', 'race', 'characterClass'])
+            ->where('id_user', $userId)
+            ->with(['kingdom', 'race', 'characterClass', 'equippedSkin'])
             ->orderBy('id')
             ->get();
 
-        return response()->json($characters);
+        $ownedSkinIds = User::query()
+            ->findOrFail($userId)
+            ->ownedSkins()
+            ->pluck('cosmetic_skins.id')
+            ->values()
+            ->all();
+
+        $payload = $characters->map(static function (Character $character) use ($ownedSkinIds) {
+            return array_merge($character->toArray(), [
+                'owned_skin_ids' => $ownedSkinIds,
+            ]);
+        });
+
+        return response()->json($payload);
     }
 
     /**
@@ -119,11 +133,11 @@ class CharacterController extends Controller
         }
 
         $user = User::query()->findOrFail($character->id_user);
-        $ownedIds = $user->ownedSkins()->pluck('cosmetic_skins.id');
+        $ownedIds = $user->ownedSkins()->pluck('cosmetic_skins.id')->values();
 
         return response()->json(array_merge($character->toArray(), [
             'code_coins' => $user->code_coins,
-            'owned_skin_ids' => $ownedIds,
+            'owned_skin_ids' => $ownedIds->all(),
         ]));
     }
 

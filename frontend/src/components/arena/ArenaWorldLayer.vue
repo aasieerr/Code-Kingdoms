@@ -17,6 +17,7 @@ defineProps({
   y: { type: Number, required: true },
   moving: { type: Boolean, required: true },
   spriteData: { type: [String, Object, Array], default: null },
+  cosmeticPortraitSrc: { type: String, default: null },
   colorStill: { type: String, required: true },
   colorMoving: { type: String, required: true },
   dependencyMark: { type: Object, default: null },
@@ -152,7 +153,10 @@ defineProps({
         top: y + 'px',
       }"
     >
-      <div v-if="spriteData && !isEmptySprite(spriteData)" class="player__sprite">
+      <div v-if="cosmeticPortraitSrc" class="player__cosmetic">
+        <img class="player__cosmetic-img" :src="cosmeticPortraitSrc" alt="">
+      </div>
+      <div v-else-if="spriteData && !isEmptySprite(spriteData)" class="player__sprite">
         <div class="mini-grid">
           <div
             v-for="(color, pIdx) in parseSprite(spriteData)"

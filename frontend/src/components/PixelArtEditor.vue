@@ -1,7 +1,7 @@
 <template>
   <div class="pixel-editor" @mouseup="isDrawing = false" @mouseleave="isDrawing = false">
     <label class="pixel-editor__label">DIBUJA TU AVATAR (16x16)</label>
-    
+
     <div class="pixel-editor__layout">
       <!-- CANVAS -->
       <div class="pixel-editor__canvas" :style="gridStyle">
@@ -27,9 +27,9 @@
             :style="{ backgroundColor: c }"
             @click="selectPaletteColor(c)"
           ></button>
-          <button 
+          <button
             type="button"
-            class="pixel-editor__tool-btn" 
+            class="pixel-editor__tool-btn"
             :class="{ 'is-active': tool === 'eraser' }"
             @click="tool = 'eraser'"
             title="Borrador"
@@ -55,7 +55,7 @@
             />
           </label>
         </div>
-        
+
         <button type="button" class="pixel-editor__action-btn" @click="clearCanvas">
           LIMPIAR
         </button>
@@ -64,8 +64,8 @@
         <div class="pixel-editor__preview-box">
           <span class="pixel-editor__preview-label">VISTA PREVIA</span>
           <div class="pixel-editor__preview-grid">
-            <div 
-              v-for="(color, pIdx) in pixels" 
+            <div
+              v-for="(color, pIdx) in pixels"
               :key="pIdx"
               class="pixel-editor__preview-pixel"
               :style="{ backgroundColor: color || 'transparent' }"
@@ -87,7 +87,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const size = 16
 const palette = [
-  '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', 
+  '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
   '#ffff00', '#ff00ff', '#00ffff', '#8b4513', '#facc15',
   '#ca8a04', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'
 ]

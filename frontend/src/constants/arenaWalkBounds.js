@@ -18,11 +18,9 @@ const SECTION_ARENA_MAP_NAMES = Object.freeze([
   'JVM Volcano',
   'Maven Mountains',
   'Spring Boot City',
-  'GC Swamp',
   'Hibernate Ruins',
   'Spring Border Gate',
   'Eloquent Swamps',
-  'Blade Forest',
   'Composer Desert',
   'Laravel Citadel',
   'PHP Frontier Marshes',
@@ -45,7 +43,7 @@ export const ARENA_WALK_BOUNDS_BY_MAP_NAME = buildWalkBoundsByMapName(
   ARENA_UNIFIED_WALK_RECT,
 )
 
-export const ARENA_BOSS_SECTION = 7
+export const ARENA_BOSS_SECTION = 6
 
 export function getArenaWalkBoundsRect(mapName) {
   if (!mapName) return null

@@ -9,6 +9,8 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
   const focused = ref(false)
   const moving = ref(false)
   const locked = ref(false)
+  /** Mirada top-down: n | s | e | w (último movimiento dominante). */
+  const facing = ref('s')
 
   const keys = { moveUp: false, moveLeft: false, moveDown: false, moveRight: false }
   const { keyMatches } = useGameSettings()
@@ -36,12 +38,25 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
       const W = WORLD_WIDTH - SIZE
       const H = WORLD_HEIGHT - SIZE
 
+      const prevX = x.value
+      const prevY = y.value
+
       if (keys.moveUp) y.value = Math.max(0, y.value - SPEED)
       if (keys.moveDown) y.value = Math.min(H, y.value + SPEED)
       if (keys.moveLeft) x.value = Math.max(0, x.value - SPEED)
       if (keys.moveRight) x.value = Math.min(W, x.value + SPEED)
 
       moving.value = Object.values(keys).some(Boolean)
+
+      const pdx = x.value - prevX
+      const pdy = y.value - prevY
+      if (moving.value && (Math.abs(pdx) > 0.001 || Math.abs(pdy) > 0.001)) {
+        if (Math.abs(pdx) > Math.abs(pdy)) {
+          facing.value = pdx > 0 ? 'e' : 'w'
+        } else {
+          facing.value = pdy > 0 ? 's' : 'n'
+        }
+      }
     }
     rafId = requestAnimationFrame(loop)
   }
@@ -66,6 +81,7 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
     y,
     focused,
     moving,
-    locked
+    locked,
+    facing,
   }
 }

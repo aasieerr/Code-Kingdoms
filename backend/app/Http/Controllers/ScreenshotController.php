@@ -43,7 +43,7 @@ class ScreenshotController extends Controller
         }
 
         Storage::disk('public')->put($path, base64_decode($image));
-        
+
         if (!Storage::disk('public')->exists($path)) {
             return response()->json(['message' => 'Failed to save image to disk'], 500);
         }
@@ -65,7 +65,7 @@ class ScreenshotController extends Controller
     public function destroy(Request $request, $id)
     {
         $screenshot = Screenshot::where('user_id', $request->user()->id)->findOrFail($id);
-        
+
         // Borrar el archivo físico
         if (Storage::disk('public')->exists($screenshot->image_path)) {
             Storage::disk('public')->delete($screenshot->image_path);

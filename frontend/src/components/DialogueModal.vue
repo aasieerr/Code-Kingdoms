@@ -10,22 +10,22 @@
           <span class="npc-type">{{ npc.tipo }}</span>
         </div>
       </div>
-      
+
       <div class="dialogue-content">
         <p>{{ displayedText }}</p>
       </div>
 
       <div class="dialogue-footer">
-        <button 
-          v-if="['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
-          class="shop-btn" 
+        <button
+          v-if="['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping"
+          class="shop-btn"
           @click="$emit('open-shop', npc)"
         >
           Comerciar
         </button>
-        <button 
-          v-if="!['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping" 
-          class="shop-btn stage-btn" 
+        <button
+          v-if="!['vendedor', 'shop', 'merchant', 'comerciante', 'mercader', 'tienda'].includes(npc.tipo?.toLowerCase()) && !isTyping"
+          class="shop-btn stage-btn"
           @click="$emit('open-stage-selector', npc)"
         >
           Viajar
@@ -67,9 +67,9 @@ function startTyping() {
   displayedText.value = ''
   let i = 0
   const text = currentDialogue.value
-  
+
   if (typingInterval) clearInterval(typingInterval)
-  
+
   typingInterval = setInterval(() => {
     if (i < text.length) {
       displayedText.value += text.charAt(i)
@@ -91,7 +91,7 @@ function nextDialogue() {
     finishTyping()
     return
   }
-  
+
   if (isLastDialogue.value) {
     emit('close')
   } else {

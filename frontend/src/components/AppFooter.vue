@@ -1,6 +1,6 @@
 <template>
   <footer class="app-footer relative z-40 px-8 pt-16 pb-10 mt-20 border-t-4 border-[#facc15] bg-[#0b0d17] shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-    
+
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 mb-16 text-left">
       <!-- Brand Section -->
       <div class="flex flex-col gap-6">
@@ -60,7 +60,7 @@
           <div class="flex items-center justify-between">
             <span class="text-[7px] text-[#facc15]/40 tracking-widest uppercase">Núcleo Central</span>
             <span class="flex items-center gap-2 text-[#4ade80] text-[7px] font-bold">
-              <span class="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_#4ade80]"></span> 
+              <span class="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_#4ade80]"></span>
               ESTABLE
             </span>
           </div>

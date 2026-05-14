@@ -4,9 +4,9 @@
       <span class="wallet-icon gold">🪙</span>
       <span class="wallet-val">{{ gold ?? 0 }}</span>
     </div>
-    
+
     <div class="wallet-divider"></div>
-    
+
     <div class="wallet-item">
       <span class="wallet-icon lvl">⬆</span>
       <span class="wallet-val lvl">LV {{ level ?? 1 }}</span>

@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchCharacter, ensureActiveCharacterId } from '../api/character'
 import api from '../api/axios'
+import { isPlayerPhpKingdom } from '../utils/realm'
+import { normalizeArenaProgressFromServer } from '../composables/arenaCombatShared'
 
 export const useCharacterStore = defineStore('character', () => {
   const gold = ref(0)
@@ -78,6 +80,15 @@ export const useCharacterStore = defineStore('character', () => {
         kingdomName.value = await fetchKingdomNameById(kingdomId.value)
       }
       equippedSkin.value = ch.equipped_skin
+      const enemyFactionKey = isPlayerPhpKingdom(kingdomName.value, kingdomId.value) ? 'java' : 'php'
+      const migrated = normalizeArenaProgressFromServer(
+        enemyFactionKey,
+        Number(ch.arena_section ?? 1) || 1,
+        Number(ch.arena_wave ?? 1) || 1,
+      )
+      arenaSection.value = migrated.section
+      arenaWave.value = migrated.wave
+      arenaInProgress.value = Boolean(ch.arena_in_progress)
       spriteData.value = ch.sprite_data || null
       characterClass.value = ch.character_class?.name || ch.class?.name || (ch.id_class === 1 ? 'Guerrero' : '')
       level.value = Math.max(1, Number(ch.level ?? 1) || 1)
@@ -87,9 +98,6 @@ export const useCharacterStore = defineStore('character', () => {
       attackSpeed.value = Math.max(0.1, Number(ch.attack_speed ?? ch.attackSpeed ?? 1) || 1)
       moveSpeed.value = Math.max(0.1, Number(ch.move_speed ?? ch.moveSpeed ?? 1) || 1)
       baseDamage.value = Math.max(1, Number(ch.base_damage ?? ch.baseDamage ?? 12) || 12)
-      arenaSection.value = Number(ch.arena_section ?? 1) || 1
-      arenaWave.value = Number(ch.arena_wave ?? 1) || 1
-      arenaInProgress.value = Boolean(ch.arena_in_progress)
 
       // El backend devuelve equipped_items[] desde la relación equippedItems
       // Buscamos el arma equipada dentro del array
