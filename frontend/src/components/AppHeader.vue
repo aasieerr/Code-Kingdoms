@@ -1,6 +1,6 @@
 <template>
   <nav class="app-header relative z-[100] flex items-center justify-between px-8 py-5 border-b-4 border-[#facc15] bg-[#0b0d17] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-    
+
     <!-- Logo Section -->
     <div class="flex items-center gap-6 cursor-pointer group" @click="router.push('/')">
       <img

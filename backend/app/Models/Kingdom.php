@@ -12,7 +12,7 @@ class Kingdom extends Model
 
     protected $primaryKey = 'id_kingdom';
     protected $table = 'kingdoms';
-    
+
     protected $fillable = [
         'name',
         'description',

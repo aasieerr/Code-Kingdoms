@@ -3,9 +3,13 @@
     <!-- Avatar Section -->
     <div class="hud-frame">
       <div class="hud-avatar-container">
-        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="hud-avatar-grid">
-          <div 
-            v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+        <div v-if="cosmeticPortraitSrc" class="hud-avatar-portrait">
+          <img class="hud-avatar-portrait__img" :src="cosmeticPortraitSrc" alt="">
+          <div class="avatar-scanlines"></div>
+        </div>
+        <div v-else-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="hud-avatar-grid">
+          <div
+            v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
             :key="pIdx"
             class="pixel"
             :style="{ backgroundColor: color || 'transparent' }"
@@ -68,16 +72,31 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useCharacterStore } from '../stores/character'
 import { parseSprite, isEmptySprite } from '../utils/sprite'
+import {
+  ASIER_SLUG,
+  getCosmeticShopPreviewBySlug,
+  getDirectionalSkinWorldSrc,
+} from '../constants/cosmeticVisuals'
 
-defineProps({
+const props = defineProps({
   mapOpen: { type: Boolean, default: false },
+  /** Mirada en lobby: n/s/e/w (solo si en HUD se usaran sprites direccionales). */
+  playerFacing: { type: String, default: 's' },
 })
 
 defineEmits(['open-equipment', 'open-inventory', 'open-stats', 'toggle-map', 'character-menu', 'open-settings', 'logout'])
 
 const characterStore = useCharacterStore()
+const cosmeticPortraitSrc = computed(() => {
+  const slug = characterStore.equippedSkin?.slug
+  if (String(slug ?? '').toLowerCase() === ASIER_SLUG) {
+    return getCosmeticShopPreviewBySlug(slug)
+  }
+  return getDirectionalSkinWorldSrc(slug, props.playerFacing)
+})
 </script>
 
 <style scoped>
@@ -86,7 +105,7 @@ const characterStore = useCharacterStore()
   top: 30px;
   left: 30px;
   z-index: 100;
-  width: 200px;
+  width: 268px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -99,7 +118,7 @@ const characterStore = useCharacterStore()
   background: #0f172a;
   border: 4px solid #facc15;
   box-shadow: 8px 8px 0 #854d0e, 0 10px 25px rgba(0,0,0,0.5);
-  padding: 12px;
+  padding: 8px;
   position: relative;
 }
 
@@ -113,6 +132,26 @@ const characterStore = useCharacterStore()
   position: relative;
   overflow: hidden;
   margin-bottom: 12px;
+}
+
+.hud-avatar-portrait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+.hud-avatar-portrait__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  flex-shrink: 0;
 }
 
 .hud-avatar-grid {

@@ -21,11 +21,11 @@ class KingdomController extends Controller
     public function show($id)
     {
         $kingdom = Kingdom::find($id);
-        
+
         if (!$kingdom) {
             return response()->json(['message' => 'Reino no encontrado'], 404);
         }
-        
+
         return $kingdom;
     }
 }

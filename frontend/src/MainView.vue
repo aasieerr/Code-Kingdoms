@@ -15,6 +15,13 @@
       <div class="grid"></div>
       <div class="terrain kingdom-lobby" :style="kingdomLobbyStyle"></div>
       <div
+        class="skin-shop-wardrobe"
+        :style="skinShopMarkerStyle"
+        aria-hidden="true"
+      >
+        <span class="skin-shop-wardrobe__tag">APARIENCIA</span>
+      </div>
+      <div
         class="player"
         :class="{ 'is-moving': moving }"
         :style="{
@@ -22,18 +29,21 @@
           top: y + 'px',
         }"
       >
-        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
+        <div v-if="cosmeticPortraitSrc" class="player__cosmetic">
+          <img class="player__cosmetic-img" :src="cosmeticPortraitSrc" alt="">
+        </div>
+        <div v-else-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
           <div class="mini-grid">
-            <div 
-              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+            <div
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
               :key="pIdx"
               class="mini-grid__pixel"
               :style="{ backgroundColor: color || 'transparent' }"
             ></div>
           </div>
         </div>
-        <div 
-          v-else 
+        <div
+          v-else
           class="player__fallback"
           :style="{ background: moving ? colorMoving : colorStill }"
         ></div>
@@ -70,6 +80,7 @@
     <!-- HUD -->
     <HudPanel
       :map-open="showMapPanel"
+      :player-facing="facing"
       @open-inventory="openPanel('inventory')"
       @open-equipment="openPanel('equipment')"
       @open-stats="showStats = true"
@@ -185,6 +196,8 @@ import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
 import { parseSprite, isEmptySprite } from './utils/sprite'
 import { isPlayerPhpKingdom } from './utils/realm'
+import { SKIN_SHOP_LOBBY_ZONES } from './constants/skinShopLobby'
+import { getDirectionalSkinWorldSrc, WARDROBE_LOBBY_IMAGE } from './constants/cosmeticVisuals'
 
 const router        = useRouter()
 const route = useRoute()
@@ -231,7 +244,7 @@ const colorMoving = ref('#f5a623')
 
 
 // Movimiento del personaje
-const { arenaRef, x, y, focused, moving, locked } = useWasd(
+const { arenaRef, x, y, focused, moving, locked, facing } = useWasd(
   WORLD_WIDTH / 2,
   startY,
   WORLD_WIDTH,
@@ -253,17 +266,35 @@ const {
   openDialogue
 } = npcsManager
 
-/** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
-const SKIN_SHOP = { x: 138, y: 678, w: 180, h: 132, pad: 24 }
+const skinShopRect = computed(() => (
+  isPlayerPhp.value ? SKIN_SHOP_LOBBY_ZONES.php : SKIN_SHOP_LOBBY_ZONES.java
+))
+
+const cosmeticPortraitSrc = computed(() =>
+  getDirectionalSkinWorldSrc(characterStore.equippedSkin?.slug, facing.value),
+)
+
+const skinShopMarkerStyle = computed(() => {
+  const z = skinShopRect.value
+  return {
+    left: `${z.x}px`,
+    top: `${z.y}px`,
+    width: `${z.w}px`,
+    height: `${z.h}px`,
+    backgroundImage: `url(${WARDROBE_LOBBY_IMAGE})`,
+  }
+})
+
 const inSkinShopZone = computed(() => {
   const ax = x.value
   const ay = y.value
-  const p = SKIN_SHOP.pad
+  const z = skinShopRect.value
+  const p = z.pad
   return (
-    ax >= SKIN_SHOP.x - p
-    && ax <= SKIN_SHOP.x + SKIN_SHOP.w + p
-    && ay >= SKIN_SHOP.y - p
-    && ay <= SKIN_SHOP.y + SKIN_SHOP.h + p
+    ax >= z.x - p
+    && ax <= z.x + z.w + p
+    && ay >= z.y - p
+    && ay <= z.y + z.h + p
   )
 })
 
@@ -408,7 +439,7 @@ const currentLobbyMapName = computed(() => (
 // Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
-  
+
   try {
     await refreshWallet()
     const imgSrc = isPlayerPhp.value ? phpKingdomMap : javaKingdomMap
@@ -432,7 +463,7 @@ onMounted(async () => {
     locked.value = true
     moving.value = true
     isFading.value = true
-    
+
     // Pequeña espera para asegurar que el componente se asiente
     setTimeout(() => {
       isFading.value = false
@@ -454,7 +485,6 @@ onMounted(async () => {
     // Transición desde el menú de personajes
     isFading.value = true
     locked.value = true
-    
     // Comprobar arena visit DESPUÉS de que el personaje esté cargado
     await refreshWallet()
     checkTutorialState()
@@ -498,7 +528,7 @@ function goToStage(stageNum) {
   isFading.value = true
 
   lastTransition.value = 'main-to-second'
-  
+
   setTimeout(() => {
     router.push({ name: 'SecondGame', query: { section: stageNum, wave: 1 } }).catch(() => {
       navigating.value = false
@@ -591,6 +621,44 @@ onUnmounted(() => {
 }
 /* Terrenos */
 .terrain { position: absolute; image-rendering: pixelated; z-index: 0; }
+.skin-shop-wardrobe {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2px 1px;
+  background-size: 48px auto;
+  background-repeat: no-repeat;
+  background-position: center 2px;
+  border: none;
+  border-radius: 0;
+  pointer-events: none;
+  animation: skin-shop-pulse 2.2s ease-in-out infinite;
+  box-shadow: none;
+}
+.skin-shop-wardrobe__tag {
+  font-size: 5px;
+  line-height: 1.2;
+  text-align: center;
+  color: #fffef5;
+  text-shadow:
+    0 0 6px #000,
+    0 0 3px #000,
+    0 1px 3px #000;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 2px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+@keyframes skin-shop-pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
 .kingdom-lobby {
   inset: 0;
 }
@@ -678,12 +746,29 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 6px;
-  box-shadow: 0 4px 15px rgba(0,0,0,.3);
   transition: background .1s;
 }
 
+.player__cosmetic {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.player__cosmetic-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
 .player__sprite {
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
   image-rendering: pixelated;
 }
 

@@ -45,7 +45,7 @@ class ItemSeeder extends Seeder
             ['name' => 'Arma Definitiva de JD', 'description' => 'Solo para pruebas locales; no aparece en la tienda.', 'damage' => 999, 'weapon_type' => 'varita', 'durability' => 999, 'price' => 1, 'id_kingdom' => null, 'is_purchasable' => false, 'id_class' => null],
 
             // ======================== REINO JAVA (30 Armas) ========================
-            
+
             // GUERRERO JAVA (6)
             ['name' => 'Espada de Acero Tipado', 'description' => 'Rígida y segura.', 'damage' => 32, 'weapon_type' => 'espada', 'durability' => 120, 'price' => 85, 'id_kingdom' => $idJava, 'id_class' => $idGuerrero],
             ['name' => 'Hacha Multi-Thread', 'description' => 'Múltiples hilos de dolor.', 'damage' => 45, 'weapon_type' => 'hacha', 'durability' => 150, 'price' => 145, 'id_kingdom' => $idJava, 'id_class' => $idGuerrero],

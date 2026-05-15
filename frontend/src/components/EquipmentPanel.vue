@@ -41,9 +41,9 @@
               @click="selectedItem = ci"
             >
               <div class="item-icon-box">
-                <img 
-                  v-if="ci.item?.type === 'weapon'" 
-                  :src="getItemSprite(ci.item)" 
+                <img
+                  v-if="ci.item?.type === 'weapon'"
+                  :src="getItemSprite(ci.item)"
                   class="item-pixel-sprite"
                   @error="(e) => e.target.src = '/vite.svg'"
                 />
@@ -80,9 +80,9 @@
       <aside class="item-preview" v-if="selectedItem?.item">
         <div class="preview-header">
           <div class="sprite-display">
-            <img 
-              v-if="selectedItem.item.type === 'weapon'" 
-              :src="getItemSprite(selectedItem.item)" 
+            <img
+              v-if="selectedItem.item.type === 'weapon'"
+              :src="getItemSprite(selectedItem.item)"
               class="display-pixel-sprite"
               @error="(e) => e.target.src = '/vite.svg'"
             />

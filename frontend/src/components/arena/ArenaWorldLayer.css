@@ -48,12 +48,30 @@ animation: walking 0.25s infinite alternate ease-in-out;
 width: 100%;
 height: 100%;
 border-radius: 6px;
-box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 transition: background 0.1s;
 }
 
+.player__cosmetic {
+width: 100%;
+height: 100%;
+border-radius: 6px;
+overflow: hidden;
+display: flex;
+align-items: flex-end;
+justify-content: center;
+}
+
+.player__cosmetic-img {
+width: 100%;
+height: 100%;
+object-fit: contain;
+object-position: center bottom;
+image-rendering: pixelated;
+flex-shrink: 0;
+}
+
 .player__sprite {
-filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+filter: none;
 image-rendering: pixelated;
 }
 

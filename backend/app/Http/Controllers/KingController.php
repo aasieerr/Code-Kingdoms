@@ -21,11 +21,11 @@ class KingController extends Controller
     public function show($id)
     {
         $king = King::find($id);
-        
+
         if (!$king) {
             return response()->json(['message' => 'Rey no encontrado'], 404);
         }
-        
+
         return $king;
     }
 }

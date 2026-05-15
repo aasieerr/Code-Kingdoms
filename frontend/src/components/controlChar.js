@@ -12,6 +12,8 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
   const stamina = ref(100)
   const isSprinting = ref(false)
   let isExhausted = false
+  /** Mirada top-down: n | s | e | w (último movimiento dominante). */
+  const facing = ref('s')
 
   const keys = { 
     moveUp: false, moveLeft: false, moveDown: false, moveRight: false,
@@ -47,6 +49,9 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
       const W = worldWidth - SIZE
       const H = worldHeight - SIZE
 
+      const prevX = x.value
+      const prevY = y.value
+
       // Lógica de Estamina
       const isMoving = keys.moveUp || keys.moveDown || keys.moveLeft || keys.moveRight
       
@@ -81,6 +86,16 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
       if (keys.moveRight) x.value = Math.min(W, x.value + currentSpeed)
 
       moving.value = isMoving
+
+      const pdx = x.value - prevX
+      const pdy = y.value - prevY
+      if (moving.value && (Math.abs(pdx) > 0.001 || Math.abs(pdy) > 0.001)) {
+        if (Math.abs(pdx) > Math.abs(pdy)) {
+          facing.value = pdx > 0 ? 'e' : 'w'
+        } else {
+          facing.value = pdy > 0 ? 's' : 'n'
+        }
+      }
     }
     rafId = requestAnimationFrame(loop)
   }
@@ -105,6 +120,7 @@ export function useWasd(initialX = 280, initialY = 170, worldWidth = WORLD_EDGE,
     y,
     focused,
     moving,
-    locked
+    locked,
+    facing,
   }
 }

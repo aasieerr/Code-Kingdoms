@@ -14,12 +14,11 @@ export const ENEMY_XP_REWARD = {
 }
 
 const ROUND_ENEMY_CONFIG = [
-  { garbage_collector: 3, thread_spammer: 2 },
-  { dependency_injector: 2, thread_spammer: 2 },
-  { garbage_collector: 3, boilerplate_guard: 2, legacy_monolith: 1, miniboss: 1, thread_spammer: 3 },
-  { microservice: 3, dependency_injector: 3, thread_spammer: 2 },
-  { dependency_injector: 4, composer_update: 2, microservice: 4, boilerplate_guard: 2 },
-  { legacy_monolith: 1, dependency_injector: 5, composer_update: 3, microservice: 5, boilerplate_guard: 2, miniboss: 1 },
+  { garbage_collector: 2, thread_spammer: 2 },
+  { dependency_injector: 2, thread_spammer: 2, garbage_collector: 1 },
+  { thread_spammer: 2, dependency_injector: 2, boilerplate_guard: 1 },
+  { microservice: 2, dependency_injector: 2, composer_update: 1, thread_spammer: 2 },
+  { dependency_injector: 3, boilerplate_guard: 2, microservice: 3, composer_update: 2, legacy_monolith: 1 },
 ]
 
 export const RANGED_ENEMY_TYPES = new Set([

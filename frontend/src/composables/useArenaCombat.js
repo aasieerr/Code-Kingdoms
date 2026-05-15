@@ -77,6 +77,7 @@ export function useArenaCombat(options = {}) {
   const stamina = ref(100)
   const isSprinting = ref(false)
   let isExhausted = false
+  const playerFacing = ref('s')
 
   const keys = { w: false, a: false, s: false, d: false, shift: false }
 
@@ -516,6 +517,8 @@ export function useArenaCombat(options = {}) {
       if (isSprinting.value) moveMult = 1.6
 
       const moveSpeed = resolveMovementSpeed() * dt * moveMult
+      const prevX = x.value
+      const prevY = y.value
       let nextX = x.value
       let nextY = y.value
       if (keys.w) {
@@ -532,6 +535,16 @@ export function useArenaCombat(options = {}) {
       }
       movePlayerConstrained(nextX, nextY)
       moving.value = Object.values(keys).some(Boolean)
+
+      const pdx = x.value - prevX
+      const pdy = y.value - prevY
+      if (moving.value && (Math.abs(pdx) > 0.001 || Math.abs(pdy) > 0.001)) {
+        if (Math.abs(pdx) > Math.abs(pdy)) {
+          playerFacing.value = pdx > 0 ? 'e' : 'w'
+        } else {
+          playerFacing.value = pdy > 0 ? 's' : 'n'
+        }
+      }
     }
 
     if (phase.value === 'fighting') {
@@ -642,7 +655,7 @@ export function useArenaCombat(options = {}) {
         if (heal > 0 && e.hp > 0) {
           nextEnemy.hp = Math.min(nextEnemy.maxHp, nextEnemy.hp + heal)
         }
-        
+
         // Enemy firing logic
         const bossShielded = isJavaBossShielded(nextEnemy, now)
         if (e.fireInterval && now - e.lastFireAt > e.fireInterval && !bossShielded) {
@@ -847,7 +860,7 @@ export function useArenaCombat(options = {}) {
             const e_ecx = e.x + esize / 2
             const e_ecy = e.y + esize / 2
             const dist = Math.hypot(e_ecx - pcx, e_ecy - pcy)
-            
+
             // Ángulo entre jugador y este enemigo específico
             const angleToEnemy = Math.atan2(e_ecy - pcy, e_ecx - pcx)
             // Diferencia angular con la dirección del ataque
@@ -1141,6 +1154,7 @@ export function useArenaCombat(options = {}) {
     enemyBullets,
     coins,
     slashes,
+    playerFacing,
     startNextWave,
     beginFirstWave,
     resumeAt,

@@ -29,6 +29,7 @@
       :y="y"
       :moving="moving"
       :sprite-data="characterStore.spriteData"
+      :cosmetic-portrait-src="arenaCosmeticPortraitSrc"
       :color-still="colorStill"
       :color-moving="colorMoving"
       :dependency-mark="dependencyMark"
@@ -138,32 +139,31 @@ import { getEnemyBulletSprite } from './constants/arenaEnemyBulletSprites'
 import { WORLD_EDGE, WORLD_WIDTH, PORTAL_HALF_WIDTH } from './constants/world'
 import { SECTION_MAPS } from './constants/maps'
 import { getArenaWalkBoundsRect, ARENA_BOSS_SECTION } from './constants/arenaWalkBounds'
+import { INTERMEDIATE_SECTIONS } from './composables/arenaCombatShared'
 import arrayIslandsMap from './assets/maps/array-islands-map.png'
 import jvmVolcanoMap from './assets/maps/jvm-volcano-map.png'
 import mavenMountainsMap from './assets/maps/maven-mountains-map.png'
 import springBootCityMap from './assets/maps/spring-boot-city-map.png'
-import gcSwampMap from './assets/maps/gc-swamp-map.png'
 import hibernateRuinsMap from './assets/maps/hibernate-ruins-map.png'
 import springBorderGateMap from './assets/maps/spring-border-gate-map.png'
 import eloquentSwampsMap from './assets/maps/eloquent-swamps-map.png'
-import bladeForestMap from './assets/maps/blade-forest-map.png'
 import composerDesertMap from './assets/maps/composer-desert-map.png'
 import laravelCitadelMap from './assets/maps/laravel-citadel-map.png'
 import phpFrontierMarshesMap from './assets/maps/php-frontier-marshes-map.png'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
-import bossAndresSheet from './assets/characters/pixellab-angry-middle-aged-male-wizard--1778238468527-3x.png'
-import javaBossIdle1 from './assets/characters/java-boss/1.png'
-import javaBossIdle2 from './assets/characters/java-boss/2.png'
-import javaBossIdle3 from './assets/characters/java-boss/3.png'
-import javaBossCast from './assets/characters/java-boss/4.png'
-import javaBossIdle5 from './assets/characters/java-boss/5.png'
-import javaBossIdle6 from './assets/characters/java-boss/6.png'
-import javaBossFly from './assets/characters/java-boss/7.png'
-import javaBossIdle8 from './assets/characters/java-boss/8.png'
-import javaBossCloak from './assets/characters/java-boss/9.png'
+import bossAndresSheet from './assets/characters/php-boss/andres-wizard-sprite-sheet-3x.png'
+import javaBossIdle1 from './assets/characters/java-boss/idle-1.png'
+import javaBossIdle2 from './assets/characters/java-boss/idle-2.png'
+import javaBossIdle3 from './assets/characters/java-boss/idle-3.png'
+import javaBossCast from './assets/characters/java-boss/cast.png'
+import javaBossIdle5 from './assets/characters/java-boss/idle-5.png'
+import javaBossIdle6 from './assets/characters/java-boss/idle-6.png'
+import javaBossFly from './assets/characters/java-boss/fly.png'
+import javaBossIdle8 from './assets/characters/java-boss/idle-8.png'
+import javaBossCloak from './assets/characters/java-boss/shield-cloak.png'
 import { lastTransition } from './gameState'
-import { ensureActiveCharacterId, addCharacterGold, fetchCharacter } from './api/character'
+import { ensureActiveCharacterId, addCharacterGold } from './api/character'
 import { consumeCharacterItem } from './api/consumable'
 import { fetchInventoryData, myCharacterItems } from './api/inventario'
 import api from './api/axios'
@@ -180,8 +180,7 @@ import { useCharacterStore } from './stores/character'
 import { useGameSettings } from './composables/useGameSettings'
 import { isPlayerPhpKingdom } from './utils/realm'
 import { xpRequiredForLevel } from './utils/experience'
-
-
+import { getDirectionalSkinWorldSrc } from './constants/cosmeticVisuals'
 
 const router = useRouter()
 const route = useRoute()
@@ -210,7 +209,7 @@ const colorStill = ref('#e94560')
 const colorMoving = ref('#f5a623')
 const arenaFaction = computed(() => (isPlayerPhp.value ? 'java' : 'php'))
 const currentMap = computed(() => {
-  const idx = Math.min((section.value || 1) - 1, 5)
+  const idx = Math.min(Math.max(0, (section.value || 1) - 1), INTERMEDIATE_SECTIONS - 1)
   return SECTION_MAPS[arenaFaction.value][idx]
 })
 const mapImageByName = {
@@ -218,14 +217,12 @@ const mapImageByName = {
   'JVM Volcano': jvmVolcanoMap,
   'Maven Mountains': mavenMountainsMap,
   'Spring Boot City': springBootCityMap,
-  'GC Swamp': gcSwampMap,
   'Hibernate Ruins': hibernateRuinsMap,
   'Spring Border Gate': springBorderGateMap,
-  'Eloquent Swamps': composerDesertMap,
-  'Blade Forest': eloquentSwampsMap,
-  'Composer Desert': bladeForestMap,
-  'Laravel Citadel': phpFrontierMarshesMap,
-  'PHP Frontier Marshes': laravelCitadelMap,
+  'Eloquent Swamps': eloquentSwampsMap,
+  'Composer Desert': composerDesertMap,
+  'Laravel Citadel': laravelCitadelMap,
+  'PHP Frontier Marshes': phpFrontierMarshesMap,
 }
 const currentArenaMapImage = computed(() => {
   if (isFinalKingdomSection.value) {
@@ -244,11 +241,9 @@ const isArrayIslandsSection = computed(() => currentMap.value?.name === 'Array I
 const isJvmVolcanoSection = computed(() => currentMap.value?.name === 'JVM Volcano')
 const isMavenMountainsSection = computed(() => currentMap.value?.name === 'Maven Mountains')
 const isSpringBootCitySection = computed(() => currentMap.value?.name === 'Spring Boot City')
-const isGcSwampSection = computed(() => currentMap.value?.name === 'GC Swamp')
 const isHibernateRuinsSection = computed(() => currentMap.value?.name === 'Hibernate Ruins')
 const isSpringBorderGateSection = computed(() => currentMap.value?.name === 'Spring Border Gate')
 const isEloquentSwampsSection = computed(() => currentMap.value?.name === 'Eloquent Swamps')
-const isBladeForestSection = computed(() => currentMap.value?.name === 'Blade Forest')
 const isComposerDesertSection = computed(() => currentMap.value?.name === 'Composer Desert')
 const isLaravelCitadelSection = computed(() => currentMap.value?.name === 'Laravel Citadel')
 const isPhpFrontierMarshesSection = computed(() => currentMap.value?.name === 'PHP Frontier Marshes')
@@ -322,14 +317,6 @@ const arenaFloorStyle = computed(() => {
       backgroundPosition: 'center',
     }
   }
-  if (isGcSwampSection.value) {
-    return {
-      backgroundImage: `url(${gcSwampMap})`,
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: '100% 100%',
-      backgroundPosition: 'center',
-    }
-  }
   if (isHibernateRuinsSection.value) {
     return {
       backgroundImage: `url(${hibernateRuinsMap})`,
@@ -349,14 +336,6 @@ const arenaFloorStyle = computed(() => {
   if (isEloquentSwampsSection.value) {
     return {
       backgroundImage: `url(${eloquentSwampsMap})`,
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: '100% 100%',
-      backgroundPosition: 'center',
-    }
-  }
-  if (isBladeForestSection.value) {
-    return {
-      backgroundImage: `url(${bladeForestMap})`,
       backgroundRepeat: 'no-repeat',
       backgroundSize: '100% 100%',
       backgroundPosition: 'center',
@@ -503,7 +482,7 @@ const xpProgressPct = computed(() => {
 })
 
 function getSectionMapNameByIndex(faction, sectionNumber) {
-  const sectionIndex = Math.min(Math.max(Number(sectionNumber || 1) - 1, 0), 5)
+  const sectionIndex = Math.min(Math.max(Number(sectionNumber || 1) - 1, 0), INTERMEDIATE_SECTIONS - 1)
   return SECTION_MAPS[faction]?.[sectionIndex]?.name || ''
 }
 
@@ -583,6 +562,7 @@ const {
   slashes,
   stamina,
   isSprinting,
+  playerFacing,
   startNextWave,
   beginFirstWave,
   resumeAt,
@@ -612,6 +592,10 @@ const {
     syncRunGoldOnce()
   }
 })
+
+const arenaCosmeticPortraitSrc = computed(() =>
+  getDirectionalSkinWorldSrc(characterStore.equippedSkin?.slug, playerFacing.value),
+)
 
 let lastArenaPotionUseAt = 0
 const ARENA_POTION_USE_COOLDOWN_MS = 450
@@ -1047,17 +1031,17 @@ async function leaveArena() {
   if (navigating.value) return
   navigating.value = true
   locked.value = true
-  
+
   try {
     await saveArenaProgress(true)
     await syncRunGoldOnce()
   } catch (err) {
     console.error("Fallo final de sync:", err)
   }
-  
+
   isFading.value = true
   lastTransition.value = 'second-to-main'
-  
+
   setTimeout(() => {
     router.push({ name: 'Game' }).catch(() => {
       navigating.value = false
@@ -1089,18 +1073,10 @@ function startArenaCombat(startOverride = null) {
 onMounted(async () => {
   let queryStart = getArenaStartFromQuery()
   window.addEventListener('beforeunload', saveArenaProgress, { capture: true })
-  
+
   try {
     arenaCharacterId.value = await ensureActiveCharacterId()
-    const arenaCharacter = arenaCharacterId.value != null
-      ? await fetchCharacter(arenaCharacterId.value)
-      : null
     await refreshWallet()
-    if (arenaCharacter) {
-      characterStore.arenaSection = Number(arenaCharacter.arena_section ?? 1) || 1
-      characterStore.arenaWave = Number(arenaCharacter.arena_wave ?? 1) || 1
-      characterStore.arenaInProgress = Boolean(arenaCharacter.arena_in_progress)
-    }
     if (queryStart) {
       const allowedQueryStart = getArenaStartWithinProgress(queryStart)
       if (
@@ -1152,7 +1128,7 @@ onMounted(async () => {
     isFading.value = true
     const playerPhp = isPlayerPhp.value
     y.value = playerPhp ? ARENA_WORLD_HEIGHT + 50 : -50
-    
+
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
@@ -1192,7 +1168,7 @@ onMounted(async () => {
 
 watch([x, y], ([newX, newY]) => {
   if (locked.value || navigating.value || portalCooldown.value) return
-  
+
   const cx = WORLD_W / 2
   if (
     phase.value === 'idle'

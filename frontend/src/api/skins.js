@@ -7,14 +7,13 @@ export async function fetchSkinsCatalog() {
 }
 
 export async function purchaseSkin(skinId) {
-  const cid = requireActiveCharacterId()
   const { data } = await api.post('/skins/purchase', {
-    id_character: cid,
     skin_id: skinId,
   })
   return data
 }
 
+/** Equipa una skin comprada, o `null` para volver al pixel-art del creador. */
 export async function equipSkin(skinId) {
   const cid = requireActiveCharacterId()
   const { data } = await api.post(

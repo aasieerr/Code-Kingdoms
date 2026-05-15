@@ -1,7 +1,7 @@
 <template>
   <div class="pixel-page min-h-screen flex flex-col">
     <AppHeader />
-    
+
     <!-- Scanlines overlay -->
     <div class="fixed inset-0 pointer-events-none z-50 opacity-[0.03]"
       style="background: repeating-linear-gradient(0deg, #000 0px, #000 1px, transparent 1px, transparent 2px);">
@@ -9,7 +9,7 @@
 
     <!-- CONTENT -->
     <main class="relative z-10 max-w-6xl mx-auto px-6 py-20 flex-grow w-full">
-      
+
       <!-- Header Section -->
       <div class="text-center mb-16">
         <div class="inline-block relative mb-6">
@@ -20,7 +20,7 @@
           TUS MOMENTOS ÉPICOS EN <span class="text-[#3b82f6]">CODE KINGDOMS</span>. PULSA <span class="text-white border border-white/20 px-2 py-0.5 rounded bg-white/5">F8</span> EN EL JUEGO PARA CAPTURAR MÁS.
         </p>
       </div>
-      
+
       <!-- Filters Section -->
       <div v-if="!loading && screenshots.length > 0" class="flex flex-wrap justify-center gap-4 mb-12">
         <button v-for="char in uniqueCharacters" :key="char"
@@ -49,10 +49,10 @@
       <!-- Screenshots Grid -->
       <div v-else class="flex flex-col items-center gap-12">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-          <div v-for="(screenshot, index) in filteredScreenshots.slice(0, visibleCount)" :key="screenshot.id" 
+          <div v-for="(screenshot, index) in filteredScreenshots.slice(0, visibleCount)" :key="screenshot.id"
             class="screenshot-card group relative p-3 bg-[#0f172a] border-4 border-[#facc15]/10 hover:border-[#facc15] transition-all duration-300"
             :style="{ animationDelay: (index * 50) + 'ms' }">
-            
+
             <!-- Image Container -->
             <div class="aspect-video bg-black overflow-hidden relative border-2 border-[#facc15]/10 group-hover:border-[#facc15]/30 cursor-pointer"
                  @click="openLightbox(screenshot)">
@@ -90,7 +90,7 @@
         </div>
 
         <!-- Load More Button -->
-        <button v-if="visibleCount < filteredScreenshots.length" 
+        <button v-if="visibleCount < filteredScreenshots.length"
                 @click="loadMore"
                 class="load-more-btn group">
           <span class="relative z-10 flex items-center gap-4">
@@ -106,19 +106,19 @@
     <Transition name="fade">
       <div v-if="selectedScreenshot" class="fixed inset-0 z-[100] flex items-center justify-center p-6 md:p-20">
         <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" @click="selectedScreenshot = null"></div>
-        
+
         <div class="relative z-10 max-w-full max-h-full flex flex-col gap-6">
           <div class="relative bg-[#0f172a] p-2 border-4 border-[#facc15] shadow-[0_0_50px_rgba(250,204,21,0.2)] group-lightbox">
             <img :src="selectedScreenshot.image_url" class="max-w-full max-h-[70vh] object-contain" />
-            
-            <button @click="selectedScreenshot = null" 
+
+            <button @click="selectedScreenshot = null"
                     class="absolute top-2 right-2 w-10 h-10 bg-[#ef4444] border-2 border-white text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 transition-transform z-[101]">
               ×
             </button>
           </div>
-          
+
           <div class="flex justify-center gap-6">
-            <a :href="selectedScreenshot.image_url" download 
+            <a :href="selectedScreenshot.image_url" download
                class="pixel-btn-blue text-[9px] px-8 py-3">
               DESCARGAR PNG
             </a>
@@ -228,7 +228,7 @@ const fetchScreenshots = async () => {
 
 const deleteScreenshot = async (id) => {
   if (!confirm('¿Seguro que quieres borrar este recuerdo?')) return
-  
+
   try {
     await screenshotsApi.delete(id)
     screenshots.value = screenshots.value.filter(s => s.id !== id)
@@ -281,9 +281,9 @@ const confirmPublish = async () => {
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('es-ES', { 
-    day: '2-digit', 
-    month: '2-digit', 
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
     year: '2-digit',
     hour: '2-digit',
     minute: '2-digit'

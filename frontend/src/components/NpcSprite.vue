@@ -7,8 +7,8 @@
       display: (npc.x === undefined || npc.y === undefined || npc.x === null || npc.y === null) ? 'none' : 'flex'
     }"
   >
-    <div 
-      class="npc-sprite" 
+    <div
+      class="npc-sprite"
       :class="npc.tipo"
       @click="$emit('interact', npc)"
     >

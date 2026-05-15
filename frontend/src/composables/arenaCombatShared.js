@@ -15,11 +15,11 @@ export const FIRE_INTERVAL_MS = 320
 export const BULLET_DAMAGE = 12
 export const MAGNET_RANGE = 120
 export const MAGNET_SPEED = 2.2
-export const TOTAL_SECTIONS = 7
-export const INTERMEDIATE_SECTIONS = 6
-export const WAVES_PER_SECTION = 10
-export const SECTION_GROWTH = 0.55
-export const WAVE_GROWTH = 0.06
+export const TOTAL_SECTIONS = 6
+export const INTERMEDIATE_SECTIONS = 5
+export const WAVES_PER_SECTION = 7
+export const SECTION_GROWTH = 0.22
+export const WAVE_GROWTH = 0.028
 export const LEVEL_DAMAGE_BONUS = 0.055
 export const JAVA_BOSS_SHIELD_MS = 1800
 export const JAVA_BOSS_SHIELD_GAP_MS = 6500
@@ -58,22 +58,62 @@ export function waveMultiplier(waveValue) {
 
 export function earlyWaveMultiplier(sectionValue, waveValue) {
   if (sectionValue !== 1) return 1
-  if (waveValue <= 2) return 0.65
-  if (waveValue <= 4) return 0.80
-  if (waveValue <= 6) return 0.92
+  if (waveValue <= 2) return 0.48
+  if (waveValue <= 4) return 0.68
+  if (waveValue <= 5) return 0.84
   return 1
 }
 
 export function earlyWaveEnemyCountMultiplier(sectionValue, waveValue) {
   if (sectionValue !== 1) return 1
-  if (waveValue <= 2) return 0.5
-  if (waveValue <= 4) return 0.7
-  if (waveValue <= 6) return 0.85
+  if (waveValue <= 2) return 0.52
+  if (waveValue <= 4) return 0.72
+  if (waveValue <= 5) return 0.86
   return 1
 }
 
 export function maxWavesForSection(sectionValue) {
   return Number(sectionValue) >= TOTAL_SECTIONS ? 1 : WAVES_PER_SECTION
+}
+
+/**
+ * Ajusta progreso guardado con el esquema antiguo (6 intermedias, jefe en 7, oleadas hasta 10).
+ * El esquema actual: 5 intermedias, jefe en 6, 7 oleadas.
+ */
+export function normalizeArenaProgressFromServer(enemyFactionKey, savedSection, savedWave) {
+  const rawS = Math.max(1, Math.floor(Number(savedSection) || 1))
+  const rawW = Math.max(1, Math.floor(Number(savedWave) || 1))
+  const faction = String(enemyFactionKey || '')
+  let s = rawS
+  let w = rawW
+
+  if (s >= 7) {
+    return { section: TOTAL_SECTIONS, wave: 1 }
+  }
+
+  // Antes el jefe estaba en 7; la sección 6 con oleada >1 era la última intermedia.
+  if (s === 6 && rawW > 1) {
+    return { section: INTERMEDIATE_SECTIONS, wave: Math.min(rawW, WAVES_PER_SECTION) }
+  }
+
+  const oldLongWaves = rawW > WAVES_PER_SECTION
+  if (oldLongWaves) {
+    w = Math.min(rawW, WAVES_PER_SECTION)
+    if (faction === 'java') {
+      if (s === 5) s = 4
+      else if (s === 6) s = 5
+    } else if (faction === 'php' && s >= 4) {
+      s = Math.max(1, s - 1)
+    }
+  } else {
+    w = Math.min(rawW, WAVES_PER_SECTION)
+  }
+
+  s = Math.min(Math.max(1, s), TOTAL_SECTIONS)
+  if (s >= TOTAL_SECTIONS) {
+    return { section: TOTAL_SECTIONS, wave: 1 }
+  }
+  return { section: s, wave: Math.min(w, WAVES_PER_SECTION) }
 }
 
 export function randomSpawnEdgePosition(worldW, worldH, pad = 80, entitySize = ENEMY_SIZE, getSpawnRect = null) {

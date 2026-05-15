@@ -1,11 +1,11 @@
 <template>
-  <div class="char-page min-h-screen flex flex-col bg-[#0b0d17] overflow-hidden" 
+  <div class="char-page min-h-screen flex flex-col bg-[#0b0d17] overflow-hidden"
     :class="{ 'is-zooming': isZooming }"
-    :style="{ 
+    :style="{
       fontFamily: '\'Press Start 2P\', monospace',
       transformOrigin: zoomOrigin
     }">
-    
+
     <AppHeader />
 
     <main class="flex-grow max-w-6xl mx-auto w-full px-6 py-10">
@@ -39,9 +39,15 @@
                 :class="{ 'char-card--active': activeCharacterId === c.id }"
               >
                 <div class="char-card__avatar">
-                  <div v-if="c.sprite_data && !isEmptySprite(c.sprite_data)" class="mini-grid">
-                    <div 
-                      v-for="(color, pIdx) in parseSprite(c.sprite_data)" 
+                  <img
+                    v-if="charListPortrait(c)"
+                    class="char-card__portrait"
+                    :src="charListPortrait(c)"
+                    alt=""
+                  >
+                  <div v-else-if="c.sprite_data && !isEmptySprite(c.sprite_data)" class="mini-grid">
+                    <div
+                      v-for="(color, pIdx) in parseSprite(c.sprite_data)"
                       :key="pIdx"
                       class="mini-grid__pixel"
                       :style="{ backgroundColor: color || 'transparent' }"
@@ -119,6 +125,7 @@ import CreateCharacterForm from '../components/CreateCharacterForm.vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import { parseSprite, isEmptySprite } from '../utils/sprite'
+import { getCosmeticShopPreviewBySlug } from '../constants/cosmeticVisuals'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -155,13 +162,17 @@ function labelClass(c) { return c.character_class?.name ?? c.characterClass?.nam
 function charLevel(c) { return Math.max(1, Number(c?.level ?? 1) || 1) }
 function charExperience(c) { return Math.max(0, Number(c?.experience ?? c?.xp ?? 0) || 0) }
 
+function charListPortrait(c) {
+  return getCosmeticShopPreviewBySlug(c?.equipped_skin?.slug)
+}
+
 const isZooming = ref(false)
 const zoomOrigin = ref('center center')
 
 function playAs(event, c) {
   if (c?.id == null) return
   setActiveCharacterId(c.id)
-  
+
   // Calculate zoom origin from button position
   if (event && event.currentTarget) {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -172,7 +183,7 @@ function playAs(event, c) {
 
   lastTransition.value = 'menu-to-game'
   isZooming.value = true
-  
+
   // Navigate after zoom and fade
   setTimeout(() => {
     router.push({ name: 'Game' })
@@ -186,7 +197,7 @@ function askDelete(id) {
 
 async function confirmDelete() {
   if (!characterToDelete.value) return
-  
+
   try {
     await deleteCharacter(characterToDelete.value)
     if (activeCharacterId.value === characterToDelete.value) {
@@ -294,6 +305,15 @@ async function logout() {
   flex-shrink: 0;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
   image-rendering: pixelated;
+  overflow: hidden;
+}
+
+.char-card__portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
 }
 
 .mini-grid {
@@ -307,18 +327,6 @@ async function logout() {
 .mini-grid__pixel {
   width: 3px;
   height: 3px;
-}
-
-.char-card__avatar {
-  width: 48px;
-  height: 48px;
-  background: #0f172a;
-  border: 2px solid #854d0e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
 }
 
 .char-card__placeholder {
