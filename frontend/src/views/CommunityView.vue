@@ -43,20 +43,10 @@
           :key="post.id"
           :post="post"
           :index="index"
-          :expanded="!!expandedComments[post.id]"
-          :comments-loading="commentsState[post.id]?.loading"
-          :comments="commentsState[post.id]?.items || []"
-          :comment-draft="commentDrafts[post.id] ?? ''"
-          :like-pending="likePendingId === post.id"
-          :comment-submitting="commentSubmittingId === post.id"
           :is-logged-in="!!authStore.token"
           :format-date="formatDate"
           @like="toggleLike(post)"
-          @toggle-comments="toggleComments(post.id)"
-          @remove-post="removePost(post.id)"
-          @remove-comment="(commentId) => removeComment(post.id, commentId)"
-          @submit-comment="submitComment(post.id)"
-          @update:comment-draft="(v) => { commentDrafts[post.id] = v }"
+          @open-modal="openPostModal(post)"
         />
       </div>
 
@@ -91,6 +81,26 @@
       />
     </Transition>
 
+    <Transition name="fade">
+      <CommunityPostModal
+        v-if="selectedPostForModal"
+        :post="selectedPostForModal"
+        :comments-loading="commentsState[selectedPostForModal.id]?.loading"
+        :comments="commentsState[selectedPostForModal.id]?.items || []"
+        :comment-draft="commentDrafts[selectedPostForModal.id] ?? ''"
+        :like-pending="likePendingId === selectedPostForModal.id"
+        :comment-submitting="commentSubmittingId === selectedPostForModal.id"
+        :is-logged-in="!!authStore.token"
+        :format-date="formatDate"
+        @close="closePostModal"
+        @like="toggleLike(selectedPostForModal)"
+        @remove-post="removePost(selectedPostForModal.id)"
+        @remove-comment="(commentId) => removeComment(selectedPostForModal.id, commentId)"
+        @submit-comment="submitComment(selectedPostForModal.id)"
+        @update:comment-draft="(v) => { commentDrafts[selectedPostForModal.id] = v }"
+      />
+    </Transition>
+
     <AppFooter />
   </div>
 </template>
@@ -101,6 +111,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import CommunityPostCard from '../components/community/CommunityPostCard.vue'
+import CommunityPostModal from '../components/community/CommunityPostModal.vue'
 import CommunityPublishModal from '../components/community/CommunityPublishModal.vue'
 import communityApi from '../api/community'
 import screenshotsApi from '../api/screenshots'
@@ -127,7 +138,7 @@ const publishCaption = ref('')
 
 const likePendingId = ref(null)
 const commentSubmittingId = ref(null)
-const expandedComments = reactive({})
+const selectedPostForModal = ref(null)
 const commentsState = reactive({})
 const commentDrafts = reactive({})
 
@@ -249,14 +260,14 @@ async function publishSelectedScreenshot() {
 }
 
 async function removePost(postId) {
-  if (!confirm('¿Quieres retirar esta publicación del tablón?')) return
-
   try {
     await communityApi.remove(postId)
     posts.value = posts.value.filter((post) => post.id !== postId)
-    delete expandedComments[postId]
     delete commentsState[postId]
     delete commentDrafts[postId]
+    if (selectedPostForModal.value?.id === postId) {
+      closePostModal()
+    }
   } catch (error) {
     console.error('Error removing community post:', error)
     alert('No se pudo retirar la publicación.')
@@ -283,12 +294,15 @@ async function toggleLike(post) {
   }
 }
 
-async function toggleComments(postId) {
-  expandedComments[postId] = !expandedComments[postId]
-  if (!expandedComments[postId]) return
-  if (!commentsState[postId]) {
-    await loadComments(postId)
+async function openPostModal(post) {
+  selectedPostForModal.value = post
+  if (!commentsState[post.id]) {
+    await loadComments(post.id)
   }
+}
+
+function closePostModal() {
+  selectedPostForModal.value = null
 }
 
 async function loadComments(postId) {

@@ -34,6 +34,11 @@
           <span class="btn-text">MOCHILA</span>
           <div class="btn-glow"></div>
         </button>
+        <button class="nav-btn stats-btn" @click.stop="$emit('open-stats')">
+          <span class="btn-text">ESTADÍSTICAS</span>
+          <div v-if="characterStore.statPoints > 0" class="notification-dot animate-pulse"></div>
+          <div class="btn-glow"></div>
+        </button>
         <button class="nav-btn secondary" @click.stop="$emit('toggle-map')">
           <span class="btn-text">{{ mapOpen ? 'CERRAR' : 'MAPA' }}</span>
         </button>
@@ -70,7 +75,7 @@ defineProps({
   mapOpen: { type: Boolean, default: false },
 })
 
-defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'open-settings', 'logout'])
+defineEmits(['open-equipment', 'open-inventory', 'open-stats', 'toggle-map', 'character-menu', 'open-settings', 'logout'])
 
 const characterStore = useCharacterStore()
 </script>
@@ -236,6 +241,26 @@ const characterStore = useCharacterStore()
   margin: 4px 0;
 }
 
+.stats-btn {
+  background: #065f46;
+  border-color: #10b981;
+  color: #ecfdf5;
+  box-shadow: 4px 4px 0 #064e3b;
+}
+.stats-btn:hover {
+  background: #059669;
+  color: white;
+}
+.notification-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  background: #facc15;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #facc15;
+}
 .hero-btn { background: #1e40af; border-color: #1d4ed8; color: #dbeafe; box-shadow: 4px 4px 0 #1e3a8a; }
 .hero-btn:hover { background: #2563eb; color: white; }
 

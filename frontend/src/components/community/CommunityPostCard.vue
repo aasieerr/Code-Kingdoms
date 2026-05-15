@@ -4,30 +4,22 @@ import UserAvatar from '../UserAvatar.vue'
 defineProps({
   post: { type: Object, required: true },
   index: { type: Number, required: true },
-  expanded: { type: Boolean, default: false },
-  commentsLoading: { type: Boolean, default: false },
   comments: { type: Array, default: () => [] },
-  commentDraft: { type: String, default: '' },
-  likePending: { type: Boolean, default: false },
-  commentSubmitting: { type: Boolean, default: false },
   isLoggedIn: { type: Boolean, default: false },
   formatDate: { type: Function, required: true },
 })
 
 const emit = defineEmits([
+  'open-modal',
   'like',
-  'toggle-comments',
-  'remove-post',
-  'remove-comment',
-  'submit-comment',
-  'update:comment-draft',
 ])
 </script>
 
 <template>
   <article
-    class="post-card group relative p-5 bg-[#0f172a] border-4 border-[#facc15]/10 hover:border-[#facc15] transition-all duration-300"
+    class="post-card group relative p-5 bg-[#0f172a] border-4 border-[#facc15]/10 hover:border-[#facc15] transition-all duration-300 cursor-pointer"
     :style="{ animationDelay: (index * 100) + 'ms' }"
+    @click="emit('open-modal')"
   >
     <div class="absolute -top-1 -left-1 w-3 h-3 border-t-4 border-l-4 border-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity"></div>
     <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-4 border-r-4 border-[#facc15] opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -77,82 +69,18 @@ const emit = defineEmits([
         <button
           class="engagement-button"
           :class="{ active: post.viewer_has_liked }"
-          :disabled="likePending"
-          @click="emit('like')"
+          @click.stop="emit('like')"
         >
           <span>{{ post.viewer_has_liked ? '♥' : '♡' }}</span>
           <span>{{ post.likes_count || 0 }}</span>
         </button>
 
-        <button class="engagement-button" @click="emit('toggle-comments')">
+        <button class="engagement-button pointer-events-none">
           <span>💬</span>
           <span>{{ post.comments_count || 0 }}</span>
         </button>
       </div>
 
-      <div v-if="expanded" class="comments-panel">
-        <div v-if="commentsLoading" class="text-[7px] text-[#facc15]/40 tracking-widest py-2">
-          CARGANDO COMENTARIOS...
-        </div>
-
-        <div v-else-if="comments.length === 0" class="text-[7px] text-[#facc15]/30 tracking-widest py-2">
-          SÉ EL PRIMERO EN COMENTAR ESTA CRÓNICA.
-        </div>
-
-        <div v-else class="flex flex-col gap-3">
-          <div
-            v-for="comment in comments"
-            :key="comment.id"
-            class="comment-item"
-          >
-            <div class="flex items-start gap-3">
-              <UserAvatar :name="comment.author" :avatar-url="comment.author_avatar_url" size="sm" />
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-[7px] text-[#facc15] tracking-widest font-bold">{{ comment.author }}</span>
-                  <span class="text-[6px] text-[#facc15]/30 uppercase">{{ formatDate(comment.created_at) }}</span>
-                </div>
-                <p class="text-[7px] text-white/75 leading-6 mt-1 break-words">{{ comment.body }}</p>
-                <button
-                  v-if="comment.is_mine"
-                  class="text-[#ef4444]/60 hover:text-[#ef4444] text-[6px] tracking-widest mt-2"
-                  @click="emit('remove-comment', comment.id)"
-                >
-                  BORRAR
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="isLoggedIn" class="mt-4 flex flex-col gap-3">
-          <textarea
-            :value="commentDraft"
-            rows="2"
-            maxlength="500"
-            class="publish-caption"
-            placeholder="Escribe tu comentario sobre esta crónica..."
-            @input="emit('update:comment-draft', $event.target.value)"
-          ></textarea>
-          <button
-            class="btn-pixel-gold text-[8px] px-4 py-2 self-end"
-            :disabled="!commentDraft?.trim() || commentSubmitting"
-            @click="emit('submit-comment')"
-          >
-            {{ commentSubmitting ? 'ENVIANDO...' : 'COMENTAR' }}
-          </button>
-        </div>
-        <p v-else class="text-[7px] text-[#facc15]/30 tracking-widest mt-4">
-          <router-link to="/login" class="text-[#facc15]/60 hover:text-[#facc15] underline">Inicia sesión</router-link>
-          para comentar.
-        </p>
-      </div>
-
-      <div v-if="post.is_mine" class="flex justify-end border-t-2 border-[#facc15]/5 pt-4">
-        <button class="text-[#ef4444]/60 hover:text-[#ef4444] text-[7px] tracking-widest" @click="emit('remove-post')">
-          RETIRAR PUBLICACIÓN
-        </button>
-      </div>
     </div>
   </article>
 </template>

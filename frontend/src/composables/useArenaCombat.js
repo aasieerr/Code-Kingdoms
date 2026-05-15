@@ -1,4 +1,4 @@
-import { ref, shallowRef, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 import { getArenaWalkBoundsRect } from '../constants/arenaWalkBounds'
 import {
@@ -74,8 +74,11 @@ export function useArenaCombat(options = {}) {
   const focused = ref(false)
   const moving = ref(false)
   const locked = ref(false)
+  const stamina = ref(100)
+  const isSprinting = ref(false)
+  let isExhausted = false
 
-  const keys = { w: false, a: false, s: false, d: false }
+  const keys = { w: false, a: false, s: false, d: false, shift: false }
 
   const wave = ref(1)
   const section = ref(1)
@@ -88,6 +91,16 @@ export function useArenaCombat(options = {}) {
   const phase = ref('idle')
   const playerHp = ref(100)
   const playerMaxHp = ref(100)
+
+  // Sincronizar reactivamente si el valor de las opciones cambia (ej: tras cargar el personaje)
+  watch(() => (options.playerMaxHp?.value ?? options.playerMaxHp), (newMax) => {
+    const val = Math.max(1, Math.round(Number(newMax) || 100))
+    playerMaxHp.value = val
+    // Si estamos en reposo (fase idle), también rellenamos la vida actual
+    if (phase.value === 'idle') {
+      playerHp.value = val
+    }
+  }, { immediate: true })
   /** Oro recogido en esta sesión de arena (antes de sincronizar con API) */
   const sessionGold = ref(0)
   const dependencyMark = ref(null)
@@ -179,7 +192,11 @@ export function useArenaCombat(options = {}) {
   function applyPlayerDamage(rawDamage) {
     const safeDamage = Math.max(0, Math.round(Number(rawDamage) || 0))
     if (safeDamage <= 0) return
-    const armorReduction = Math.min(0.55, Math.max(0, Number(characterArmor.value || 0) * 0.006))
+    
+    // Cada punto de armadura reduce un 0.8% el daño, hasta un máximo de 65% de reducción
+    const armorValue = Number(characterArmor.value || 0)
+    const armorReduction = Math.min(0.65, Math.max(0, armorValue * 0.008))
+    
     const mitigatedDamage = Math.max(1, Math.round(safeDamage * (1 - armorReduction)))
     playerHp.value = Math.max(0, playerHp.value - mitigatedDamage)
   }
@@ -468,11 +485,37 @@ export function useArenaCombat(options = {}) {
     y.value = canSlideY ? boundedY : prevY
   }
 
-  function tick() {
-    const now = performance.now()
+  let lastTickAt = 0
+  function tick(now) {
+    if (!lastTickAt) lastTickAt = now
+    const dt = (now - lastTickAt) / 16.666 // Normalizar a 60fps
+    lastTickAt = now
 
     if (!locked.value && arenaRef.value) {
-      const moveSpeed = resolveMovementSpeed()
+      const isMoving = keys.w || keys.s || keys.a || keys.d
+      
+      if (stamina.value <= 0) {
+        isExhausted = true
+      } else if (stamina.value >= 25) {
+        isExhausted = false
+      }
+
+      const wantsToSprint = keys.shift && isMoving && !isExhausted
+
+      if (wantsToSprint) {
+        isSprinting.value = true
+        // dt es ~1 a 60fps. 25 estamina por seg = ~0.416 por frame
+        stamina.value = Math.max(0, stamina.value - 0.416 * dt)
+      } else {
+        isSprinting.value = false
+        // 15 estamina por seg = ~0.25 por frame
+        stamina.value = Math.min(100, stamina.value + 0.25 * dt)
+      }
+
+      let moveMult = 1
+      if (isSprinting.value) moveMult = 1.6
+
+      const moveSpeed = resolveMovementSpeed() * dt * moveMult
       let nextX = x.value
       let nextY = y.value
       if (keys.w) {
@@ -522,18 +565,15 @@ export function useArenaCombat(options = {}) {
         dy /= len
         let nx = e.x
         let ny = e.y
-
+        const eSpeed = (e.speed || 1) * dt
         if (e.type === 'boss') {
-          // Boss mago: kiting + strafe lateral. Mantiene ~360px de distancia.
-          const preferred = 360
-          const strafeAngle = now / 700 + (e.zigSeed || 0)
-          const strafeAmt = Math.sin(strafeAngle) * 1.6
-          if (len > preferred + 30) {
-            nx = e.x + dx * (e.speed * 0.7) + (-dy) * strafeAmt
-            ny = e.y + dy * (e.speed * 0.7) + (dx) * strafeAmt
-          } else if (len < preferred - 30) {
-            nx = e.x - dx * e.speed + (-dy) * strafeAmt
-            ny = e.y - dy * e.speed + (dx) * strafeAmt
+          const strafeAmt = Math.sin(now / 700 + (e.zigSeed || 0)) * 1.5 * dt
+          if (len > 350) {
+            nx = e.x + dx * eSpeed
+            ny = e.y + dy * eSpeed
+          } else if (len < 220) {
+            nx = e.x - dx * eSpeed + (dx) * strafeAmt
+            ny = e.y - dy * eSpeed + (dx) * strafeAmt
           } else {
             nx = e.x + (-dy) * strafeAmt * 1.2
             ny = e.y + (dx) * strafeAmt * 1.2
@@ -541,30 +581,30 @@ export function useArenaCombat(options = {}) {
         } else if (e.type === 'dependency_injector' || e.type === 'thread_spammer' || e.type === 'miniboss') {
           const preferred = e.type === 'miniboss' ? 185 : 195
           if (len > preferred + 20) {
-            nx = e.x + dx * (e.speed * 0.72)
-            ny = e.y + dy * (e.speed * 0.72)
+            nx = e.x + dx * (eSpeed * 0.72)
+            ny = e.y + dy * (eSpeed * 0.72)
           } else if (len < preferred - 20) {
-            nx = e.x - dx * (e.speed * 0.88)
-            ny = e.y - dy * (e.speed * 0.88)
+            nx = e.x - dx * (eSpeed * 0.88)
+            ny = e.y - dy * (eSpeed * 0.88)
           }
         } else if (e.type === 'composer_update') {
           const retreat = 280
           if (len < retreat) {
-            nx = e.x - dx * e.speed
-            ny = e.y - dy * e.speed
+            nx = e.x - dx * eSpeed
+            ny = e.y - dy * eSpeed
           } else {
-            nx = e.x + dx * (e.speed * 0.35)
-            ny = e.y + dy * (e.speed * 0.35)
+            nx = e.x + dx * (eSpeed * 0.35)
+            ny = e.y + dy * (eSpeed * 0.35)
           }
         } else if (e.type === 'spaghetti_runner') {
           const zigAngle = now / 140 + (e.zigSeed || 0)
           const sideX = -dy
           const sideY = dx
-          nx = e.x + dx * e.speed + sideX * Math.sin(zigAngle) * 2.2
-          ny = e.y + dy * e.speed + sideY * Math.sin(zigAngle) * 2.2
+          nx = e.x + dx * eSpeed + sideX * Math.sin(zigAngle) * 2.2 * dt
+          ny = e.y + dy * eSpeed + sideY * Math.sin(zigAngle) * 2.2 * dt
         } else {
-          nx = e.x + dx * e.speed
-          ny = e.y + dy * e.speed
+          nx = e.x + dx * eSpeed
+          ny = e.y + dy * eSpeed
         }
 
         // Separación entre enemigos para evitar superposición intensa
@@ -737,10 +777,11 @@ export function useArenaCombat(options = {}) {
       let currentDamage = BULLET_DAMAGE
       const newCoins = [...coins.value]
 
+      const baseAtk = Number(characterBaseDamage?.value ?? characterBaseDamage ?? 10)
       if (equippedWeapon.value) {
-        currentDamage = equippedWeapon.value.damage || BULLET_DAMAGE
+        currentDamage = (equippedWeapon.value.damage || 10) + baseAtk
       } else {
-        currentDamage = Number(characterBaseDamage.value || BULLET_DAMAGE)
+        currentDamage = Number(characterBaseDamage.value || 12) + baseAtk
       }
       const levelBonus = 1 + (Math.max(1, Number(characterLevel.value) || 1) - 1) * LEVEL_DAMAGE_BONUS
       currentDamage = Math.max(1, Math.round(currentDamage * levelBonus))
@@ -854,8 +895,8 @@ export function useArenaCombat(options = {}) {
       const moved = bullets.value
         .map((b) => ({
           ...b,
-          x: b.x + b.vx,
-          y: b.y + b.vy,
+          x: b.x + (b.vx || 0) * dt,
+          y: b.y + (b.vy || 0) * dt,
         }))
         .filter((b) => now - b.born < BULLET_LIFETIME_MS)
         .filter((b) => b.x >= -40 && b.x <= WORLD_W + 40 && b.y >= -40 && b.y <= WORLD_H + 40)
@@ -907,8 +948,8 @@ export function useArenaCombat(options = {}) {
       const movedE = enemyBullets.value
         .map((b) => ({
           ...b,
-          x: b.x + (b.vx || 0),
-          y: b.y + (b.vy || 0),
+          x: b.x + (b.vx || 0) * dt,
+          y: b.y + (b.vy || 0) * dt,
         }))
         .filter((b) => (b.isZone ? now <= (b.expiresAt || 0) : now - b.born < 4000))
         .filter((b) => b.x >= -100 && b.x <= WORLD_W + 100 && b.y >= -100 && b.y <= WORLD_H + 100)
@@ -946,8 +987,8 @@ export function useArenaCombat(options = {}) {
             const len = Math.hypot(dx, dy) || 1
             return {
               ...c,
-              x: c.x + (dx / len) * MAGNET_SPEED,
-              y: c.y + (dy / len) * MAGNET_SPEED,
+              x: c.x + (dx / len) * MAGNET_SPEED * dt,
+              y: c.y + (dy / len) * MAGNET_SPEED * dt,
             }
           }
           return c
@@ -1027,6 +1068,8 @@ export function useArenaCombat(options = {}) {
     resolveRouteContext()
     clearDependencyMark()
     resetArenaConsumableBuffs()
+    playerMaxHp.value = Math.max(1, Math.round(Number(options.playerMaxHp?.value ?? options.playerMaxHp ?? playerMaxHp.value) || playerMaxHp.value))
+    playerHp.value = playerMaxHp.value
     phase.value = 'fighting'
     spawnWave()
   }
@@ -1071,6 +1114,8 @@ export function useArenaCombat(options = {}) {
     focused,
     moving,
     locked,
+    stamina,
+    isSprinting,
     PLAYER_SIZE,
     WORLD: WORLD_W,
     WORLD_W,

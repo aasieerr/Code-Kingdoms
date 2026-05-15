@@ -143,6 +143,11 @@ class CharacterController extends Controller
             'experience' => 'sometimes|integer|min:0',
             'health' => 'sometimes|integer|min:0',
             'mana' => 'sometimes|integer|min:0',
+            'max_health' => 'sometimes|integer|min:0',
+            'max_mana' => 'sometimes|integer|min:0',
+            'attack_power' => 'sometimes|integer|min:0',
+            'speed' => 'sometimes|integer|min:0',
+            'stat_points' => 'sometimes|integer|min:0',
             'gold' => 'sometimes|integer|min:0',
             'arena_section' => 'sometimes|integer|min:1|max:8',
             'arena_wave' => 'sometimes|integer|min:1|max:20',
@@ -167,5 +172,32 @@ class CharacterController extends Controller
         $character->delete();
 
         return response()->json(['message' => 'Character deleted']);
+    }
+
+    /**
+     * Mejora una estadística del personaje gastando puntos.
+     */
+    public function upgradeStat(Request $request, string $id)
+    {
+        $character = Character::findOrFail($id);
+        if ((int) $character->id_user !== (int) Auth::id()) {
+            abort(403, 'No puedes modificar este personaje');
+        }
+
+        $request->validate([
+            'stat' => 'required|string|in:health,attack,speed'
+        ]);
+
+        if ($character->upgradeStat($request->input('stat'))) {
+            return response()->json([
+                'success' => true,
+                'character' => $character
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No tienes puntos suficientes o atributo inválido'
+        ], 400);
     }
 }

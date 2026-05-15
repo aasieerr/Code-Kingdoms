@@ -17,6 +17,7 @@ defineProps({
   playerHpPct: { type: Number, required: true },
   playerHp: { type: Number, required: true },
   playerMaxHp: { type: Number, required: true },
+  staminaPct: { type: Number, required: true },
   levelState: { type: Object, required: true },
   xpProgressPct: { type: Number, required: true },
   arenaPotionHudCells: { type: Array, required: true },
@@ -70,6 +71,14 @@ defineProps({
         </div>
         <div class="hp-numeric">{{ playerHp }} / {{ playerMaxHp }}</div>
       </div>
+
+      <div class="stamina-container" style="margin-top: -10px; margin-bottom: 15px; width: 100%; max-width: 280px; position: relative;">
+        <div class="hp-label" style="font-size: 0.75rem; color: #90cdf4; letter-spacing: 1px; margin-bottom: 4px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">ESTAMINA</div>
+        <div class="hp-bar-frame" style="height: 10px; background: rgba(0,0,0,0.6); border: 1px solid rgba(66, 153, 225, 0.3); border-radius: 4px; overflow: hidden; position: relative;">
+          <div class="hp-bar-fill" :style="{ width: Math.min(100, Math.max(0, staminaPct)) + '%', background: 'linear-gradient(90deg, #3182ce, #63b3ed)', boxShadow: '0 0 8px rgba(99, 179, 237, 0.5)', transition: 'width 0.1s linear', height: '100%' }"></div>
+        </div>
+      </div>
+
       <div class="xp-container">
         <div class="xp-label">NIVEL {{ levelState.level }}</div>
         <div class="xp-bar-frame">

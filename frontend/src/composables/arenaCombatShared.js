@@ -18,8 +18,8 @@ export const MAGNET_SPEED = 2.2
 export const TOTAL_SECTIONS = 7
 export const INTERMEDIATE_SECTIONS = 6
 export const WAVES_PER_SECTION = 10
-export const SECTION_GROWTH = 0.34
-export const WAVE_GROWTH = 0.035
+export const SECTION_GROWTH = 0.55
+export const WAVE_GROWTH = 0.06
 export const LEVEL_DAMAGE_BONUS = 0.055
 export const JAVA_BOSS_SHIELD_MS = 1800
 export const JAVA_BOSS_SHIELD_GAP_MS = 6500
@@ -58,9 +58,9 @@ export function waveMultiplier(waveValue) {
 
 export function earlyWaveMultiplier(sectionValue, waveValue) {
   if (sectionValue !== 1) return 1
-  if (waveValue <= 2) return 0.45
-  if (waveValue <= 4) return 0.65
-  if (waveValue <= 6) return 0.82
+  if (waveValue <= 2) return 0.65
+  if (waveValue <= 4) return 0.80
+  if (waveValue <= 6) return 0.92
   return 1
 }
 

@@ -105,4 +105,21 @@ class ProfileController extends Controller
             'user' => UserPresenter::present($user->fresh()),
         ]);
     }
+
+    public function notifications(Request $request)
+    {
+        return response()->json([
+            'notifications' => $request->user()->notifications()->take(30)->get(),
+            'unread_count' => $request->user()->unreadNotifications()->count(),
+        ]);
+    }
+
+    public function markNotificationsRead(Request $request)
+    {
+        $request->user()->unreadNotifications->markAsRead();
+
+        return response()->json([
+            'message' => 'Notificaciones marcadas como leídas.',
+        ]);
+    }
 }

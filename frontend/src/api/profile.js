@@ -24,3 +24,13 @@ export async function removeAvatar() {
   const { data } = await api.delete('/user/avatar')
   return data
 }
+
+export async function fetchNotifications() {
+  const { data } = await api.get('/user/notifications')
+  return data
+}
+
+export async function markNotificationsRead() {
+  const { data } = await api.post('/user/notifications/read')
+  return data
+}

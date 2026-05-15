@@ -68,6 +68,7 @@
       :player-hp-pct="playerHpPct"
       :player-hp="playerHp"
       :player-max-hp="playerMaxHp"
+      :stamina-pct="staminaPct"
       :level-state="levelState"
       :xp-progress-pct="xpProgressPct"
       :arena-potion-hud-cells="arenaPotionHudCells"
@@ -431,19 +432,32 @@ function syncLevelStateFromStore() {
     maxHealth: Math.max(1, Number(characterStore.maxHealth || 100) || 100),
     armor: Math.max(0, Number(characterStore.armor || 0) || 0),
     attackSpeed: Math.max(0.1, Number(characterStore.attackSpeed || 1) || 1),
-    moveSpeed: Math.max(0.1, Number(characterStore.moveSpeed || 1) || 1),
-    baseDamage: Math.max(1, Number(characterStore.baseDamage || 12) || 12),
+    moveSpeed: Math.max(0.1, Number(characterStore.speed || 100) / 100) || 1,
+    baseDamage: Math.max(1, Number(characterStore.attackPower || 12) || 12),
   }
 }
 
-function applyLevelUpRewards(levelUps = 1) {
-  for (let i = 0; i < levelUps; i++) {
-    levelState.value.maxHealth += 12
-    levelState.value.armor += 3
-    levelState.value.attackSpeed = Math.min(2.4, Number((levelState.value.attackSpeed + 0.025).toFixed(3)))
-    levelState.value.moveSpeed = Math.min(1.45, Number((levelState.value.moveSpeed + 0.01).toFixed(3)))
-    levelState.value.baseDamage += 3
+// Sincronizar si el usuario cambia stats desde el panel mientras está en la arena
+watch([
+  () => characterStore.maxHealth,
+  () => characterStore.attackPower,
+  () => characterStore.speed,
+  () => characterStore.level,
+  () => characterStore.statPoints
+], () => {
+  const oldMax = levelState.value.maxHealth
+  syncLevelStateFromStore()
+  
+  // Si la vida máxima ha subido, curamos al jugador la diferencia
+  if (levelState.value.maxHealth > oldMax) {
+    const diff = levelState.value.maxHealth - oldMax
+    playerHp.value = Math.round(Math.min(levelState.value.maxHealth, playerHp.value + diff))
   }
+}, { deep: true })
+
+function applyLevelUpRewards(levelUps = 1) {
+  // Hemos desactivado esto para que solo suban con los puntos manuales
+  console.log(`¡Has subido ${levelUps} niveles! Ve al panel de estadísticas para usar tus puntos.`);
 }
 
 function gainExperience(amount) {
@@ -459,8 +473,8 @@ function gainExperience(amount) {
   }
   if (pendingLevelUps > 0) {
     applyLevelUpRewards(pendingLevelUps)
-    playerMaxHp.value = Math.round(levelState.value.maxHealth)
-    playerHp.value = Math.min(playerMaxHp.value, playerHp.value + pendingLevelUps * 14)
+    // Sincronizar el valor de vida máxima del jugador
+    levelState.value.maxHealth = Math.round(levelState.value.maxHealth)
   }
 }
 
@@ -567,6 +581,8 @@ const {
   enemyBullets,
   coins,
   slashes,
+  stamina,
+  isSprinting,
   startNextWave,
   beginFirstWave,
   resumeAt,
@@ -718,8 +734,8 @@ async function saveArenaProgress(force = false) {
       max_health: Math.round(levelState.value.maxHealth),
       armor: Math.round(levelState.value.armor),
       attack_speed: Number(levelState.value.attackSpeed.toFixed(3)),
-      move_speed: Number(levelState.value.moveSpeed.toFixed(3)),
-      base_damage: Math.round(levelState.value.baseDamage),
+      speed: Math.round(levelState.value.moveSpeed * 100), // Convertimos de 1.0 a 100
+      attack_power: Math.round(levelState.value.baseDamage),
     }
     const key = [
       payload.arena_section,
@@ -730,21 +746,24 @@ async function saveArenaProgress(force = false) {
       payload.max_health,
       payload.armor,
       payload.attack_speed,
-      payload.move_speed,
-      payload.base_damage,
+      payload.speed,
+      payload.attack_power,
     ].join(':')
     if (!force && key === lastSavedProgressKey) return
-    await api.patch(`/characters/${id}`, payload)
-    characterStore.arenaSection = payload.arena_section
-    characterStore.arenaWave = payload.arena_wave
-    characterStore.arenaInProgress = payload.arena_in_progress
-    characterStore.level = payload.level
-    characterStore.experience = payload.experience
-    characterStore.maxHealth = payload.max_health
-    characterStore.armor = payload.armor
-    characterStore.attackSpeed = payload.attack_speed
-    characterStore.moveSpeed = payload.move_speed
-    characterStore.baseDamage = payload.base_damage
+    const { data: updatedChar } = await api.patch(`/characters/${id}`, payload)
+    
+    // IMPORTANTE: Actualizar el store con lo que diga el SERVIDOR
+    // El servidor es quien ha calculado los nuevos stat_points, etc.
+    characterStore.arenaSection = updatedChar.arena_section
+    characterStore.arenaWave = updatedChar.arena_wave
+    characterStore.arenaInProgress = updatedChar.arena_in_progress
+    characterStore.level = updatedChar.level
+    characterStore.experience = updatedChar.experience
+    characterStore.maxHealth = updatedChar.max_health
+    characterStore.attackPower = updatedChar.attack_power
+    characterStore.speed = updatedChar.speed
+    characterStore.statPoints = updatedChar.stat_points
+    
     lastSavedProgressKey = key
   } catch (err) {
     console.error('No se pudo guardar progreso de arena:', err)
@@ -859,6 +878,8 @@ const playerHpPct = computed(() => {
   const max = playerMaxHp.value || 1
   return Math.min(100, Math.round((100 * playerHp.value) / max))
 })
+
+const staminaPct = computed(() => stamina.value)
 
 const conqueredKingdomLabel = computed(() => (
   enemyFaction.value === 'java' ? 'Java' : 'PHP'

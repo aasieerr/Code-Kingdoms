@@ -204,6 +204,7 @@ async function confirmDelete() {
 async function onCharacterCreated(ch) {
   if (ch?.id != null) setActiveCharacterId(ch.id)
   await loadList()
+  lastTransition.value = 'menu-to-game'
   router.push({ name: 'Game' })
 }
 

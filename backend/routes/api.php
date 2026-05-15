@@ -50,6 +50,8 @@ Route::get('/character-items/{id}', [CharacterItemController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user/notifications', [ProfileController::class, 'notifications']);
+    Route::post('/user/notifications/read', [ProfileController::class, 'markNotificationsRead']);
     Route::patch('/user/profile', [ProfileController::class, 'update']);
     Route::put('/user/password', [ProfileController::class, 'updatePassword']);
     Route::post('/user/avatar', [ProfileController::class, 'storeAvatar']);
@@ -68,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/characters', [CharacterController::class, 'store']);
     Route::put('/characters/{id}', [CharacterController::class, 'update']);
     Route::patch('/characters/{id}', [CharacterController::class, 'update']);
+    Route::post('/characters/{id}/upgrade-stat', [CharacterController::class, 'upgradeStat']);
     Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
     Route::delete('/character-items/{id}', [CharacterItemController::class, 'destroy']);
     Route::post('/character-items/{id}/consume', [CharacterItemController::class, 'consume']);

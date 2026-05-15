@@ -127,6 +127,45 @@
       </div>
     </Transition>
 
+    <!-- Publish Modal -->
+    <Transition name="fade">
+      <div v-if="publishPromptOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-6">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="closePublishPrompt"></div>
+        
+        <div class="relative z-10 bg-[#0f172a] border-4 border-[#facc15] p-6 max-w-md w-full shadow-[0_0_50px_rgba(250,204,21,0.2)]">
+          <h2 class="text-[#facc15] text-xl mb-4 tracking-tighter" style="text-shadow: 2px 2px 0 #854d0e;">
+            PUBLICAR EN LA COMUNIDAD
+          </h2>
+          <p class="text-white/70 text-[10px] tracking-widest mb-4">
+            Escribe una crónica opcional para acompañar tu captura:
+          </p>
+          
+          <textarea
+            v-model="publishCaptionText"
+            rows="4"
+            class="w-full bg-[#0b0d17] border-2 border-[#facc15]/30 text-white p-3 text-[10px] tracking-widest focus:outline-none focus:border-[#facc15] transition-colors resize-none mb-6"
+            placeholder="Momento épico..."
+          ></textarea>
+          
+          <div class="flex justify-end gap-4">
+            <button
+              @click="closePublishPrompt"
+              class="text-[#ef4444]/60 hover:text-[#ef4444] text-[9px] tracking-widest transition-colors"
+            >
+              CANCELAR
+            </button>
+            <button
+              @click="confirmPublish"
+              class="pixel-btn-blue text-[9px] px-6 py-2"
+              :disabled="publishingId !== null"
+            >
+              {{ publishingId !== null ? 'PUBLICANDO...' : 'PUBLICAR AHORA' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <AppFooter />
   </div>
 </template>
@@ -146,6 +185,10 @@ const selectedScreenshot = ref(null)
 const visibleCount = ref(6)
 const selectedCharacter = ref('Todos')
 const publishingId = ref(null)
+
+const publishPromptOpen = ref(false)
+const screenshotToPublish = ref(null)
+const publishCaptionText = ref('')
 
 const uniqueCharacters = computed(() => {
   const names = characters.value.map(c => c.name)
@@ -205,21 +248,29 @@ const resolveFaction = (characterName) => {
   return character?.kingdom?.name === 'Java' ? 'JAVA' : 'PHP'
 }
 
-const publishScreenshot = async (screenshot) => {
-  const caption = window.prompt(
-    'Crónica opcional para la comunidad:',
-    screenshot.character_name ? `Momento épico con ${screenshot.character_name}.` : '',
-  )
+const publishScreenshot = (screenshot) => {
+  screenshotToPublish.value = screenshot
+  publishCaptionText.value = screenshot.character_name ? `Momento épico con ${screenshot.character_name}.` : ''
+  publishPromptOpen.value = true
+}
 
-  if (caption === null) return
+const closePublishPrompt = () => {
+  publishPromptOpen.value = false
+  screenshotToPublish.value = null
+}
+
+const confirmPublish = async () => {
+  const screenshot = screenshotToPublish.value
+  if (!screenshot) return
 
   publishingId.value = screenshot.id
   try {
     await communityApi.publishScreenshot(screenshot.id, {
-      caption: caption.trim() || null,
+      caption: publishCaptionText.value.trim() || null,
       faction: resolveFaction(screenshot.character_name),
     })
     screenshot.is_published = true
+    closePublishPrompt()
   } catch (error) {
     console.error('Error publishing screenshot:', error)
     alert(error.response?.data?.message || 'No se pudo publicar la captura en la comunidad.')

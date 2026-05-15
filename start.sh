@@ -61,6 +61,9 @@ echo ""
 echo -e "${YELLOW}🗄  Ejecutando migraciones...${NC}"
 docker compose exec -T laravel.test php artisan migrate --force
 
+echo -e "${YELLOW}📡 Arrancando servidor de WebSockets (Reverb)...${NC}"
+docker compose exec -d laravel.test php artisan reverb:start
+
 echo -e "${YELLOW}🖼  Enlazando almacenamiento público...${NC}"
 rm -rf backend/public/storage
 ln -sfn ../storage/app/public backend/public/storage

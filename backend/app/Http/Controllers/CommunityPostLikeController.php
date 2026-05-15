@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CommunityPost;
 use App\Models\CommunityPostLike;
+use App\Notifications\PostLikedNotification;
 use Illuminate\Http\Request;
 
 class CommunityPostLikeController extends Controller
@@ -26,6 +27,11 @@ class CommunityPostLikeController extends Controller
                 'user_id' => $request->user()->id,
             ]);
             $liked = true;
+
+            // Notify post author if someone else liked it
+            if ($post->user_id !== $request->user()->id) {
+                $post->user->notify(new PostLikedNotification($request->user(), $post));
+            }
         }
 
         return response()->json([

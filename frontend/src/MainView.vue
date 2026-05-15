@@ -72,6 +72,7 @@
       :map-open="showMapPanel"
       @open-inventory="openPanel('inventory')"
       @open-equipment="openPanel('equipment')"
+      @open-stats="showStats = true"
       @toggle-map="toggleMap"
       @character-menu="goCharacterMenu"
       @open-settings="showSettings = true"
@@ -102,6 +103,7 @@
 
     <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <StatsPanel v-if="showStats" @close="showStats = false" />
 
     <!-- Mapa -->
     <MapPanel
@@ -131,6 +133,24 @@
       @select-stage="goToStage"
     />
 
+    <!-- Tutorial y Ayudas (Fuera del mundo, en la UI) -->
+    <TutorialOverlay
+      :is-php="isPlayerPhp"
+      @tutorial-finished="onTutorialFinished"
+    />
+
+    <TutorialArrow
+      v-if="!arenaVisited && activeCharacterId"
+      :player-x="x"
+      :player-y="y"
+      :target-x="WORLD_WIDTH / 2"
+      :target-y="isPlayerPhp ? 40 : MAIN_WORLD_HEIGHT - 80"
+      :cam-x="cameraPos.x"
+      :cam-y="cameraPos.y"
+      :is-php="isPlayerPhp"
+      :character-id="activeCharacterId"
+    />
+
     <!-- Fade de transición -->
     <div class="fade-overlay" :class="{ active: isFading }"></div>
   </div>
@@ -141,11 +161,12 @@ import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { WORLD_EDGE, WORLD_WIDTH, PORTAL_HALF_WIDTH } from './constants/world'
-import { lastTransition, setActiveCharacterId } from './gameState'
+import { lastTransition, activeCharacterId, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
 import { ensureActiveCharacterId, fetchCharacter } from './api/character'
 import { useNpcs } from './composables/useNpcs'
-import HudPanel       from './components/HudPanel.vue'
+import HudPanel from './components/HudPanel.vue'
+import StatsPanel from './components/StatsPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel       from './components/MapPanel.vue'
@@ -156,6 +177,8 @@ import SettingsModal  from './components/SettingsModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
 import StageSelectorPanel from './components/StageSelectorPanel.vue'
+import TutorialOverlay from './components/TutorialOverlay.vue'
+import TutorialArrow   from './components/TutorialArrow.vue'
 import { useCharacterStore } from './stores/character'
 import { useGameSettings } from './composables/useGameSettings'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
@@ -177,6 +200,7 @@ const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
 const showSettings = ref(false)
+const showStats = ref(false)
 const authStore = useAuthStore()
 const characterStore = useCharacterStore()
 const isPlayerPhp = computed(() =>
@@ -184,6 +208,21 @@ const isPlayerPhp = computed(() =>
 )
 const { keyMatches, keyLabel, settings } = useGameSettings()
 const lastOpenedShopType = ref(null)
+
+const showTutorial = ref(false)
+const arenaVisited = ref(false)
+
+function checkTutorialState() {
+  const id = activeCharacterId.value
+  if (id) {
+    arenaVisited.value = localStorage.getItem(`ck_arena_v1_${id}`) === 'true'
+  }
+}
+
+function onTutorialFinished() {
+  showTutorial.value = false
+}
+
 
 // Monedero y apariencia
 
@@ -196,7 +235,8 @@ const { arenaRef, x, y, focused, moving, locked } = useWasd(
   WORLD_WIDTH / 2,
   startY,
   WORLD_WIDTH,
-  MAIN_WORLD_HEIGHT
+  MAIN_WORLD_HEIGHT,
+  computed(() => characterStore.speed)
 )
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
@@ -228,7 +268,7 @@ const inSkinShopZone = computed(() => {
 })
 
 // Cámara centrada en el jugador
-const cameraTransform = computed(() => {
+const cameraPos = computed(() => {
   const zoom      = 2
   const cx        = window.innerWidth / 2
   const cy        = window.innerHeight / 2
@@ -236,7 +276,14 @@ const cameraTransform = computed(() => {
   const halfH     = cy / zoom
   const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_WIDTH - halfW))
   const targetY   = Math.max(halfH, Math.min(y.value + 20, MAIN_WORLD_HEIGHT - halfH))
-  return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
+  return { x: targetX, y: targetY }
+})
+
+const cameraTransform = computed(() => {
+  const cx        = window.innerWidth / 2
+  const cy        = window.innerHeight / 2
+  const { x: tx, y: ty } = cameraPos.value
+  return `translate(${cx}px, ${cy}px) scale(2) translate(-${tx}px, -${ty}px)`
 })
 
 async function refreshWallet() {
@@ -249,10 +296,10 @@ async function refreshWallet() {
 
 // Bloquear movimiento si hay paneles abiertos
 watch(
-  [showPanel, showMapPanel, showSkinShop, showMicropay, showSettings, npcsManager.activeDialogueNpc],
-  ([p, m, s, mi, st, d]) => {
+  [showPanel, showMapPanel, showSkinShop, showMicropay, showSettings, npcsManager.activeDialogueNpc, showTutorial],
+  ([p, m, s, mi, st, d, t]) => {
     // Si hay algo abierto, bloqueamos. Si no, desbloqueamos (a menos que estemos en transición)
-    if (p || m || s || mi || st || d) {
+    if (p || m || s || mi || st || d || t) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -408,6 +455,10 @@ onMounted(async () => {
     isFading.value = true
     locked.value = true
     
+    // Comprobar arena visit DESPUÉS de que el personaje esté cargado
+    await refreshWallet()
+    checkTutorialState()
+
     setTimeout(() => {
       isFading.value = false
       locked.value = false
@@ -415,6 +466,8 @@ onMounted(async () => {
       portalCooldown.value = false
     }, 600)
   } else {
+    // F5 / recarga directa en /game
+    checkTutorialState()
     isFading.value = false
     locked.value = false
     portalCooldown.value = false
@@ -473,6 +526,10 @@ watchEffect(() => {
     locked.value = true
     moving.value = true
     isFading.value = true
+    
+    // Marcar arena como visitada
+    localStorage.setItem(`ck_arena_v1_${activeCharacterId.value}`, 'true')
+    arenaVisited.value = true
 
     const exitLoop = () => {
       y.value += playerPhp ? -5 : 5
