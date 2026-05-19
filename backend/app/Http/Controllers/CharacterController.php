@@ -9,12 +9,17 @@ use App\Models\Item;
 use App\Models\CharacterItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class CharacterController extends Controller
 {
-    /**
-     * Listado de personajes del usuario autenticado.
-     */
+    private function authorizeOwnership(Character $character): void
+    {
+        if ((int) $character->id_user !== (int) Auth::id()) {
+            abort(403, 'Este personaje no te pertenece.');
+        }
+    }
+
     public function index()
     {
         $userId = (int) Auth::id();
@@ -40,16 +45,13 @@ class CharacterController extends Controller
         return response()->json($payload);
     }
 
-    /**
-     * Crea un personaje para el usuario autenticado (Sanctum).
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'id_kingdom' => 'required|exists:kingdoms,id_kingdom',
             'id_race' => 'required|exists:races,id_race',
             'id_class' => 'required|exists:character_classes,id_class',
-            'name' => 'required|string|max:50|unique:characters,name',
+            'name' => ['required', 'string', 'max:50', Rule::unique('characters', 'name')->where(fn ($q) => $q->where('id_user', Auth::id()))],
             'level' => 'sometimes|integer|min:1',
             'experience' => 'sometimes|integer|min:0',
             'health' => 'sometimes|integer|min:0',
@@ -71,22 +73,17 @@ class CharacterController extends Controller
         );
         $character = Character::create($payload);
 
-        // Asignar equipo inicial según la clase
         $this->assignStartingEquipment($character);
 
         return response()->json($character, 201);
     }
 
-    /**
-     * Asigna un arma y armadura inicial al personaje recién creado según su clase.
-     */
     private function assignStartingEquipment(Character $character)
     {
         $charClass = CharacterClass::find($character->id_class);
         if (!$charClass)
             return;
 
-        // Selección de arma
         $weaponName = match ($charClass->name) {
             'Guerrero' => 'Espada de Entrenamiento',
             'Mago' => 'Varita de Madera',
@@ -96,7 +93,6 @@ class CharacterController extends Controller
             default => 'Espada de Entrenamiento',
         };
 
-        // Selección de armadura
         $armorName = match ($charClass->name) {
             'Mago', 'Asesino' => 'Ropas de Viajero',
             'Arquero', 'Guerrero' => 'Peto de Cuero Viejo',
@@ -119,18 +115,13 @@ class CharacterController extends Controller
         }
     }
 
-    /**
-     * Muestra un personaje; solo el propietario o datos públicos acordes.
-     */
     public function show(string $id)
     {
         $character = Character::query()
             ->with(['equippedSkin', 'equippedItems.weapon', 'equippedItems.armor'])
             ->findOrFail($id);
 
-        if ((int) $character->id_user !== (int) Auth::id()) {
-            abort(403, 'No puedes ver este personaje');
-        }
+        $this->authorizeOwnership($character);
 
         $user = User::query()->findOrFail($character->id_user);
         $ownedIds = $user->ownedSkins()->pluck('cosmetic_skins.id')->values();
@@ -144,15 +135,13 @@ class CharacterController extends Controller
     public function update(Request $request, string $id)
     {
         $character = Character::findOrFail($id);
-        if ((int) $character->id_user !== (int) Auth::id()) {
-            abort(403, 'No puedes modificar este personaje');
-        }
+        $this->authorizeOwnership($character);
 
         $request->validate([
             'id_kingdom' => 'sometimes|exists:kingdoms,id_kingdom',
             'id_race' => 'sometimes|exists:races,id_race',
             'id_class' => 'sometimes|exists:character_classes,id_class',
-            'name' => 'sometimes|string|max:50|unique:characters,name,' . $id,
+            'name' => ['sometimes', 'string', 'max:50', Rule::unique('characters', 'name')->where(fn ($q) => $q->where('id_user', Auth::id()))->ignore($id, 'id')],
             'level' => 'sometimes|integer|min:1',
             'experience' => 'sometimes|integer|min:0',
             'health' => 'sometimes|integer|min:0',
@@ -174,29 +163,19 @@ class CharacterController extends Controller
         return response()->json($character);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         $character = Character::findOrFail($id);
-        if ((int) $character->id_user !== (int) Auth::id()) {
-            abort(403, 'No puedes eliminar este personaje');
-        }
+        $this->authorizeOwnership($character);
         $character->delete();
 
         return response()->json(['message' => 'Character deleted']);
     }
 
-    /**
-     * Mejora una estadística del personaje gastando puntos.
-     */
     public function upgradeStat(Request $request, string $id)
     {
         $character = Character::findOrFail($id);
-        if ((int) $character->id_user !== (int) Auth::id()) {
-            abort(403, 'No puedes modificar este personaje');
-        }
+        $this->authorizeOwnership($character);
 
         $request->validate([
             'stat' => 'required|string|in:health,attack,speed'

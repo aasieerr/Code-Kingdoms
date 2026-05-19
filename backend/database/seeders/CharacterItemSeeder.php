@@ -4,15 +4,13 @@ namespace Database\Seeders;
 
 use App\Models\Character;
 use App\Models\CharacterItem;
+use App\Models\Item;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class CharacterItemSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $user = User::query()->where('email', 'test@example.com')->firstOrFail();
@@ -41,11 +39,11 @@ class CharacterItemSeeder extends Seeder
         );
 
         // Añadir el arma definitiva al Héroe
-        $armaDefinitiva = \App\Models\Item::where('name', 'Arma Definitiva de JD')->first();
+        $armaDefinitiva = Item::where('name', 'Arma Definitiva de JD')->first();
         if ($armaDefinitiva) {
             CharacterItem::query()->updateOrCreate(
                 ['id_character' => $hero->id, 'id_item' => $armaDefinitiva->id_item],
-                ['quantity' => 1, 'is_equipped' => false], // Puedes poner true si quieres que se equipe automáticamente
+                ['quantity' => 1, 'is_equipped' => false],
             );
         }
     }

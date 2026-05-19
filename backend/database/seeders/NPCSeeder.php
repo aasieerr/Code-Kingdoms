@@ -2,28 +2,28 @@
 
 namespace Database\Seeders;
 
+use App\Models\Kingdom;
+use App\Models\NPC;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class NPCSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        \Illuminate\Support\Facades\DB::table('npcs')->truncate();
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::table('npcs')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Ensure the PHP kingdom exists (Peachepe)
-        $php = \App\Models\Kingdom::query()->firstOrCreate(
+        $php = Kingdom::query()->firstOrCreate(
             ['name' => 'Peachepe'],
-            \App\Models\Kingdom::factory()->peachepe()->raw()
+            Kingdom::factory()->peachepe()->raw()
         );
 
         if ($php) {
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Guardián del Reino',
                 'descripcion' => 'Un sabio guardián que protege el reino.',
                 'dialogos' => [
@@ -38,7 +38,7 @@ class NPCSeeder extends Seeder
                 'y' => 600,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Mercader Astuto',
                 'descripcion' => 'Un vendedor de paquetes y herramientas.',
                 'dialogos' => [
@@ -55,7 +55,7 @@ class NPCSeeder extends Seeder
                 'y' => 272,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Bibliotecario Real',
                 'descripcion' => 'Conoce toda la historia del código.',
                 'dialogos' => [
@@ -70,7 +70,7 @@ class NPCSeeder extends Seeder
                 'y' => 430,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Herrero de las Ruinas',
                 'descripcion' => 'Forja scripts y soluciones.',
                 'dialogos' => [
@@ -88,7 +88,7 @@ class NPCSeeder extends Seeder
             ]);
 
             // NPCs adicionales para PHP
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Maestra de Blade',
                 'descripcion' => 'Experta en plantillas y renderizado.',
                 'dialogos' => [
@@ -103,7 +103,7 @@ class NPCSeeder extends Seeder
                 'y' => 688,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Guardia de Valet',
                 'descripcion' => 'Protege las rutas del pueblo y vigila despliegues.',
                 'dialogos' => [
@@ -119,7 +119,7 @@ class NPCSeeder extends Seeder
             ]);
 
             // Mercader adicional para PHP (consumibles)
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Mercader del Bazar',
                 'descripcion' => 'Un comerciante que siempre tiene algo para aliviar un mal rato.',
                 'dialogos' => [
@@ -137,13 +137,13 @@ class NPCSeeder extends Seeder
         }
 
         // Ensure the Java kingdom exists
-        $java = \App\Models\Kingdom::query()->firstOrCreate(
+        $java = Kingdom::query()->firstOrCreate(
             ['name' => 'Java'],
-            \App\Models\Kingdom::factory()->java()->raw()
+            Kingdom::factory()->java()->raw()
         );
 
         if ($java) {
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Maestro del Bytecode',
                 'descripcion' => 'Un anciano que habla en bytecode y JARs.',
                 'dialogos' => [
@@ -158,7 +158,7 @@ class NPCSeeder extends Seeder
                 'y' => 880,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Mercader de Maven',
                 'descripcion' => 'Vende dependencias y plugins.',
                 'dialogos' => [
@@ -175,7 +175,7 @@ class NPCSeeder extends Seeder
                 'y' => 272,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Sabio de la JVM',
                 'descripcion' => 'Experto en hilos y rendimiento.',
                 'dialogos' => [
@@ -192,7 +192,7 @@ class NPCSeeder extends Seeder
             ]);
 
             // Herrero para Java (similar rol que en PHP pero nombre distinto)
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Forjador del JAR',
                 'descripcion' => 'Forja artefactos y empaca dependencias.',
                 'dialogos' => [
@@ -210,7 +210,7 @@ class NPCSeeder extends Seeder
             ]);
 
             // NPCs adicionales para Java
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Arquitecto de Microservicios',
                 'descripcion' => 'Diseña sistemas desacoplados y escalables.',
                 'dialogos' => [
@@ -225,7 +225,7 @@ class NPCSeeder extends Seeder
                 'y' => 882,
             ]);
 
-            \App\Models\NPC::create([
+            NPC::create([
                 'nombre' => 'Guardia del ClassLoader',
                 'descripcion' => 'Vigila las clases que habitan la JVM.',
                 'dialogos' => [

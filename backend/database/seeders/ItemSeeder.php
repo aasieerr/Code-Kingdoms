@@ -3,33 +3,30 @@
 namespace Database\Seeders;
 
 use App\Models\Armor;
+use App\Models\CharacterClass;
 use App\Models\Consumable;
 use App\Models\Item;
 use App\Models\Weapon;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class ItemSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Limpiar datos antiguos para evitar duplicados
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         Weapon::query()->delete();
         Armor::query()->delete();
         Consumable::query()->delete();
         Item::query()->delete();
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // Obtener IDs de clases
-        $idGuerrero = \App\Models\CharacterClass::where('name', 'Guerrero')->first()->id_class;
-        $idMago = \App\Models\CharacterClass::where('name', 'Mago')->first()->id_class;
-        $idArquero = \App\Models\CharacterClass::where('name', 'Arquero')->first()->id_class;
-        $idPaladin = \App\Models\CharacterClass::where('name', 'Paladín')->first()->id_class;
-        $idAsesino = \App\Models\CharacterClass::where('name', 'Asesino')->first()->id_class;
+        $idGuerrero = CharacterClass::where('name', 'Guerrero')->first()->id_class;
+        $idMago = CharacterClass::where('name', 'Mago')->first()->id_class;
+        $idArquero = CharacterClass::where('name', 'Arquero')->first()->id_class;
+        $idPaladin = CharacterClass::where('name', 'Paladín')->first()->id_class;
+        $idAsesino = CharacterClass::where('name', 'Asesino')->first()->id_class;
 
         $idPHP = 1;
         $idJava = 2;
@@ -158,11 +155,11 @@ class ItemSeeder extends Seeder
 
     private function createArmors()
     {
-        $idGuerrero = \App\Models\CharacterClass::where('name', 'Guerrero')->first()->id_class;
-        $idMago = \App\Models\CharacterClass::where('name', 'Mago')->first()->id_class;
-        $idArquero = \App\Models\CharacterClass::where('name', 'Arquero')->first()->id_class;
-        $idPaladin = \App\Models\CharacterClass::where('name', 'Paladín')->first()->id_class;
-        $idAsesino = \App\Models\CharacterClass::where('name', 'Asesino')->first()->id_class;
+        $idGuerrero = CharacterClass::where('name', 'Guerrero')->first()->id_class;
+        $idMago = CharacterClass::where('name', 'Mago')->first()->id_class;
+        $idArquero = CharacterClass::where('name', 'Arquero')->first()->id_class;
+        $idPaladin = CharacterClass::where('name', 'Paladín')->first()->id_class;
+        $idAsesino = CharacterClass::where('name', 'Asesino')->first()->id_class;
 
         $idPHP = 1;
         $idJava = 2;

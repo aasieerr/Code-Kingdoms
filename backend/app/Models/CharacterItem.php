@@ -21,7 +21,6 @@ class CharacterItem extends Model
 
     public function item(): BelongsTo
     {
-        // FK local: id_item → Item.id_item (clave primaria custom)
         return $this->belongsTo(Item::class, 'id_item', 'id_item');
     }
 }

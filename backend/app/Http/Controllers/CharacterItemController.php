@@ -13,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 class CharacterItemController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     * Acepta ?id_character=X para filtrar por personaje.
-     * Cada entrada incluye el item con sus detalles específicos.
+     * Lista el inventario de un personaje (?id_character=X) con detalles de cada item.
      */
     public function index(Request $request)
     {
@@ -42,9 +40,6 @@ class CharacterItemController extends Controller
         return response()->json($characterItems);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -58,9 +53,6 @@ class CharacterItemController extends Controller
         return response()->json($characterItem, 201);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         $characterItem = CharacterItem::findOrFail($id);

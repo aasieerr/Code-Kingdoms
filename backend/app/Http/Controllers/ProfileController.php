@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PublicStorage;
 use App\Support\UserPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -62,9 +63,7 @@ class ProfileController extends Controller
             'image' => 'required|string',
         ]);
 
-        $image = preg_replace('/^data:image\/\w+;base64,/', '', $request->input('image'));
-        $image = str_replace(' ', '+', $image);
-        $decoded = base64_decode($image, true);
+        $decoded = PublicStorage::decodeBase64Image($request->input('image'));
 
         if ($decoded === false) {
             return response()->json(['message' => 'La imagen no es válida.'], 422);

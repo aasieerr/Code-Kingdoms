@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\Character;
 use App\Models\Screenshot;
 use App\Models\Item;
-use Illuminate\Http\Request;
 
 class StatsController extends Controller
 {

@@ -13,8 +13,7 @@ use Illuminate\Validation\ValidationException;
 class ShopController extends Controller
 {
     /**
-     * Compra un artículo del catálogo: descuenta oro en servidor y añade o incrementa el ítem.
-     * La lógica de negocio vive aquí (no en el front) para evitar manipular oro vía consola.
+     * Lógica de compra en servidor (evita manipulación de oro desde el front).
      */
     public function purchase(Request $request): JsonResponse
     {
@@ -90,7 +89,7 @@ class ShopController extends Controller
     }
 
     /**
-     * Vende un artículo del inventario: elimina/decrementa y suma oro (50% del valor).
+     * Vende un artículo del inventario al 50% de su valor.
      */
     public function sell(Request $request): JsonResponse
     {

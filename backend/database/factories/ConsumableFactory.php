@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Consumable>
- */
 class ConsumableFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -25,9 +17,6 @@ class ConsumableFactory extends Factory
         ];
     }
 
-    /**
-     * Poción de curación
-     */
     public function healingPotion(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -38,9 +27,6 @@ class ConsumableFactory extends Factory
         ]);
     }
 
-    /**
-     * Poción de maná
-     */
     public function manaPotion(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -51,9 +37,6 @@ class ConsumableFactory extends Factory
         ]);
     }
 
-    /**
-     * Poción de fuerza
-     */
     public function strengthBuff(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -64,9 +47,6 @@ class ConsumableFactory extends Factory
         ]);
     }
 
-    /**
-     * Antídoto
-     */
     public function antidote(): self
     {
         return $this->state(fn (array $attributes) => [
