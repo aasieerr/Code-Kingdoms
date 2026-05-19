@@ -11,7 +11,6 @@ use App\Http\Controllers\MicropayController;
 use App\Http\Controllers\NPCController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\ShopController;
-use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ScreenshotController;
 use App\Http\Controllers\CommunityPostController;
 use App\Http\Controllers\CommunityPostCommentController;
@@ -29,15 +28,9 @@ Route::get('/community/posts/{postId}/comments', [CommunityPostCommentController
 Route::get('/kingdoms', [KingdomController::class, 'index']);
 Route::get('/kingdoms/{id}', [KingdomController::class, 'show']);
 Route::get('/races', [RaceController::class, 'index']);
-Route::get('/races/{id}', [RaceController::class, 'show']);
 Route::get('/classes', [CharacterClassController::class, 'index']);
-Route::get('/classes/{id}', [CharacterClassController::class, 'show']);
-Route::get('/skills', [SkillController::class, 'index']);
-Route::get('/skills/{id}', [SkillController::class, 'show']);
 Route::get('/items', [ItemController::class, 'index']);
-Route::get('/items/{id}', [ItemController::class, 'show']);
 Route::get('/npcs', [NPCController::class, 'index']);
-Route::get('/npcs/{id}', [NPCController::class, 'show']);
 
 Route::get('/skins', [CosmeticSkinController::class, 'index']);
 
@@ -45,7 +38,6 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/character-items', [CharacterItemController::class, 'index']);
-Route::get('/character-items/{id}', [CharacterItemController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -72,7 +64,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/characters/{id}', [CharacterController::class, 'update']);
     Route::post('/characters/{id}/upgrade-stat', [CharacterController::class, 'upgradeStat']);
     Route::delete('/characters/{id}', [CharacterController::class, 'destroy']);
-    Route::delete('/character-items/{id}', [CharacterItemController::class, 'destroy']);
     Route::post('/character-items/{id}/consume', [CharacterItemController::class, 'consume']);
 
     Route::get('/screenshots', [ScreenshotController::class, 'index']);

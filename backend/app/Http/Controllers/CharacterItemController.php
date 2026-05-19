@@ -59,14 +59,6 @@ class CharacterItemController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        return response()->json(CharacterItem::findOrFail($id));
-    }
-
-    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
@@ -82,16 +74,6 @@ class CharacterItemController extends Controller
 
         $characterItem->update($request->all());
         return response()->json($characterItem);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        $characterItem = CharacterItem::findOrFail($id);
-        $characterItem->delete();
-        return response()->json(['message' => 'Character item deleted']);
     }
 
     /**
