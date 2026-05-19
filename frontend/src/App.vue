@@ -65,7 +65,6 @@ const takeScreenshot = async () => {
     await screenshotsApi.save(imageData, characterStore.name)
     showNotification('¡Captura guardada!', 'success')
   } catch (error) {
-    console.error('Error taking screenshot:', error)
     showNotification('Error al guardar la captura', 'error')
   } finally {
     isCapturing.value = false

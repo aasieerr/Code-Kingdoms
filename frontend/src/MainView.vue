@@ -246,11 +246,6 @@ watch(
   }
 )
 
-// Observar NPCs para depuración
-watch(npcs, (list) => {
-  console.log(`NPCs cargados en ${npcsManager.mapName || 'mapa'}: ${list.length}`, list)
-})
-
 function openPanel(name) {
   if (showPanel.value === name) {
     showPanel.value = null
@@ -314,7 +309,6 @@ onMounted(async () => {
   try {
     await refreshWallet()
   } catch (err) {
-    console.error("Error inicial en MainView:", err)
   }
 
   const isPhpKingdom = isPhpKingdomSelected()

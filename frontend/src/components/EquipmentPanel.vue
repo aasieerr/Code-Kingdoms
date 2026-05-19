@@ -158,7 +158,6 @@ async function handleUnequip(ci) {
     await toggleEquipItem(ci.id, false)
     selectedItem.value = null
   } catch (err) {
-    console.error('Error al desequipar', err)
   } finally {
     busy.value = false
     await fetchInventoryData()

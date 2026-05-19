@@ -25,7 +25,6 @@ export function useNpcs(mapName, playerX, playerY) {
 
     } catch (err) {
       error.value = err
-      console.error(`Error loading NPCs for ${mapName}:`, err)
     } finally {
       loading.value = false
     }

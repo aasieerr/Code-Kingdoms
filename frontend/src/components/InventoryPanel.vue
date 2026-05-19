@@ -266,7 +266,6 @@ async function handleEquip(ci) {
     }
     await characterStore.refresh() // Refrescar para que SecondView detecte el cambio de arma inmediatamente
   } catch (err) {
-    console.error("Error al equipar/desequipar", err)
   } finally {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item

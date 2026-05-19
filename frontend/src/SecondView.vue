@@ -366,7 +366,6 @@ async function saveArenaProgress(force = false) {
     characterStore.arenaInProgress = payload.arena_in_progress
     lastSavedProgressKey = key
   } catch (err) {
-    console.error('No se pudo guardar progreso de arena:', err)
   }
 }
 
@@ -492,7 +491,6 @@ async function syncRunGoldOnce() {
     }
   } catch (err) {
     sessionSynced = false
-    console.error("Error al sincronizar oro de la run:", err)
   }
 }
 
@@ -505,7 +503,6 @@ async function leaveArena() {
     await saveArenaProgress(true)
     await syncRunGoldOnce()
   } catch (err) {
-    console.error("Fallo final de sync:", err)
   }
   
   isFading.value = true
@@ -541,7 +538,6 @@ onMounted(async () => {
       x.value = ARENA_WORLD_WIDTH / 2
     }
   } catch (err) {
-    console.error("Error inicial en SecondView:", err)
   }
 
   if (lastTransition.value === 'main-to-second') {

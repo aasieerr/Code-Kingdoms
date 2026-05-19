@@ -10,12 +10,6 @@ export const lastInventoryError = ref(null)
 
 let lastLoadedCharacterId = null
 
-// Inventario cruzado para el UI (catálogo + posesiones)
-export const mergedInventoryItems = computed(() => {
-  return myCharacterItems.value
-})
-
-// Solo lo que tenemos equipado para el panel de equipo
 export const equippedItems = computed(() => {
   return myCharacterItems.value.filter(ci => ci.is_equipped)
 })
