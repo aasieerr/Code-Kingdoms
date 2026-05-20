@@ -1,5 +1,7 @@
 <script setup>
-import { parseSprite, isEmptySprite } from '../../utils/sprite'
+import { parseSprite, isEmptySprite, defaultStickmanSprite } from '../../utils/sprite'
+
+const stickmanSprite = defaultStickmanSprite()
 
 defineProps({
   cameraTransform: { type: String, required: true },
@@ -166,11 +168,14 @@ defineProps({
           ></div>
         </div>
       </div>
-      <div
-        v-else
-        class="player__fallback"
-        :style="{ background: moving ? colorMoving : colorStill }"
-      ></div>
+      <div v-else class="player__sprite">
+        <div class="mini-grid">
+          <div v-for="(color, pIdx) in stickmanSprite" :key="pIdx"
+            class="mini-grid__pixel"
+            :style="{ backgroundColor: color || 'transparent' }"
+          ></div>
+        </div>
+      </div>
       <div
         v-if="dependencyMark"
         class="player__dependency-mark"

@@ -89,16 +89,11 @@ const currentStepData = computed(() => steps.value[currentStep.value])
 
 function checkAndShow() {
   const id = activeCharacterId.value
-  console.log('[Tutorial] checkAndShow → characterId:', id)
   if (!id) return
   const key = `ck_tutorial_v1_${id}`
   const seen = localStorage.getItem(key)
-  console.log('[Tutorial] localStorage key:', key, '→ value:', seen)
   if (seen !== 'true') {
-    console.log('[Tutorial] Mostrando tutorial para personaje', id)
     isVisible.value = true
-  } else {
-    console.log('[Tutorial] Personaje ya vio el tutorial')
   }
 }
 
@@ -114,23 +109,18 @@ function finishTutorial() {
   const id = activeCharacterId.value
   if (id) {
     localStorage.setItem(`ck_tutorial_v1_${id}`, 'true')
-    console.log('[Tutorial] Marcado como visto para personaje', id)
   }
   isVisible.value = false
   emit('tutorial-finished')
 }
 
 onMounted(() => {
-  console.log('[Tutorial] onMounted. characterId actual:', activeCharacterId.value)
-  // Si el personaje ya está cargado, comprobar ahora
   if (activeCharacterId.value) {
     checkAndShow()
   }
 })
 
-// Si el personaje carga después del componente, reaccionar igualmente
 watch(activeCharacterId, (newId) => {
-  console.log('[Tutorial] watch activeCharacterId cambió a:', newId)
   if (newId && !isVisible.value) {
     checkAndShow()
   }

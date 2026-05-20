@@ -42,11 +42,14 @@
             ></div>
           </div>
         </div>
-        <div
-          v-else
-          class="player__fallback"
-          :style="{ background: moving ? colorMoving : colorStill }"
-        ></div>
+        <div v-else class="player__sprite">
+          <div class="mini-grid">
+            <div v-for="(color, pIdx) in stickmanSprite" :key="pIdx"
+              class="mini-grid__pixel"
+              :style="{ backgroundColor: color || 'transparent' }"
+            ></div>
+          </div>
+        </div>
       </div>
 
       <!-- NPCs -->
@@ -172,6 +175,7 @@ import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
 import { WORLD_EDGE, WORLD_WIDTH, PORTAL_HALF_WIDTH } from './constants/world'
+import { SKIN_SHOP_LOBBY_ZONES } from './constants/skinShopLobby'
 import { lastTransition, activeCharacterId, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
 import { ensureActiveCharacterId, fetchCharacter } from './api/character'
@@ -194,10 +198,11 @@ import { useCharacterStore } from './stores/character'
 import { useGameSettings } from './composables/useGameSettings'
 import javaKingdomMap from './assets/maps/java-kingdom-map.png'
 import phpKingdomMap from './assets/maps/php-kingdom-map.png'
-import { parseSprite, isEmptySprite } from './utils/sprite'
+import { parseSprite, isEmptySprite, defaultStickmanSprite } from './utils/sprite'
 import { isPlayerPhpKingdom } from './utils/realm'
-import { SKIN_SHOP_LOBBY_ZONES } from './constants/skinShopLobby'
-import { getDirectionalSkinWorldSrc, WARDROBE_LOBBY_IMAGE } from './constants/cosmeticVisuals'
+import { WARDROBE_LOBBY_IMAGE, getDirectionalSkinWorldSrc } from './constants/cosmeticVisuals'
+
+const stickmanSprite = defaultStickmanSprite()
 
 const router        = useRouter()
 const route = useRoute()
@@ -739,13 +744,6 @@ onUnmounted(() => {
 @keyframes walking {
   0% { transform: translateY(0) rotate(-4deg); }
   100% { transform: translateY(-2px) rotate(4deg); }
-}
-
-.player__fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
-  transition: background .1s;
 }
 
 .player__cosmetic {

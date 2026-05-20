@@ -76,12 +76,8 @@
       </div>
     </div>
 
-    <div class="max-w-7xl mx-auto pt-10 border-t border-[#facc15]/10 flex flex-col md:flex-row justify-between items-center gap-6">
+    <div class="max-w-7xl mx-auto pt-10 border-t border-[#facc15]/10 flex justify-center items-center gap-6">
       <p class="text-[7px] text-[#facc15]/20 tracking-[0.4em] uppercase">© 2026 CODE & KINGDOMS — TODOS LOS DERECHOS RESERVADOS</p>
-      <div class="flex gap-8">
-        <span class="text-[6px] text-[#facc15]/20 hover:text-[#facc15]/40 cursor-pointer transition-colors">HECHO CON PASIÓN</span>
-        <span class="text-[6px] text-[#facc15]/20 hover:text-[#facc15]/40 cursor-pointer transition-colors">BY DEEPMIND AGENTS</span>
-      </div>
     </div>
   </footer>
 </template>

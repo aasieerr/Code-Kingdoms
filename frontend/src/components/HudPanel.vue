@@ -15,7 +15,12 @@
             :style="{ backgroundColor: color || 'transparent' }"
           ></div>
         </div>
-        <div v-else class="hud-avatar-placeholder"></div>
+        <div v-else class="hud-avatar-grid">
+          <div v-for="(color, pIdx) in stickmanSprite" :key="pIdx"
+            class="pixel"
+            :style="{ backgroundColor: color || 'transparent' }"
+          ></div>
+        </div>
         <!-- Scanline Overlay on Avatar -->
         <div class="avatar-scanlines"></div>
       </div>
@@ -74,7 +79,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useCharacterStore } from '../stores/character'
-import { parseSprite, isEmptySprite } from '../utils/sprite'
+import { parseSprite, isEmptySprite, defaultStickmanSprite } from '../utils/sprite'
+
+const stickmanSprite = defaultStickmanSprite()
 import {
   ASIER_SLUG,
   getCosmeticShopPreviewBySlug,
@@ -163,11 +170,6 @@ const cosmeticPortraitSrc = computed(() => {
 }
 
 .pixel { width: 100%; height: 100%; }
-
-.hud-avatar-placeholder {
-  font-size: 24px;
-  color: #854d0e;
-}
 
 .avatar-scanlines {
   position: absolute;
