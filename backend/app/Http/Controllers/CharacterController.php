@@ -118,7 +118,7 @@ class CharacterController extends Controller
     public function show(string $id)
     {
         $character = Character::query()
-            ->with(['equippedSkin', 'equippedItems.weapon', 'equippedItems.armor'])
+            ->with(['equippedSkin', 'equippedItems.weapon', 'equippedItems.armor', 'characterClass'])
             ->findOrFail($id);
 
         $this->authorizeOwnership($character);

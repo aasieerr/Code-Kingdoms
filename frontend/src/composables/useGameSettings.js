@@ -28,6 +28,7 @@ const ARENA_FALLBACK_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'q', '
 
 const DEFAULT_SETTINGS = {
   volume: 70,
+  sfxVolume: 70,
   keybinds: {
     moveUp: 'w',
     moveDown: 's',
@@ -115,6 +116,7 @@ export function sanitizeLoadedSettings(raw) {
   const rawObj = raw && typeof raw === 'object' ? raw : {}
   const safe = {
     volume: Math.max(0, Math.min(100, Number(rawObj.volume) || DEFAULT_SETTINGS.volume)),
+    sfxVolume: Math.max(0, Math.min(100, Number(rawObj.sfxVolume) ?? DEFAULT_SETTINGS.sfxVolume)),
     keybinds: { ...DEFAULT_SETTINGS.keybinds },
   }
   const keybinds = rawObj.keybinds
@@ -159,6 +161,11 @@ export function useGameSettings() {
     settings.value.volume = Math.max(0, Math.min(100, Number(volume) || 0))
     saveSettings()
     applyMasterVolume()
+  }
+
+  function setSfxVolume(volume) {
+    settings.value.sfxVolume = Math.max(0, Math.min(100, Number(volume) || 0))
+    saveSettings()
   }
 
   function setKeybind(action, key) {
@@ -212,6 +219,7 @@ export function useGameSettings() {
   return {
     settings,
     setVolume,
+    setSfxVolume,
     setKeybind,
     setArenaPotionKey,
     setArenaPotionItem,

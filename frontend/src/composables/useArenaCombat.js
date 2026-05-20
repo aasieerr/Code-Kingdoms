@@ -1,4 +1,5 @@
 import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
+import { playSword } from './useSoundEffects'
 import { WORLD_EDGE as BASE_WORLD } from '../constants/world'
 import { getArenaWalkBoundsRect } from '../constants/arenaWalkBounds'
 import {
@@ -171,6 +172,7 @@ export function useArenaCombat(options = {}) {
   const enemyBullets = shallowRef([])
   const coins = shallowRef([])
   const slashes = shallowRef([])
+  const bulletFireCount = ref(0)
 
   let enemyId = 1
   let bulletId = 1
@@ -431,7 +433,7 @@ export function useArenaCombat(options = {}) {
     const race = String(characterRace.value || '').toLowerCase()
     let speed = BASE_MOVE_SPEED
 
-    if (klass.includes('guerrero') || klass.includes('warrior') || klass.includes('paladin')) speed -= 0.4
+    if (klass.includes('guerrero') || klass.includes('warrior') || klass.includes('paladin') || klass.includes('paladín')) speed -= 0.4
     else if (klass.includes('mago') || klass.includes('mage') || klass.includes('wizard')) speed += 0.1
     else if (klass.includes('arquero') || klass.includes('archer') || klass.includes('hunter')) speed += 0.3
     else if (klass.includes('asesino') || klass.includes('rogue') || klass.includes('assassin')) speed += 0.5
@@ -820,9 +822,12 @@ export function useArenaCombat(options = {}) {
       const wType = (equippedWeapon.value?.weaponType || '').toLowerCase()
       const wName = (equippedWeapon.value?.name || '').toLowerCase()
       // Fallback: si weaponType está vacío pero el nombre contiene el tipo
-      const effectiveType = wType || (wName.includes('arco') ? 'arco' : wName.includes('varita') ? 'varita' : wName.includes('daga') ? 'daga' : wName.includes('hacha') ? 'hacha' : wName.includes('espada') ? 'espada' : '')
+      const effectiveType = wType || (wName.includes('arco') ? 'arco' : wName.includes('varita') ? 'varita' : wName.includes('baston') ? 'baston' : wName.includes('daga') ? 'daga' : wName.includes('hacha') ? 'hacha' : wName.includes('espada') ? 'espada' : wName.includes('maza') ? 'maza' : '')
       const charClass = (characterClass.value || '').toLowerCase()
       const isWarrior = charClass.includes('guerrero') || charClass.includes('warrior')
+      const isPaladin = charClass.includes('paladin') || charClass.includes('paladín')
+      const isAssassin = charClass.includes('asesino') || charClass.includes('assassin') || charClass.includes('rogue')
+      const isMeleeClass = isWarrior || isPaladin || isAssassin
 
       // Ajustar intervalo y daño según tipo efectivo del arma
       if (effectiveType === 'daga') currentFireInterval = 250
@@ -860,18 +865,19 @@ export function useArenaCombat(options = {}) {
         const len = Math.hypot(dx, dy) || 1
         const angle = Math.atan2(dy, dx)
 
-        if (MELEE_TYPES.includes(effectiveType) || (isWarrior && !equippedWeapon.value)) {
+        if (MELEE_TYPES.includes(effectiveType) || (isMeleeClass && (!equippedWeapon.value || !effectiveType))) {
           // Ataque Melee
           slashes.value = [
             ...slashes.value,
             {
-              id: bulletId++, // Reusamos ID counter
+              id: bulletId++,
               x: pcx + Math.cos(angle) * 25,
               y: pcy + Math.sin(angle) * 25,
               angle: angle,
               born: now
             }
           ]
+          playSword()
 
           // Daño en área melee
           let changed = false
@@ -915,6 +921,7 @@ export function useArenaCombat(options = {}) {
               damage: currentDamage
             },
           ]
+          bulletFireCount.value++
         }
       }
 
@@ -1175,6 +1182,7 @@ export function useArenaCombat(options = {}) {
     enemyBullets,
     coins,
     slashes,
+    bulletFireCount,
     playerFacing,
     startNextWave,
     beginFirstWave,

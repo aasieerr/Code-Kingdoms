@@ -164,6 +164,7 @@ import javaBossIdle8 from './assets/characters/java-boss/idle-8.png'
 import javaBossCloak from './assets/characters/java-boss/shield-cloak.png'
 import { lastTransition } from './gameState'
 import { playMusic, stopMusic } from './composables/useMusic'
+import { playPotion, playFireball } from './composables/useSoundEffects'
 import { ensureActiveCharacterId, addCharacterGold } from './api/character'
 import { consumeCharacterItem } from './api/consumable'
 import { fetchInventoryData, myCharacterItems } from './api/inventario'
@@ -563,6 +564,7 @@ const {
   enemyBullets,
   coins,
   slashes,
+  bulletFireCount,
   stamina,
   isSprinting,
   playerFacing,
@@ -596,6 +598,8 @@ const {
     syncRunGoldOnce()
   }
 })
+
+watch(bulletFireCount, () => { playFireball() })
 
 const arenaCosmeticPortraitSrc = computed(() =>
   getDirectionalSkinWorldSrc(characterStore.equippedSkin?.slug, playerFacing.value),
@@ -632,6 +636,7 @@ async function tryConsumeArenaSlot(slotIndex) {
       power: data.power,
       duration: data.duration,
     })
+    playPotion()
     if (data.character_item) {
       myCharacterItems.value = myCharacterItems.value.map((ci) => (
         ci.id === data.character_item.id ? data.character_item : ci
@@ -1165,6 +1170,7 @@ onMounted(async () => {
     portalCooldown.value = false
     startArenaCombat(queryStart)
   }
+  playMusic(section.value >= TOTAL_SECTIONS ? `boss-${enemyFaction.value}` : `combat-${enemyFaction.value}`)
 })
 
 watch([x, y], ([newX, newY]) => {
@@ -1185,7 +1191,7 @@ watch([section, enemyFaction], ([sec, faction]) => {
   if (sec >= TOTAL_SECTIONS) {
     playMusic(`boss-${faction}`)
   } else {
-    playMusic('combat')
+    playMusic(`combat-${faction}`)
   }
 }, { immediate: true })
 

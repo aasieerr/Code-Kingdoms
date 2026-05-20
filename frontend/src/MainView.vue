@@ -444,7 +444,7 @@ const currentLobbyMapName = computed(() => (
 
 // Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
-  playMusic(isPlayerPhp.value ? 'village-php' : 'village-java')
+  playMusic(isPlayerPhp.value ? 'village-java' : 'village-php')
   window.addEventListener('keydown', onSkinShopKey)
 
   try {

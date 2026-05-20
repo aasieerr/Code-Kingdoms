@@ -91,7 +91,8 @@ export const useCharacterStore = defineStore('character', () => {
       arenaWave.value = migrated.wave
       arenaInProgress.value = Boolean(ch.arena_in_progress)
       spriteData.value = ch.sprite_data || null
-      characterClass.value = ch.character_class?.name || ch.class?.name || (ch.id_class === 1 ? 'Guerrero' : '')
+      const classNames = { 1: 'Guerrero', 2: 'Mago', 3: 'Arquero', 4: 'Paladín', 5: 'Asesino' }
+characterClass.value = ch.character_class?.name || ch.class?.name || classNames[ch.id_class] || ''
       level.value = Math.max(1, Number(ch.level ?? 1) || 1)
       experience.value = Math.max(0, Math.floor(Number(ch.experience ?? ch.xp ?? 0) || 0))
       maxHealth.value = Math.max(1, Number(ch.max_health ?? ch.maxHealth ?? 100) || 100)

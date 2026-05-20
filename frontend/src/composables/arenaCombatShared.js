@@ -4,7 +4,7 @@ export const PLAYER_SIZE = 40
 // Hitbox ligeramente menor que el sprite para evitar atascos en bordes.
 export const PLAYER_COLLISION_SIZE = 34
 export const BASE_MOVE_SPEED = 2.2
-export const MELEE_TYPES = ['daga', 'espada', 'hacha']
+export const MELEE_TYPES = ['daga', 'espada', 'hacha', 'maza']
 export const MELEE_RANGE = 135
 export const MELEE_LIFETIME = 250
 export const COIN_PICKUP_R = 52

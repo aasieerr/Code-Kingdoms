@@ -22,6 +22,21 @@
       </section>
 
       <section class="settings-section">
+        <h3>VOLUMEN DE ATAQUES</h3>
+        <div class="volume-row">
+          <input
+            :value="settings.sfxVolume"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            @input="setSfxVolume($event.target.value)"
+          />
+          <span>{{ settings.sfxVolume }}%</span>
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h3>ARENA — POCIONES (SOLO OLEADAS /game/second)</h3>
         <p class="settings-hint">
           Asigna un tipo de poción por ranura y su tecla. Solo funciona durante el combate en oleadas,
@@ -105,6 +120,7 @@ const listeningArenaSlot = ref(null)
 const {
   settings,
   setVolume,
+  setSfxVolume,
   setKeybind,
   setArenaPotionKey,
   setArenaPotionItem,
