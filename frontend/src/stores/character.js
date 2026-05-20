@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchCharacter, ensureActiveCharacterId } from '../api/character'
 import api from '../api/axios'
+import { isPlayerPhpKingdom } from '../utils/realm'
+import { normalizeArenaProgressFromServer } from '../composables/arenaCombatShared'
 
 export const useCharacterStore = defineStore('character', () => {
   const gold = ref(0)
@@ -13,6 +15,14 @@ export const useCharacterStore = defineStore('character', () => {
   const spriteData = ref(null)
   const characterClass = ref('')
   const equippedWeapon = ref(null)
+  const level = ref(1)
+  const experience = ref(0)
+  const maxHealth = ref(100)
+  const baseDamage = ref(12)
+  const attackPower = ref(10)
+  const speed = ref(100)
+  const armor = ref(0)
+  const statPoints = ref(0)
   const arenaSection = ref(1)
   const arenaWave = ref(1)
   const arenaInProgress = ref(false)
@@ -71,11 +81,31 @@ export const useCharacterStore = defineStore('character', () => {
         kingdomName.value = await fetchKingdomNameById(kingdomId.value)
       }
       equippedSkin.value = ch.equipped_skin
+      const enemyFactionKey = isPlayerPhpKingdom(kingdomName.value, kingdomId.value) ? 'java' : 'php'
+      const migrated = normalizeArenaProgressFromServer(
+        enemyFactionKey,
+        Number(ch.arena_section ?? 1) || 1,
+        Number(ch.arena_wave ?? 1) || 1,
+      )
+      arenaSection.value = migrated.section
+      arenaWave.value = migrated.wave
+      arenaInProgress.value = Boolean(ch.arena_in_progress)
       spriteData.value = ch.sprite_data || null
       characterClass.value = ch.character_class?.name || ch.class?.name || (ch.id_class === 1 ? 'Guerrero' : '')
+      level.value = Math.max(1, Number(ch.level ?? 1) || 1)
+      experience.value = Math.max(0, Math.floor(Number(ch.experience ?? ch.xp ?? 0) || 0))
+      maxHealth.value = Math.max(1, Number(ch.max_health ?? ch.maxHealth ?? 100) || 100)
+      attackPower.value = Math.max(1, Number(ch.attack_power ?? 10) || 10)
+      speed.value = Math.min(200, Math.max(1, Number(ch.speed ?? 100) || 100))
+      statPoints.value = Number(ch.stat_points ?? 0) || 0
       arenaSection.value = Number(ch.arena_section ?? 1) || 1
       arenaWave.value = Number(ch.arena_wave ?? 1) || 1
       arenaInProgress.value = Boolean(ch.arena_in_progress)
+      
+      armor.value = Math.max(0, Number(ch.armor ?? 0) || 0)
+      attackSpeed.value = Math.max(0.1, Number(ch.attack_speed ?? ch.attackSpeed ?? 1) || 1)
+      moveSpeed.value = Math.max(0.1, Number(ch.move_speed ?? ch.moveSpeed ?? 1) || 1)
+      baseDamage.value = Math.max(1, Number(ch.base_damage ?? ch.baseDamage ?? 12) || 12)
 
       // El backend devuelve equipped_items[] desde la relación equippedItems
       // Buscamos el arma equipada dentro del array
@@ -91,11 +121,35 @@ export const useCharacterStore = defineStore('character', () => {
         equippedWeapon.value = null
       }
 
+      // Buscamos la armadura equipada
+      const equippedArmorItem = (ch.equipped_items || []).find(i => i.type === 'armor')
+      if (equippedArmorItem) {
+        const details = equippedArmorItem.armor || equippedArmorItem.details || {}
+        armor.value = Number(details.defense || 0)
+      } else {
+        armor.value = 0
+      }
+
       error.value = null
     } catch (err) {
       error.value = err.message
     } finally {
       loading.value = false
+    }
+  }
+
+  async function buyStat(stat) {
+    try {
+      const id = await ensureActiveCharacterId()
+      const { data } = await api.post(`/characters/${id}/upgrade-stat`, { stat })
+      if (data.success) {
+        await refresh()
+        return true
+      }
+      return false
+    } catch (err) {
+      console.error('Error buying stat:', err)
+      return false
     }
   }
 
@@ -109,11 +163,19 @@ export const useCharacterStore = defineStore('character', () => {
     equippedSkin,
     spriteData,
     equippedWeapon,
+    level,
+    experience,
+    maxHealth,
+    attackPower,
+    speed,
+    armor,
+    statPoints,
     arenaSection,
     arenaWave,
     arenaInProgress,
     loading,
     error,
-    refresh
+    refresh,
+    buyStat
   }
 })

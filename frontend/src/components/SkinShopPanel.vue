@@ -1,55 +1,110 @@
 <template>
-  <section class="skin-panel" @click.stop>
+  <!-- Overlay a pantalla completa: el panel tenía z-index 50 y quedaba detrás del HUD (100) y paneles (200). -->
+  <div class="skin-shop-overlay" @click.self="$emit('close')">
+    <section class="skin-panel" @click.stop>
     <header class="skin-h">
-      <h2>Apariencia (CodeCoins)</h2>
+      <h2>Apariencia</h2>
       <button type="button" class="close-btn" @click="$emit('close')">X</button>
     </header>
     <p class="skin-balance">CodeCoins: <strong>{{ codeCoinsDisplay }}</strong></p>
 
     <div v-if="loading" class="skin-status">Cargando…</div>
     <div v-else-if="err" class="skin-status err">{{ err }}</div>
-    <ul v-else class="skin-list">
-      <li
-        v-for="s in skins"
-        :key="s.id"
-        class="skin-row"
-        :class="{ current: s.id === equippedId }"
-      >
-        <div
-          class="swatch"
-          :style="{
-            background: `linear-gradient(135deg, ${s.color_still} 50%, ${s.color_moving} 50%)`,
-          }"
-        />
-        <div class="skin-info">
-          <p class="skin-name">{{ s.name }}</p>
-          <p class="skin-price">{{ s.price_code_coins }} CodeCoins</p>
-        </div>
-        <div class="skin-actions">
-          <button
-            v-if="!isOwned(s.id)"
-            type="button"
-            class="act buy"
-            :disabled="actionId === s.id"
-            @click="buy(s)"
+    <template v-else>
+      <p v-if="displayedSkins.length === 0" class="catalog-hint">
+        No hay aspectos de tienda en el catálogo (¿migración / seed?). Puedes seguir usando tu pixel-art.
+      </p>
+      <ul class="skin-list">
+        <li
+          v-for="row in shopRows"
+          :key="row.rowKey"
+          class="skin-row"
+          :class="{ current: row.isDefaultPixel ? equippedId == null : row.id === equippedId }"
+        >
+          <div
+            class="swatch"
+            :class="{
+              'swatch--portrait': !row.isDefaultPixel && portraitSrc(row),
+              'swatch--mini-grid': row.isDefaultPixel,
+            }"
           >
-            {{ actionId === s.id ? '…' : 'Comprar' }}
-          </button>
-          <button
-            v-else-if="s.id !== equippedId"
-            type="button"
-            class="act equip"
-            :disabled="actionId === s.id"
-            @click="equip(s.id)"
-          >
-            Equipar
-          </button>
-          <span v-else class="tag">En uso</span>
-        </div>
-      </li>
-    </ul>
+            <template v-if="row.isDefaultPixel">
+              <div
+                v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)"
+                class="swatch-mini-grid"
+              >
+                <div
+                  v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
+                  :key="pIdx"
+                  class="swatch-mini-grid__px"
+                  :style="{ backgroundColor: color || 'transparent' }"
+                />
+              </div>
+              <div v-else class="swatch__fill swatch__fill--muted" />
+            </template>
+            <img
+              v-else-if="portraitSrc(row)"
+              class="swatch__img"
+              :src="portraitSrc(row)"
+              alt=""
+            >
+            <template v-else>
+              <div
+                class="swatch__fill"
+                :style="{
+                  background: `linear-gradient(135deg, ${row.color_still} 50%, ${row.color_moving} 50%)`,
+                }"
+              />
+            </template>
+          </div>
+          <div class="skin-info">
+            <p class="skin-name">{{ row.isDefaultPixel ? 'Tu personaje' : row.name }}</p>
+            <p v-if="row.isDefaultPixel" class="skin-price skin-price--sub">
+              Pixel-art del creador de personajes
+            </p>
+            <p v-else class="skin-price">{{ row.price_code_coins }} CodeCoins</p>
+          </div>
+          <div class="skin-actions">
+            <template v-if="row.isDefaultPixel">
+              <button
+                v-if="equippedId != null"
+                type="button"
+                class="act equip"
+                :disabled="actionId !== null"
+                @click="equipDefaultPixel"
+              >
+                {{ actionId === ACTION_DEFAULT ? '…' : 'Equipar' }}
+              </button>
+              <span v-else class="tag">En uso</span>
+            </template>
+            <template v-else>
+              <button
+                v-if="!isOwned(row.id)"
+                type="button"
+                class="act buy"
+                :disabled="actionId !== null"
+                @click="buy(row)"
+              >
+                {{ actionId === row.id ? '…' : 'Comprar' }}
+              </button>
+              <button
+                v-else-if="row.id !== equippedId"
+                type="button"
+                class="act equip"
+                :disabled="actionId !== null"
+                @click="equip(row.id)"
+              >
+                {{ actionId === row.id ? '…' : 'Equipar' }}
+              </button>
+              <span v-else class="tag">En uso</span>
+            </template>
+          </div>
+        </li>
+      </ul>
+    </template>
     <p v-if="msg" class="skin-msg">{{ msg }}</p>
-  </section>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -58,14 +113,34 @@ import { fetchSkinsCatalog, purchaseSkin, equipSkin } from '../api/skins'
 import { ensureActiveCharacterId, fetchCharacter } from '../api/character'
 import { activeCharacterId } from '../gameState'
 import { useCharacterStore } from '../stores/character'
+import { ASIER_SLUG, getCosmeticShopPreviewBySlug } from '../constants/cosmeticVisuals'
+import { parseSprite, isEmptySprite } from '../utils/sprite'
 
+const ACTION_DEFAULT = 'default-pixel'
 
 const emit = defineEmits(['close', 'wallet-updated'])
+
+function portraitSrc(s) {
+  return getCosmeticShopPreviewBySlug(s?.slug)
+}
 
 const skins = ref([])
 const ownedIds = ref(new Set())
 const characterStore = useCharacterStore()
 const equippedId = ref(null)
+
+/** Solo Asier aunque la API devuelva skins antiguas (hasta migrar BD). */
+const displayedSkins = computed(() =>
+  skins.value.filter((s) => String(s?.slug ?? '').toLowerCase() === ASIER_SLUG),
+)
+
+const shopRows = computed(() => {
+  const rows = [{ rowKey: 'default-pixel', isDefaultPixel: true }]
+  for (const s of displayedSkins.value) {
+    rows.push({ rowKey: `skin-${s.id}`, isDefaultPixel: false, ...s })
+  }
+  return rows
+})
 
 const loading = ref(true)
 const err = ref(null)
@@ -92,7 +167,7 @@ async function load() {
     const [list, ch] = await Promise.all([fetchSkinsCatalog(), fetchCharacter(activeCharacterId.value)])
     skins.value = list
     await characterStore.refresh()
-    equippedId.value = characterStore.equippedSkin?.id ?? null
+    equippedId.value = ch.equipped_skin_id ?? ch.equipped_skin?.id ?? null
 
     const ids = ch.owned_skin_ids
     if (Array.isArray(ids)) {
@@ -109,7 +184,7 @@ async function buy(s) {
   actionId.value = s.id
   msg.value = ''
   try {
-    const res = await purchaseSkin(s.id)
+    await purchaseSkin(s.id)
     ownedIds.value.add(s.id)
     emit('wallet-updated')
     await characterStore.refresh()
@@ -132,7 +207,7 @@ async function equip(skinId) {
   msg.value = ''
   try {
     const ch = await equipSkin(skinId)
-    equippedId.value = ch.equipped_skin_id
+    equippedId.value = ch.equipped_skin_id ?? ch.equipped_skin?.id ?? null
     emit('wallet-updated')
     await characterStore.refresh()
 
@@ -144,24 +219,45 @@ async function equip(skinId) {
   }
 }
 
+async function equipDefaultPixel() {
+  actionId.value = ACTION_DEFAULT
+  msg.value = ''
+  try {
+    const ch = await equipSkin(null)
+    equippedId.value = ch.equipped_skin_id ?? ch.equipped_skin?.id ?? null
+    emit('wallet-updated')
+    await characterStore.refresh()
+  } catch (e) {
+    const d = e?.response?.data
+    msg.value = d?.message || 'No se pudo volver al personaje creado.'
+  } finally {
+    actionId.value = null
+  }
+}
+
 onMounted(() => {
   load()
 })
 </script>
 
 <style scoped>
+.skin-shop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
 .skin-panel {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 50;
+  position: relative;
   width: min(520px, 94vw);
   max-height: min(80vh, 560px);
   overflow: auto;
-  border: 5px solid #1f1f1f;
+  border: 3px solid #1f1f1f;
   background: linear-gradient(180deg, #1e1428 0%, #0f0a16 100%);
-  box-shadow: 0 0 0 5px #5e35b1, 12px 12px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
   color: #ede7f6;
   padding: 16px;
   font-family: 'Press Start 2P', 'Courier New', monospace;
@@ -201,10 +297,53 @@ onMounted(() => {
   border: 2px solid #0a0a0a;
   flex-shrink: 0;
   border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.swatch__fill {
+  position: absolute;
+  inset: 0;
+}
+.swatch--portrait {
+  border-color: #0a0a0a;
+}
+.swatch__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  display: block;
+  image-rendering: pixelated;
 }
 .skin-info { flex: 1; min-width: 0; }
 .skin-name { font-size: 8px; margin: 0 0 4px; }
 .skin-price { font-size: 7px; margin: 0; opacity: 0.9; }
+.skin-price--sub {
+  font-size: 6px;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+.swatch__fill--muted {
+  background: #1a1528 !important;
+}
+.swatch-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.swatch-mini-grid__px {
+  min-width: 0;
+  min-height: 0;
+}
+.catalog-hint {
+  font-size: 7px;
+  color: #ce93d8;
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
 .skin-actions { flex-shrink: 0; }
 .act {
   font-size: 7px;

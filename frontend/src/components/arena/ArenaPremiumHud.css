@@ -1,0 +1,236 @@
+/* PREMIUM ARENA HUD */
+.premium-arena-hud {
+position: absolute;
+inset: 0;
+pointer-events: none;
+z-index: 100;
+padding: 40px;
+font-family: 'Press Start 2P', monospace;
+}
+
+.hud-top-center {
+position: absolute;
+top: 40px;
+left: 50%;
+transform: translateX(-50%);
+}
+
+.wave-display {
+background: rgba(15, 23, 42, 0.9);
+border: 4px solid #facc15;
+padding: 15px 30px;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 8px;
+box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
+}
+
+.wave-label { font-size: 8px; color: #facc15; opacity: 0.8; }
+.wave-label-sub {
+font-size: 7px;
+color: rgba(250, 204, 21, 0.5);
+letter-spacing: 0.1em;
+}
+.wave-number { font-size: 22px; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+.route-label { font-size: 7px; color: #a7f3d0; letter-spacing: 0.08em; }
+.boss-hud {
+width: min(560px, 70vw);
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 6px;
+}
+.boss-name {
+font-size: 10px;
+color: #f8fafc;
+letter-spacing: 0.12em;
+text-shadow: 0 0 8px rgba(248, 250, 252, 0.35);
+}
+.boss-hp-frame {
+width: 100%;
+height: 14px;
+border: 2px solid #ef4444;
+background: rgba(15, 23, 42, 0.8);
+box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.55);
+overflow: hidden;
+}
+.boss-hp-fill {
+height: 100%;
+background: linear-gradient(90deg, #dc2626 0%, #ef4444 60%, #f97316 100%);
+transition: width 160ms linear;
+}
+.boss-hp-text {
+font-size: 8px;
+color: #fee2e2;
+letter-spacing: 0.08em;
+}
+
+.hud-stats-left {
+position: absolute;
+top: 40px;
+left: 40px;
+display: flex;
+flex-direction: column;
+gap: 20px;
+}
+
+.gold-display {
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+
+.gold-item {
+background: rgba(15, 23, 42, 0.8);
+border-left: 4px solid #facc15;
+padding: 10px 20px;
+display: flex;
+align-items: center;
+gap: 12px;
+}
+
+.gold-icon { font-size: 16px; }
+.gold-val { font-size: 12px; color: white; }
+.gold-lbl { font-size: 6px; color: #facc15; opacity: 0.6; }
+
+.hp-container {
+width: 250px;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.hp-label { font-size: 7px; color: #facc15; }
+.hp-bar-frame {
+height: 20px;
+background: #0b0d17;
+border: 2px solid #334155;
+padding: 2px;
+}
+
+.hp-bar-fill {
+height: 100%;
+background: linear-gradient(90deg, #b91c1c, #ef4444);
+position: relative;
+transition: width 0.3s ease-out;
+}
+
+.hp-glow {
+position: absolute;
+inset: 0;
+background: white;
+opacity: 0.2;
+filter: blur(4px);
+}
+
+.hp-numeric { font-size: 7px; text-align: right; color: white; opacity: 0.6; }
+
+.xp-container {
+width: 250px;
+display: flex;
+flex-direction: column;
+gap: 7px;
+}
+
+.xp-label { font-size: 7px; color: #a7f3d0; }
+
+.xp-bar-frame {
+height: 14px;
+background: #052e2b;
+border: 2px solid #115e59;
+padding: 1px;
+}
+
+.xp-bar-fill {
+height: 100%;
+background: linear-gradient(90deg, #0f766e, #14b8a6);
+transition: width 0.2s ease-out;
+}
+
+.xp-numeric { font-size: 7px; text-align: right; color: #ccfbf1; opacity: 0.9; }
+
+.arena-potion-hud {
+width: 250px;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.arena-potion-title {
+font-size: 7px;
+color: #c4b5fd;
+letter-spacing: 0.06em;
+}
+
+.arena-potion-row {
+display: flex;
+flex-wrap: wrap;
+gap: 6px;
+}
+
+.arena-potion-pill {
+display: inline-flex;
+flex-direction: column;
+align-items: center;
+gap: 3px;
+min-width: 52px;
+padding: 6px 8px;
+background: rgba(15, 23, 42, 0.85);
+border: 2px solid #5b21b6;
+font-size: 6px;
+color: #e9d5ff;
+}
+
+.arena-potion-pill--empty {
+opacity: 0.45;
+border-color: #475569;
+}
+
+.arena-potion-pill--out {
+border-color: #7f1d1d;
+opacity: 0.7;
+}
+
+.ap-key {
+color: #fde68a;
+font-size: 7px;
+}
+
+.ap-name {
+text-align: center;
+line-height: 1.2;
+max-width: 72px;
+}
+
+.ap-q {
+color: #facc15;
+font-size: 7px;
+}
+
+.hud-bottom-hints {
+position: absolute;
+bottom: 40px;
+left: 50%;
+transform: translateX(-50%);
+display: flex;
+gap: 20px;
+}
+
+.hint-pill {
+background: rgba(15, 23, 42, 0.8);
+border: 1px solid rgba(250, 204, 21, 0.2);
+padding: 8px 16px;
+font-size: 6px;
+color: #94a3b8;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.key {
+color: #facc15;
+background: rgba(250, 204, 21, 0.1);
+padding: 4px 6px;
+border: 1px solid #facc15;
+}

@@ -1,5 +1,5 @@
 import api from './axios'
-import { activeCharacterId, setActiveCharacterId } from '../gameState'
+import { activeCharacterId } from '../gameState'
 
 export async function fetchCharacters() {
   const { data } = await api.get('/characters')

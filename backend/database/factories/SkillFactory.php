@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Skill>
- */
 class SkillFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -24,9 +16,6 @@ class SkillFactory extends Factory
         ];
     }
 
-    /**
-     * Habilidad de Guerrero
-     */
     public function warriorSkill(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -42,9 +31,6 @@ class SkillFactory extends Factory
         ]);
     }
 
-    /**
-     * Habilidad de Mago
-     */
     public function mageSkill(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -60,9 +46,6 @@ class SkillFactory extends Factory
         ]);
     }
 
-    /**
-     * Habilidad de Arquero
-     */
     public function archerSkill(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -78,9 +61,6 @@ class SkillFactory extends Factory
         ]);
     }
 
-    /**
-     * Habilidad de Paladín
-     */
     public function paladinSkill(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -96,9 +76,6 @@ class SkillFactory extends Factory
         ]);
     }
 
-    /**
-     * Habilidad de Asesino
-     */
     public function assassinSkill(): self
     {
         return $this->state(fn (array $attributes) => [

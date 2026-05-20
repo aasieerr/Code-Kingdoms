@@ -19,7 +19,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('characters', function (Blueprint $table) {
-            $table->dropForeign(['equipped_skin_id']);
+            $table->dropConstrainedForeignId('equipped_skin_id');
         });
     }
 };

@@ -1,7 +1,7 @@
 <template>
   <div class="pixel-page min-h-screen flex flex-col">
     <AppHeader />
-    
+
     <div class="flex-grow flex items-center justify-center relative px-6 py-12">
       <div class="fixed inset-0 z-0 pointer-events-none">
         <div class="absolute inset-0 bg-gradient-to-r from-[#1e3a8a]/10 via-transparent to-[#7f1d1d]/10"></div>
@@ -19,12 +19,12 @@
             <label class="pixel-label">NOMBRE DEL HÉROE</label>
             <input v-model="regName" type="text" class="pixel-input" required maxlength="255" autocomplete="name" placeholder="Tu nombre" />
           </div>
-          
+
           <div class="pixel-field">
             <label class="pixel-label">EMAIL DE HÉROE</label>
             <input v-model="regEmail" type="email" class="pixel-input" required autocomplete="email" placeholder="tu@email.com" />
           </div>
-          
+
           <div class="pixel-field">
             <label class="pixel-label">CONTRASEÑA</label>
             <div class="pixel-input-group">
@@ -89,7 +89,7 @@ async function submitRegister() {
     errorMsg.value = 'LAS CONTRASEÑAS NO COINCIDEN'
     return
   }
-  
+
   busy.value = true
   errorMsg.value = ''
   try {

@@ -31,10 +31,10 @@
             </button>
           </div>
           <div class="search-wrapper">
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="BUSCAR ÍTEM..." 
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="BUSCAR ÍTEM..."
               class="search-input"
             />
             <span class="search-icon">🔍</span>
@@ -55,26 +55,44 @@
           </div>
           <ul v-else class="item-list">
             <li
-              v-for="ci in filteredItems"
-              :key="ci.item.id_item"
-              :class="{ 
-                'selected': selectedItem?.item?.id_item === ci.item.id_item,
-                'equipped': ci.is_equipped 
+              v-for="(ci, idx) in filteredItems"
+              :key="ci.item?.id_item || ci.id || idx"
+              :class="{
+                'selected': selectedItem?.item?.id_item === ci.item?.id_item,
+                'equipped': ci.is_equipped
               }"
               @click="selectedItem = ci"
             >
               <div class="item-icon-box">
-                <span class="item-icon">{{ spriteByType[ci.item.type] }}</span>
+                <img
+                  v-if="ci.item?.type === 'weapon'"
+                  :src="getItemSprite(ci.item)"
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <img
+                  v-else-if="ci.item?.type === 'armor'"
+                  :src="getArmourSprite(ci.item)"
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <img
+                  v-else-if="ci.item?.type === 'consumable'"
+                  :src="getConsumableSprite(ci.item)"
+                  class="item-pixel-sprite"
+                  @error="(e) => e.target.src = '/vite.svg'"
+                />
+                <span v-else class="item-icon">{{ spriteByType[ci.item?.type] }}</span>
               </div>
               <div class="item-info">
                 <div class="item-name-row">
-                  <span class="item-name">{{ ci.item.name.toUpperCase() }}</span>
+                  <span class="item-name">{{ ci.item?.name?.toUpperCase() }}</span>
                   <span v-if="ci.is_equipped" class="equipped-tag">E</span>
                 </div>
                 <div class="item-meta">
-                  <span class="meta-type">{{ labelsByType[ci.item.type] }}</span>
+                  <span class="meta-type">{{ labelsByType[ci.item?.type] }}</span>
                   <span class="meta-qty" v-if="ci.id">CANT: {{ ci.quantity }}</span>
-                  <span class="meta-price" v-else>{{ ci.item.price }} 🪙</span>
+                  <span class="meta-price" v-else>{{ ci.item?.price }} 🪙</span>
                 </div>
               </div>
             </li>
@@ -84,33 +102,84 @@
 
       <!-- RIGHT: Preview & Actions -->
       <aside class="item-preview" v-if="selectedItem?.item">
-        <div class="preview-header" style="display: flex; align-items: center; gap: 16px;">
+        <div class="preview-header-box">
           <div class="sprite-display">
-            <span class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <img
+              v-if="selectedItem.item.type === 'weapon'"
+              :src="getItemSprite(selectedItem.item)"
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <img
+              v-else-if="selectedItem.item.type === 'armor'"
+              :src="getArmourSprite(selectedItem.item)"
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <img
+              v-else-if="selectedItem.item.type === 'consumable'"
+              :src="getConsumableSprite(selectedItem.item)"
+              class="display-pixel-sprite"
+              @error="(e) => e.target.src = '/vite.svg'"
+            />
+            <span v-else class="display-icon">{{ spriteByType[selectedItem.item.type] }}</span>
+            <div class="display-glow"></div>
           </div>
-          <div>
-            <h3 class="preview-title" style="margin-bottom: 6px;">{{ selectedItem.item.name.toUpperCase() }}</h3>
-            <p class="preview-desc" style="margin: 0;">{{ selectedItem.item.description }}</p>
+          <div class="preview-info">
+            <h3 class="preview-title">{{ selectedItem.item.name.toUpperCase() }}</h3>
+            <div class="preview-type-tag">{{ labelsByType[selectedItem.item.type] }}</div>
           </div>
         </div>
 
+        <div class="description-box">
+          <h4 class="section-label">DESCRIPCIÓN</h4>
+          <p class="preview-desc">{{ selectedItem.item.description }}</p>
+        </div>
+
         <div class="preview-stats">
-          <h4 class="stats-label">ATRIBUTOS</h4>
+          <h4 class="section-label">ATRIBUTOS DEL SISTEMA</h4>
           <ul class="stats-list">
             <template v-if="selectedItem.item.type === 'weapon'">
-              <li><span>DAÑO:</span> <span class="stat-val">{{ selectedItem.item.details?.damage ?? '-' }}</span></li>
-              <li><span>TIPO:</span> <span class="stat-val">{{ selectedItem.item.details?.weapon_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA DE ATAQUE:</span>
+                <span class="stat-val highlight">{{ selectedItem.item.details?.damage ?? '0' }} DMG</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">CATEGORÍA:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.weapon_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
-            <template v-if="selectedItem.item.type === 'armor'">
-              <li><span>DEFENSA:</span> <span class="stat-val">{{ selectedItem.item.details?.defense ?? '-' }}</span></li>
-              <li><span>CLASE:</span> <span class="stat-val">{{ selectedItem.item.details?.armor_type ?? '-' }}</span></li>
-              <li><span>DURABILIDAD:</span> <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}</span></li>
+            <template v-else-if="selectedItem.item.type === 'armor'">
+              <li class="stat-item">
+                <span class="stat-label">NIVEL DE DEFENSA:</span>
+                <span class="stat-val highlight">{{ selectedItem.item.details?.defense ?? '0' }} DEF</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">TIPO DE ARMADURA:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.armor_type?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">INTEGRIDAD:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.durability ?? '-' }}%</span>
+              </li>
             </template>
-            <template v-if="selectedItem.item.type === 'consumable'">
-              <li><span>EFECTO:</span> <span class="stat-val">{{ selectedItem.item.details?.effect ?? '-' }}</span></li>
-              <li><span>POTENCIA:</span> <span class="stat-val">{{ selectedItem.item.details?.power ?? '-' }}</span></li>
-              <li><span>DURACIÓN:</span> <span class="stat-val">{{ selectedItem.item.details?.duration ?? '-' }}</span></li>
+            <template v-else-if="selectedItem.item.type === 'consumable'">
+              <li class="stat-item">
+                <span class="stat-label">EFECTO PRIMARIO:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.effect?.toUpperCase() ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">POTENCIA:</span>
+                <span class="stat-val highlight">{{ selectedItem.item.details?.power ?? '-' }}</span>
+              </li>
+              <li class="stat-item">
+                <span class="stat-label">DURACIÓN:</span>
+                <span class="stat-val">{{ selectedItem.item.details?.duration ? selectedItem.item.details.duration + 's' : 'INSTANTÁNEO' }}</span>
+              </li>
             </template>
           </ul>
         </div>
@@ -127,7 +196,7 @@
           </button>
 
           <div v-else class="inventory-actions">
-            <button 
+            <button
               v-if="!selectedItem.is_equipped"
               class="action-btn sell"
               @click="handleSell(selectedItem)"
@@ -135,9 +204,9 @@
             >
               VENDER ({{ Math.floor((selectedItem.item.price || 0) * 0.5) }} 🪙)
             </button>
-            <button 
-              v-if="['weapon', 'armor'].includes(selectedItem.item.type)" 
-              class="action-btn equip" 
+            <button
+              v-if="['weapon', 'armor'].includes(selectedItem.item.type)"
+              class="action-btn equip"
               @click="handleEquip(selectedItem)"
               :disabled="busy"
             >
@@ -173,6 +242,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   }
+  ,
+  shopType: {
+    type: String,
+    default: null
+  }
 })
 
 defineEmits(['close', 'switch-panel'])
@@ -203,34 +277,43 @@ watch(() => props.isShop, async () => {
   // Resetear selección ANTES de cargar para evitar que un item con id real
   // quede seleccionado mientras llegan los datos de la tienda
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }
 })
 
+// Si cambia el tipo de tienda mientras está abierta, recargar catálogo
+watch(() => props.shopType, async (t) => {
+  if (props.isShop) {
+    selectedItem.value = null
+    await fetchInventoryData(true, t)
+    if (filteredItems.value.length > 0) selectedItem.value = filteredItems.value[0]
+  }
+})
+
 const filteredItems = computed(() => {
-  const source = props.isShop 
+  const source = props.isShop
     ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
     : myCharacterItems.value
 
-  let list = source
-  
+  let list = source.filter(ci => ci && ci.item)
+
   if (activeFilter.value !== 'all') {
     list = list.filter((ci) => ci.item?.type === activeFilter.value)
   }
-  
+
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter((ci) => ci.item?.name?.toLowerCase().includes(q))
   }
-  
+
   return list
 })
 
 onMounted(async () => {
   selectedItem.value = null
-  await fetchInventoryData(true)
+  await fetchInventoryData(true, props.shopType)
   if (filteredItems.value.length > 0) {
     selectedItem.value = filteredItems.value[0]
   }
@@ -287,7 +370,7 @@ async function handleBuy(item) {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
     if (currentIdItem) {
-      const source = props.isShop 
+      const source = props.isShop
         ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
         : myCharacterItems.value
       selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
@@ -307,12 +390,49 @@ async function handleSell(ci) {
     busy.value = false
     const currentIdItem = selectedItem.value?.item?.id_item
     if (currentIdItem) {
-      const source = props.isShop 
+      const source = props.isShop
         ? globalItems.value.map(item => ({ item, id: null, quantity: 0, is_equipped: false }))
         : myCharacterItems.value
       selectedItem.value = source.find(x => x.item?.id_item === currentIdItem)
     }
   }
+}
+function getItemSprite(item) {
+  if (!item || item.type !== 'weapon') return null
+
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const classMap = { 1: 'guerrero', 2: 'mago', 3: 'arquero', 4: 'paladin', 5: 'asesino' }
+
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  const clase = classMap[item.id_class] || 'comun'
+
+  // Normalizar nombre: minúsculas, reemplazar espacios por guiones
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Eliminar acentos
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '') // Eliminar caracteres especiales
+
+  return `/src/sprites/weapons/${reino}/${clase}/${filename}.png`
+}
+
+function getArmourSprite(item) {
+  if (!item || item.type !== 'armor') return null
+  const kingdomMap = { 1: 'php', 2: 'java' }
+  const reino = kingdomMap[item.id_kingdom] || 'basicas'
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '')
+  return `/src/sprites/armours/${reino}/${filename}.png`
+}
+
+function getConsumableSprite(item) {
+  if (!item || item.type !== 'consumable') return null
+  let filename = item.name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]/g, '')
+  return `/src/sprites/objects/${filename}.png`
 }
 </script>
 
@@ -347,5 +467,18 @@ async function handleSell(ci) {
 .retry-btn {
   padding: 8px 16px; background: #ca8a04; border: 2px solid #facc15;
   color: #fef9c3; font-family: 'Press Start 2P', monospace; font-size: 7px; cursor: pointer;
+}
+.item-pixel-sprite {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.display-pixel-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(250,204,21,0.5));
 }
 </style>

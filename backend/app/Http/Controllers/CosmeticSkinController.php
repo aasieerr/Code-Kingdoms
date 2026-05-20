@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Character;
 use App\Models\CosmeticSkin;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,18 +18,17 @@ class CosmeticSkinController extends Controller
     }
 
     /**
-     * Compra con CodeCoins; el skin queda vinculado a la cuenta (user), no al personaje.
+     * Compra con CodeCoins; el aspecto queda en la cuenta (user_skin), no ligado a un personaje.
+     * Cualquier personaje del mismo usuario puede equiparlo después.
      */
     public function purchase(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'id_character' => 'required|integer|exists:characters,id',
             'skin_id' => 'required|integer|exists:cosmetic_skins,id',
         ]);
 
-        $result = DB::transaction(function () use ($data) {
-            $character = Character::lockForUpdate()->with('user')->findOrFail($data['id_character']);
-            $user = $character->user;
+        $result = DB::transaction(function () use ($data, $request) {
+            $user = User::lockForUpdate()->findOrFail((int) $request->user()->id);
             $skin = CosmeticSkin::findOrFail($data['skin_id']);
 
             if ($user->ownedSkins()->whereKey($skin->id)->exists()) {
@@ -62,16 +62,31 @@ class CosmeticSkinController extends Controller
     }
 
     /**
-     * Equipa un skin previamente comprado (misma regla: usuario dueño del personaje).
+     * Equipa un skin en este personaje si la cuenta (user) ya lo compró.
+     * Cualquier personaje del mismo usuario puede equipar la misma skin.
      */
     public function equip(Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
-            'skin_id' => 'required|integer|exists:cosmetic_skins,id',
+            'skin_id' => ['present', 'nullable', 'integer', 'exists:cosmetic_skins,id'],
         ]);
 
         $character = Character::with('user')->findOrFail($id);
+
+        if ((int) $character->id_user !== (int) $request->user()->id) {
+            abort(403, 'No puedes modificar este personaje');
+        }
+
         $user = $character->user;
+
+        if ($data['skin_id'] === null) {
+            $character->equipped_skin_id = null;
+            $character->save();
+            $character->load('equippedSkin');
+
+            return response()->json($character);
+        }
+
         $skinId = (int) $data['skin_id'];
 
         if (! $user->ownedSkins()->whereKey($skinId)->exists()) {

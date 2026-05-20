@@ -4,6 +4,7 @@
     ref="arenaRef"
     tabindex="0"
     @click="arenaRef.focus()"
+    @keydown="onMainPanelHotkey"
     @focus="focused = true"
     @blur="focused = false"
   >
@@ -12,14 +13,14 @@
     <div class="game-bg"></div>
     <div class="world" :style="{ transform: cameraTransform }">
       <div class="grid"></div>
-      <div class="terrain grassland"></div>
-      <div class="terrain forest-zone"></div>
-      <div class="terrain mountain-zone"></div>
-      <div class="terrain lake-zone"></div>
-      <div class="terrain road-main"></div>
-      <div class="terrain road-cross"></div>
-      <div class="terrain village-zone"></div>
-      <div class="terrain ruins-zone"></div>
+      <div class="terrain kingdom-lobby" :style="kingdomLobbyStyle"></div>
+      <div
+        class="skin-shop-wardrobe"
+        :style="skinShopMarkerStyle"
+        aria-hidden="true"
+      >
+        <span class="skin-shop-wardrobe__tag">APARIENCIA</span>
+      </div>
       <div
         class="player"
         :class="{ 'is-moving': moving }"
@@ -28,18 +29,21 @@
           top: y + 'px',
         }"
       >
-        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
+        <div v-if="cosmeticPortraitSrc" class="player__cosmetic">
+          <img class="player__cosmetic-img" :src="cosmeticPortraitSrc" alt="">
+        </div>
+        <div v-else-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="player__sprite">
           <div class="mini-grid">
-            <div 
-              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+            <div
+              v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
               :key="pIdx"
               class="mini-grid__pixel"
               :style="{ backgroundColor: color || 'transparent' }"
             ></div>
           </div>
         </div>
-        <div 
-          v-else 
+        <div
+          v-else
           class="player__fallback"
           :style="{ background: moving ? colorMoving : colorStill }"
         ></div>
@@ -59,7 +63,7 @@
       v-if="inSkinShopZone && !showSkinShop && !showMicropay"
       class="shop-hint"
     >
-      Pulsa <kbd>E</kbd> — Apariencia
+      Pulsa <kbd>{{ keyLabel(settings.keybinds.interact) }}</kbd> - Apariencia
     </p>
 
     <!-- Logo -->
@@ -68,6 +72,7 @@
     <WalletBar
       :gold="characterStore.gold"
       :code-coins="characterStore.codeCoins"
+      :level="characterStore.level"
       @open-micropay="showMicropay = !showMicropay"
     />
 
@@ -75,10 +80,13 @@
     <!-- HUD -->
     <HudPanel
       :map-open="showMapPanel"
+      :player-facing="facing"
       @open-inventory="openPanel('inventory')"
       @open-equipment="openPanel('equipment')"
+      @open-stats="showStats = true"
       @toggle-map="toggleMap"
       @character-menu="goCharacterMenu"
+      @open-settings="showSettings = true"
       @logout="handleLogout"
     />
 
@@ -86,6 +94,7 @@
     <InventoryPanel
       v-if="showPanel === 'inventory' || showPanel === 'shop'"
       :is-shop="showPanel === 'shop'"
+      :shop-type="lastOpenedShopType"
       @close="showPanel = null"
       @switch-panel="openPanel"
     />
@@ -104,6 +113,8 @@
     />
 
     <MicropayModal v-if="showMicropay" @close="showMicropay = false" />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <StatsPanel v-if="showStats" @close="showStats = false" />
 
     <!-- Mapa -->
     <MapPanel
@@ -111,6 +122,10 @@
       :player-x="x"
       :player-y="y"
       :npcs="npcs"
+      :map-image="currentLobbyMapImage"
+      :map-name="currentLobbyMapName"
+      :world-width="WORLD_WIDTH"
+      :world-height="MAIN_WORLD_HEIGHT"
       @close="showMapPanel = false"
     />
 
@@ -119,7 +134,32 @@
       v-if="npcsManager.activeDialogueNpc.value"
       :npc="npcsManager.activeDialogueNpc.value"
       @close="npcsManager.activeDialogueNpc.value = null"
-      @open-shop="npcsManager.activeDialogueNpc.value = null; openPanel('shop')"
+      @open-shop="handleOpenShop"
+      @open-stage-selector="handleOpenStageSelector"
+    />
+
+    <StageSelectorPanel
+      v-if="showPanel === 'stage-selector'"
+      @close="showPanel = null"
+      @select-stage="goToStage"
+    />
+
+    <!-- Tutorial y Ayudas (Fuera del mundo, en la UI) -->
+    <TutorialOverlay
+      :is-php="isPlayerPhp"
+      @tutorial-finished="onTutorialFinished"
+    />
+
+    <TutorialArrow
+      v-if="!arenaVisited && activeCharacterId"
+      :player-x="x"
+      :player-y="y"
+      :target-x="WORLD_WIDTH / 2"
+      :target-y="isPlayerPhp ? 40 : MAIN_WORLD_HEIGHT - 80"
+      :cam-x="cameraPos.x"
+      :cam-y="cameraPos.y"
+      :is-php="isPlayerPhp"
+      :character-id="activeCharacterId"
     />
 
     <!-- Fade de transición -->
@@ -128,52 +168,74 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWasd } from './components/controlChar'
-import { WORLD_EDGE, PORTAL_HALF_WIDTH } from './constants/world'
-import { lastTransition, setActiveCharacterId } from './gameState'
+import { WORLD_EDGE, WORLD_WIDTH, PORTAL_HALF_WIDTH } from './constants/world'
+import { lastTransition, activeCharacterId, setActiveCharacterId } from './gameState'
 import { useAuthStore } from './stores/auth'
 import { ensureActiveCharacterId, fetchCharacter } from './api/character'
 import { useNpcs } from './composables/useNpcs'
-import HudPanel       from './components/HudPanel.vue'
+import HudPanel from './components/HudPanel.vue'
+import StatsPanel from './components/StatsPanel.vue'
 import InventoryPanel from './components/InventoryPanel.vue'
 import EquipmentPanel from './components/EquipmentPanel.vue'
 import MapPanel       from './components/MapPanel.vue'
 import WalletBar      from './components/WalletBar.vue'
 import SkinShopPanel  from './components/SkinShopPanel.vue'
 import MicropayModal  from './components/MicropayModal.vue'
+import SettingsModal  from './components/SettingsModal.vue'
 import NpcSprite      from './components/NpcSprite.vue'
 import DialogueModal  from './components/DialogueModal.vue'
+import StageSelectorPanel from './components/StageSelectorPanel.vue'
+import TutorialOverlay from './components/TutorialOverlay.vue'
+import TutorialArrow   from './components/TutorialArrow.vue'
 import { useCharacterStore } from './stores/character'
-
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
-}
-
+import { useGameSettings } from './composables/useGameSettings'
+import javaKingdomMap from './assets/maps/java-kingdom-map.png'
+import phpKingdomMap from './assets/maps/php-kingdom-map.png'
+import { parseSprite, isEmptySprite } from './utils/sprite'
+import { isPlayerPhpKingdom } from './utils/realm'
+import { SKIN_SHOP_LOBBY_ZONES } from './constants/skinShopLobby'
+import { getDirectionalSkinWorldSrc, WARDROBE_LOBBY_IMAGE } from './constants/cosmeticVisuals'
 
 const router        = useRouter()
-const worldEdgePx   = `${WORLD_EDGE}px`
+const route = useRoute()
+const MAIN_WORLD_HEIGHT = WORLD_EDGE
+const worldWidthPx = `${WORLD_WIDTH}px`
+const worldHeightPx = `${MAIN_WORLD_HEIGHT}px`
 const isFading = ref(lastTransition.value === 'second-to-main' || lastTransition.value === 'menu-to-game')
-const startY   = lastTransition.value === 'second-to-main' ? WORLD_EDGE + 50 : WORLD_EDGE / 2
+const startY   = lastTransition.value === 'second-to-main' ? MAIN_WORLD_HEIGHT + 50 : MAIN_WORLD_HEIGHT / 2
 
 // Estado de paneles
 const showPanel   = ref(null)   // 'inventory' | 'equipment' | null
 const showMapPanel = ref(false)
 const showSkinShop = ref(false)
 const showMicropay = ref(false)
+const showSettings = ref(false)
+const showStats = ref(false)
 const authStore = useAuthStore()
 const characterStore = useCharacterStore()
+const isPlayerPhp = computed(() =>
+  isPlayerPhpKingdom(characterStore.kingdomName, characterStore.kingdomId),
+)
+const { keyMatches, keyLabel, settings } = useGameSettings()
+const lastOpenedShopType = ref(null)
+
+const showTutorial = ref(false)
+const arenaVisited = ref(false)
+
+function checkTutorialState() {
+  const id = activeCharacterId.value
+  if (id) {
+    arenaVisited.value = localStorage.getItem(`ck_arena_v1_${id}`) === 'true'
+  }
+}
+
+function onTutorialFinished() {
+  showTutorial.value = false
+}
+
 
 // Monedero y apariencia
 
@@ -182,7 +244,13 @@ const colorMoving = ref('#f5a623')
 
 
 // Movimiento del personaje
-const { arenaRef, x, y, focused, moving, locked } = useWasd(WORLD_EDGE / 2, startY)
+const { arenaRef, x, y, focused, moving, locked, facing } = useWasd(
+  WORLD_WIDTH / 2,
+  startY,
+  WORLD_WIDTH,
+  MAIN_WORLD_HEIGHT,
+  computed(() => characterStore.speed)
+)
 
 // Bloquear inmediatamente si venimos de otra escena para evitar rebotes
 if (lastTransition.value === 'second-to-main') {
@@ -198,30 +266,55 @@ const {
   openDialogue
 } = npcsManager
 
-/** Misma zona que .village-zone (pueblo) — tienda de apariencia; luego con NPC. */
-const SKIN_SHOP = { x: 138, y: 678, w: 180, h: 132, pad: 24 }
+const skinShopRect = computed(() => (
+  isPlayerPhp.value ? SKIN_SHOP_LOBBY_ZONES.php : SKIN_SHOP_LOBBY_ZONES.java
+))
+
+const cosmeticPortraitSrc = computed(() =>
+  getDirectionalSkinWorldSrc(characterStore.equippedSkin?.slug, facing.value),
+)
+
+const skinShopMarkerStyle = computed(() => {
+  const z = skinShopRect.value
+  return {
+    left: `${z.x}px`,
+    top: `${z.y}px`,
+    width: `${z.w}px`,
+    height: `${z.h}px`,
+    backgroundImage: `url(${WARDROBE_LOBBY_IMAGE})`,
+  }
+})
+
 const inSkinShopZone = computed(() => {
   const ax = x.value
   const ay = y.value
-  const p = SKIN_SHOP.pad
+  const z = skinShopRect.value
+  const p = z.pad
   return (
-    ax >= SKIN_SHOP.x - p
-    && ax <= SKIN_SHOP.x + SKIN_SHOP.w + p
-    && ay >= SKIN_SHOP.y - p
-    && ay <= SKIN_SHOP.y + SKIN_SHOP.h + p
+    ax >= z.x - p
+    && ax <= z.x + z.w + p
+    && ay >= z.y - p
+    && ay <= z.y + z.h + p
   )
 })
 
 // Cámara centrada en el jugador
-const cameraTransform = computed(() => {
+const cameraPos = computed(() => {
   const zoom      = 2
   const cx        = window.innerWidth / 2
   const cy        = window.innerHeight / 2
   const halfW     = cx / zoom
   const halfH     = cy / zoom
-  const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_EDGE - halfW))
-  const targetY   = Math.max(halfH, Math.min(y.value + 20, WORLD_EDGE - halfH))
-  return `translate(${cx}px, ${cy}px) scale(${zoom}) translate(-${targetX}px, -${targetY}px)`
+  const targetX   = Math.max(halfW, Math.min(x.value + 20, WORLD_WIDTH - halfW))
+  const targetY   = Math.max(halfH, Math.min(y.value + 20, MAIN_WORLD_HEIGHT - halfH))
+  return { x: targetX, y: targetY }
+})
+
+const cameraTransform = computed(() => {
+  const cx        = window.innerWidth / 2
+  const cy        = window.innerHeight / 2
+  const { x: tx, y: ty } = cameraPos.value
+  return `translate(${cx}px, ${cy}px) scale(2) translate(-${tx}px, -${ty}px)`
 })
 
 async function refreshWallet() {
@@ -232,13 +325,12 @@ async function refreshWallet() {
   }
 }
 
-
 // Bloquear movimiento si hay paneles abiertos
 watch(
-  [showPanel, showMapPanel, showSkinShop, showMicropay, npcsManager.activeDialogueNpc],
-  ([p, m, s, mi, d]) => {
+  [showPanel, showMapPanel, showSkinShop, showMicropay, showSettings, npcsManager.activeDialogueNpc, showTutorial],
+  ([p, m, s, mi, st, d, t]) => {
     // Si hay algo abierto, bloqueamos. Si no, desbloqueamos (a menos que estemos en transición)
-    if (p || m || s || mi || d) {
+    if (p || m || s || mi || st || d || t) {
       locked.value = true
     } else if (!isFading.value && !navigating.value) {
       locked.value = false
@@ -271,7 +363,10 @@ async function handleLogout() {
 }
 
 function onSkinShopKey(e) {
-  if (e.key.toLowerCase() !== 'e') {
+  if (showSettings.value) {
+    return
+  }
+  if (!keyMatches(e, 'interact')) {
     return
   }
   if (showSkinShop.value || showMicropay.value) {
@@ -294,38 +389,85 @@ function onSkinShopKey(e) {
   showSkinShop.value = true
 }
 
+function onMainPanelHotkey(e) {
+  if (route.name !== 'Game') return
+  const tag = String(e.target?.tagName || '').toUpperCase()
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return
+  if (showMicropay.value || showSkinShop.value || npcsManager.activeDialogueNpc.value) return
+  const key = String(e.key || '').toLowerCase()
+  if (key === 'escape') {
+    e.preventDefault()
+    showSettings.value = true
+    showMapPanel.value = false
+    return
+  }
+  if (key === 'i') {
+    e.preventDefault()
+    showMapPanel.value = false
+    showPanel.value = showPanel.value === 'inventory' ? null : 'inventory'
+    return
+  }
+  if (keyMatches(e, 'equipment')) {
+    e.preventDefault()
+    showMapPanel.value = false
+    showPanel.value = showPanel.value === 'equipment' ? null : 'equipment'
+    return
+  }
+  if (keyMatches(e, 'map')) {
+    e.preventDefault()
+    showPanel.value = null
+    showMapPanel.value = !showMapPanel.value
+  }
+}
+
 const navigating = ref(false)
 const portalCooldown = ref(true)
 
-function isPhpKingdomSelected() {
-  const kName = String(characterStore.kingdomName || '').toLowerCase()
-  return kName.includes('php') || kName.includes('peachepe') || Number(characterStore.kingdomId) === 1
-}
+const kingdomLobbyStyle = computed(() => ({
+  backgroundImage: `url(${isPlayerPhp.value ? phpKingdomMap : javaKingdomMap})`,
+  backgroundRepeat: 'no-repeat',
+  backgroundSize: '100% 100%',
+  backgroundPosition: 'center',
+}))
+const currentLobbyMapImage = computed(() => (
+  isPlayerPhp.value ? phpKingdomMap : javaKingdomMap
+))
+const currentLobbyMapName = computed(() => (
+  isPlayerPhp.value ? 'REINO PHP (LOBBY)' : 'REINO JAVA (LOBBY)'
+))
 
 // Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
   window.addEventListener('keydown', onSkinShopKey)
-  
+
   try {
     await refreshWallet()
+    const imgSrc = isPlayerPhp.value ? phpKingdomMap : javaKingdomMap
+    await new Promise(resolve => {
+      if (!imgSrc) return resolve()
+      const img = new Image()
+      img.onload = resolve
+      img.onerror = resolve
+      img.src = imgSrc
+    })
   } catch (err) {
   }
 
-  const isPhpKingdom = isPhpKingdomSelected()
+  const playerPhp = isPlayerPhp.value
   if (lastTransition.value === 'second-to-main') {
-    y.value = isPhpKingdom ? -50 : WORLD_EDGE + 50
+    y.value = playerPhp ? -50 : MAIN_WORLD_HEIGHT + 50
   }
 
   if (lastTransition.value === 'second-to-main') {
     locked.value = true
     moving.value = true
     isFading.value = true
-    
+
     // Pequeña espera para asegurar que el componente se asiente
     setTimeout(() => {
       isFading.value = false
       const enterLoop = () => {
-        const reachedTarget = isPhpKingdom ? y.value >= 180 : y.value <= WORLD_EDGE - 180
+        const reachedTarget = playerPhp ? y.value >= 180 : y.value <= MAIN_WORLD_HEIGHT - 180
         if (reachedTarget) {
           locked.value = false
           moving.value = false
@@ -333,7 +475,7 @@ onMounted(async () => {
           setTimeout(() => { portalCooldown.value = false }, 500)
           return
         }
-        y.value += isPhpKingdom ? 5 : -5
+        y.value += playerPhp ? 5 : -5
         requestAnimationFrame(enterLoop)
       }
       requestAnimationFrame(enterLoop)
@@ -342,7 +484,10 @@ onMounted(async () => {
     // Transición desde el menú de personajes
     isFading.value = true
     locked.value = true
-    
+    // Comprobar arena visit DESPUÉS de que el personaje esté cargado
+    await refreshWallet()
+    checkTutorialState()
+
     setTimeout(() => {
       isFading.value = false
       locked.value = false
@@ -350,35 +495,74 @@ onMounted(async () => {
       portalCooldown.value = false
     }, 600)
   } else {
+    // F5 / recarga directa en /game
+    checkTutorialState()
     isFading.value = false
     locked.value = false
     portalCooldown.value = false
   }
 })
 
+function handleOpenShop(npc) {
+  try {
+    lastOpenedShopType.value = npc?.shop_type || null
+    // cerrar diálogo y abrir panel tienda
+    npcsManager.activeDialogueNpc.value = null
+    openPanel('shop')
+  } catch (err) {
+    console.error('Error abriendo tienda:', err)
+  }
+}
+
+function handleOpenStageSelector(npc) {
+  npcsManager.activeDialogueNpc.value = null
+  openPanel('stage-selector')
+}
+
+function goToStage(stageNum) {
+  showPanel.value = null
+  navigating.value = true
+  locked.value = true
+  moving.value = true
+  isFading.value = true
+
+  lastTransition.value = 'main-to-second'
+
+  setTimeout(() => {
+    router.push({ name: 'SecondGame', query: { section: stageNum, wave: 1 } }).catch(() => {
+      navigating.value = false
+      locked.value = false
+    })
+  }, 500)
+}
+
 // Salida hacia SecondView:
-// - Java: borde inferior
-// - PHP: borde superior
-watch([x, y], ([newX, newY]) => {
+// - Java: borde inferior  - PHP: borde superior
+// Se usa watchEffect para reaccionar también cuando characterStore carga datos del kingdom.
+watchEffect(() => {
   if (locked.value || navigating.value || portalCooldown.value) return
-  
+
   const PLAYER = 40
-  const cx = WORLD_EDGE / 2
-  const isPhpKingdom = isPhpKingdomSelected()
-  const inPortalX = newX > cx - PORTAL_HALF_WIDTH && newX < cx + PORTAL_HALF_WIDTH
-  const isAtPortalEdge = isPhpKingdom ? newY <= 0 : newY >= WORLD_EDGE - PLAYER
-  if (
-    isAtPortalEdge
-    && inPortalX
-  ) {
+  const cx = WORLD_WIDTH / 2
+  const playerPhp = isPlayerPhp.value
+  const curX = x.value
+  const curY = y.value
+  const inPortalX = curX > cx - PORTAL_HALF_WIDTH && curX < cx + PORTAL_HALF_WIDTH
+  const isAtPortalEdge = playerPhp ? curY <= 0 : curY >= MAIN_WORLD_HEIGHT - PLAYER
+
+  if (isAtPortalEdge && inPortalX) {
     navigating.value = true
     locked.value = true
     moving.value = true
     isFading.value = true
     
+    // Marcar arena como visitada
+    localStorage.setItem(`ck_arena_v1_${activeCharacterId.value}`, 'true')
+    arenaVisited.value = true
+
     const exitLoop = () => {
-      y.value += isPhpKingdom ? -5 : 5
-      const outOfBounds = isPhpKingdom ? y.value <= -80 : y.value >= WORLD_EDGE + 80
+      y.value += playerPhp ? -5 : 5
+      const outOfBounds = playerPhp ? y.value <= -80 : y.value >= MAIN_WORLD_HEIGHT + 80
       if (outOfBounds) {
         lastTransition.value = 'main-to-second'
         router.push({ name: 'SecondGame' }).catch(() => {
@@ -422,8 +606,8 @@ onUnmounted(() => {
 }
 .world {
   position: absolute;
-  width: v-bind(worldEdgePx);
-  height: v-bind(worldEdgePx);
+  width: v-bind(worldWidthPx);
+  height: v-bind(worldHeightPx);
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -436,6 +620,47 @@ onUnmounted(() => {
 }
 /* Terrenos */
 .terrain { position: absolute; image-rendering: pixelated; z-index: 0; }
+.skin-shop-wardrobe {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2px 1px;
+  background-size: 48px auto;
+  background-repeat: no-repeat;
+  background-position: center 2px;
+  border: none;
+  border-radius: 0;
+  pointer-events: none;
+  animation: skin-shop-pulse 2.2s ease-in-out infinite;
+  box-shadow: none;
+}
+.skin-shop-wardrobe__tag {
+  font-size: 5px;
+  line-height: 1.2;
+  text-align: center;
+  color: #fffef5;
+  text-shadow:
+    0 0 6px #000,
+    0 0 3px #000,
+    0 1px 3px #000;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 2px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+@keyframes skin-shop-pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+.kingdom-lobby {
+  inset: 0;
+}
 .grassland {
   inset: 0;
   background:
@@ -520,12 +745,29 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 6px;
-  box-shadow: 0 4px 15px rgba(0,0,0,.3);
   transition: background .1s;
 }
 
+.player__cosmetic {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.player__cosmetic-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
 .player__sprite {
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
   image-rendering: pixelated;
 }
 

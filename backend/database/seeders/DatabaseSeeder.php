@@ -12,9 +12,6 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         // Usuario demo: se puede volver a ejecutar db:seed sin duplicar el email
@@ -29,7 +26,6 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call(KingdomSeeder::class);
-        $this->call(KingSeeder::class);
         $this->call(RaceSeeder::class);
         $this->call(CharacterClassSeeder::class);
         $this->call(SkillSeeder::class);
@@ -38,5 +34,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CosmeticSkinSeeder::class);
         $this->call(CharacterSeeder::class);
         $this->call(CharacterItemSeeder::class);
+        $this->call(CommunityPostSeeder::class);
     }
 }

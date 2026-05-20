@@ -3,9 +3,13 @@
     <!-- Avatar Section -->
     <div class="hud-frame">
       <div class="hud-avatar-container">
-        <div v-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="hud-avatar-grid">
-          <div 
-            v-for="(color, pIdx) in parseSprite(characterStore.spriteData)" 
+        <div v-if="cosmeticPortraitSrc" class="hud-avatar-portrait">
+          <img class="hud-avatar-portrait__img" :src="cosmeticPortraitSrc" alt="">
+          <div class="avatar-scanlines"></div>
+        </div>
+        <div v-else-if="characterStore.spriteData && !isEmptySprite(characterStore.spriteData)" class="hud-avatar-grid">
+          <div
+            v-for="(color, pIdx) in parseSprite(characterStore.spriteData)"
             :key="pIdx"
             class="pixel"
             :style="{ backgroundColor: color || 'transparent' }"
@@ -16,7 +20,6 @@
         <div class="avatar-scanlines"></div>
       </div>
       <div class="hud-info">
-        <span class="hud-label">SISTEMA</span>
         <div class="hud-name-wrapper">
           <span class="hud-name text-truncate">{{ characterStore.name.toUpperCase() }}</span>
           <span class="hud-status-dot animate-pulse"></span>
@@ -35,6 +38,11 @@
           <span class="btn-text">MOCHILA</span>
           <div class="btn-glow"></div>
         </button>
+        <button class="nav-btn stats-btn" @click.stop="$emit('open-stats')">
+          <span class="btn-text">ESTADÍSTICAS</span>
+          <div v-if="characterStore.statPoints > 0" class="notification-dot animate-pulse"></div>
+          <div class="btn-glow"></div>
+        </button>
         <button class="nav-btn secondary" @click.stop="$emit('toggle-map')">
           <span class="btn-text">{{ mapOpen ? 'CERRAR' : 'MAPA' }}</span>
         </button>
@@ -45,6 +53,9 @@
       <div class="nav-group">
         <button class="nav-btn hero-btn" @click.stop="$emit('character-menu')">
           <span class="btn-text">HÉROES</span>
+        </button>
+        <button class="nav-btn settings-btn" @click.stop="$emit('open-settings')">
+          <span class="btn-text">SETTINGS</span>
         </button>
         <button class="nav-btn exit-btn" @click.stop="$emit('logout')">
           <span class="btn-text">SALIR</span>
@@ -61,16 +72,31 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useCharacterStore } from '../stores/character'
 import { parseSprite, isEmptySprite } from '../utils/sprite'
+import {
+  ASIER_SLUG,
+  getCosmeticShopPreviewBySlug,
+  getDirectionalSkinWorldSrc,
+} from '../constants/cosmeticVisuals'
 
-defineProps({
+const props = defineProps({
   mapOpen: { type: Boolean, default: false },
+  /** Mirada en lobby: n/s/e/w (solo si en HUD se usaran sprites direccionales). */
+  playerFacing: { type: String, default: 's' },
 })
 
-defineEmits(['open-equipment', 'open-inventory', 'toggle-map', 'character-menu', 'logout'])
+defineEmits(['open-equipment', 'open-inventory', 'open-stats', 'toggle-map', 'character-menu', 'open-settings', 'logout'])
 
 const characterStore = useCharacterStore()
+const cosmeticPortraitSrc = computed(() => {
+  const slug = characterStore.equippedSkin?.slug
+  if (String(slug ?? '').toLowerCase() === ASIER_SLUG) {
+    return getCosmeticShopPreviewBySlug(slug)
+  }
+  return getDirectionalSkinWorldSrc(slug, props.playerFacing)
+})
 </script>
 
 <style scoped>
@@ -79,7 +105,7 @@ const characterStore = useCharacterStore()
   top: 30px;
   left: 30px;
   z-index: 100;
-  width: 200px;
+  width: 268px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -92,7 +118,7 @@ const characterStore = useCharacterStore()
   background: #0f172a;
   border: 4px solid #facc15;
   box-shadow: 8px 8px 0 #854d0e, 0 10px 25px rgba(0,0,0,0.5);
-  padding: 12px;
+  padding: 8px;
   position: relative;
 }
 
@@ -106,6 +132,26 @@ const characterStore = useCharacterStore()
   position: relative;
   overflow: hidden;
   margin-bottom: 12px;
+}
+
+.hud-avatar-portrait {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+.hud-avatar-portrait__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  flex-shrink: 0;
 }
 
 .hud-avatar-grid {
@@ -135,13 +181,6 @@ const characterStore = useCharacterStore()
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.hud-label {
-  font-size: 6px;
-  color: #facc15;
-  opacity: 0.5;
-  letter-spacing: 0.1em;
 }
 
 .hud-name-wrapper {
@@ -241,8 +280,31 @@ const characterStore = useCharacterStore()
   margin: 4px 0;
 }
 
+.stats-btn {
+  background: #065f46;
+  border-color: #10b981;
+  color: #ecfdf5;
+  box-shadow: 4px 4px 0 #064e3b;
+}
+.stats-btn:hover {
+  background: #059669;
+  color: white;
+}
+.notification-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  background: #facc15;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #facc15;
+}
 .hero-btn { background: #1e40af; border-color: #1d4ed8; color: #dbeafe; box-shadow: 4px 4px 0 #1e3a8a; }
 .hero-btn:hover { background: #2563eb; color: white; }
+
+.settings-btn { background: #4c1d95; border-color: #6d28d9; color: #ede9fe; box-shadow: 4px 4px 0 #3b0764; }
+.settings-btn:hover { background: #7c3aed; color: white; }
 
 .exit-btn { background: #991b1b; border-color: #b91c1c; color: #fecaca; box-shadow: 4px 4px 0 #7f1d1d; }
 .exit-btn:hover { background: #dc2626; color: white; }

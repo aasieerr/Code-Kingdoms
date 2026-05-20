@@ -1,7 +1,5 @@
 import { ref, computed, onMounted } from 'vue'
 import { fetchNpcs } from '../api/npc'
-import { WORLD_EDGE } from '../constants/world'
-
 
 export function useNpcs(mapName, playerX, playerY) {
   const npcs = ref([])
@@ -13,16 +11,13 @@ export function useNpcs(mapName, playerX, playerY) {
     loading.value = true
     try {
       const data = await fetchNpcs(mapName)
-      
-      // Asegurar que las coordenadas son números y están dentro del mapa
-      npcs.value = (Array.isArray(data) ? data : (data?.data || [])).map(npc => {
-        let nx = Number(npc.x)
-        let ny = Number(npc.y)
-        // Las coordenadas ahora vienen correctamente de la base de datos
+
+      // Coordenadas como números (NaN si el backend envía algo inválido)
+      npcs.value = (Array.isArray(data) ? data : (data?.data || [])).map((npc) => {
+        const nx = Number(npc.x)
+        const ny = Number(npc.y)
         return { ...npc, x: nx, y: ny }
       })
-
-
     } catch (err) {
       error.value = err
     } finally {
@@ -35,9 +30,8 @@ export function useNpcs(mapName, playerX, playerY) {
   })
 
   const getIsNear = (npc) => {
-    if (!npc.x || !npc.y) return false
-    const dist = Math.sqrt(Math.pow(playerX.value - npc.x, 2) + Math.pow(playerY.value - npc.y, 2))
-    return dist < 60
+    if (!Number.isFinite(npc.x) || !Number.isFinite(npc.y)) return false
+    return Math.hypot(playerX.value - npc.x, playerY.value - npc.y) < 60
   }
 
   const nearestNpc = computed(() => {

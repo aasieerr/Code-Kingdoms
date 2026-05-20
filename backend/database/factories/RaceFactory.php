@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Race>
- */
 class RaceFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -26,9 +18,6 @@ class RaceFactory extends Factory
         ];
     }
 
-    /**
-     * Raza Humana
-     */
     public function human(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -41,9 +30,6 @@ class RaceFactory extends Factory
         ]);
     }
 
-    /**
-     * Raza Elfo
-     */
     public function elf(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -56,9 +42,6 @@ class RaceFactory extends Factory
         ]);
     }
 
-    /**
-     * Raza Enano
-     */
     public function dwarf(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -71,9 +54,6 @@ class RaceFactory extends Factory
         ]);
     }
 
-    /**
-     * Raza Orco
-     */
     public function orc(): self
     {
         return $this->state(fn (array $attributes) => [

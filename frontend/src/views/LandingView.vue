@@ -46,27 +46,27 @@
     <!-- FINAL CTA CARD -->
     <section class="relative z-10 px-6 py-20 reveal-item">
       <div class="max-w-2xl mx-auto text-center">
-        <div class="p-12 relative overflow-hidden" 
+        <div class="p-12 relative overflow-hidden"
           style="border: 4px solid #facc15; background: #0f172a; box-shadow: 8px 8px 0 #854d0e;">
           <div class="absolute inset-1 border-2 border-[#facc15]/20 pointer-events-none"></div>
-          
+
           <h2 class="text-[#facc15] text-2xl mb-4 leading-loose tracking-widest" style="text-shadow: 3px 3px 0 #854d0e;">
             RECLAMA TU TRONO
           </h2>
-          
+
           <p class="text-[#facc15]/60 text-[9px] mb-10 leading-7 max-w-md mx-auto">
-            LA BATALLA ENTRE <span class="text-[#3b82f6]">PHP</span> Y <span class="text-[#ef4444]">JAVA</span> HA COMENZADO. 
-            FORJA TU HÉROE, ESCRIBE CÓDIGO REAL PARA LANZAR HECHIZOS Y DOMINA LOS REINOS. 
+            LA BATALLA ENTRE <span class="text-[#3b82f6]">PHP</span> Y <span class="text-[#ef4444]">JAVA</span> HA COMENZADO.
+            FORJA TU HÉROE, ESCRIBE CÓDIGO REAL PARA LANZAR HECHIZOS Y DOMINA LOS REINOS.
             ¿ESTÁS LISTO PARA EL COMPILADOR?
           </p>
-          
+
           <template v-if="!authStore.token">
             <button @click="router.push('/register')" class="btn-pixel-gold text-[12px] px-12 py-5 w-full max-w-sm mx-auto block">
               ► CREAR CUENTA GRATIS
             </button>
 
             <p class="mt-5 text-[7px] text-[#facc15]/30">
-              ¿YA TIENES CUENTA? 
+              ¿YA TIENES CUENTA?
               <span @click="router.push('/login')" class="text-[#facc15]/60 hover:text-[#facc15] underline cursor-pointer transition-colors">
                 INICIA SESIÓN AQUÍ
               </span>
@@ -150,7 +150,7 @@ function startTypewriter() {
 // ── SCROLL REVEAL ────────────────────────────────────────────
 function initScrollReveal() {
   const items = document.querySelectorAll('.reveal-item')
-  
+
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {

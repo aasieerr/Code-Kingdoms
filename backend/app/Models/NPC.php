@@ -13,7 +13,9 @@ class NPC extends Model
         'descripcion',
         'dialogos',
         'tipo',
+        'id_kingdom',
         'map',
+        'shop_type',
         'x',
         'y',
     ];
@@ -22,9 +24,11 @@ class NPC extends Model
         'dialogos' => 'array',
     ];
 
-    /**
-     * Scope a query to only include NPCs of a given map.
-     */
+    public function kingdom()
+    {
+        return $this->belongsTo(Kingdom::class, 'id_kingdom', 'id_kingdom');
+    }
+
     public function scopeOfMap($query, string $map)
     {
         return $query->where('map', $map);

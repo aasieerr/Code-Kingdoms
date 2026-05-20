@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\CharacterClass>
- */
 class CharacterClassFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -25,9 +17,6 @@ class CharacterClassFactory extends Factory
         ];
     }
 
-    /**
-     * Clase Guerrero
-     */
     public function warrior(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -39,9 +28,6 @@ class CharacterClassFactory extends Factory
         ]);
     }
 
-    /**
-     * Clase Mago
-     */
     public function mage(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -53,9 +39,6 @@ class CharacterClassFactory extends Factory
         ]);
     }
 
-    /**
-     * Clase Arquero
-     */
     public function archer(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -67,9 +50,6 @@ class CharacterClassFactory extends Factory
         ]);
     }
 
-    /**
-     * Clase Paladín
-     */
     public function paladin(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -81,9 +61,6 @@ class CharacterClassFactory extends Factory
         ]);
     }
 
-    /**
-     * Clase Asesino
-     */
     public function assassin(): self
     {
         return $this->state(fn (array $attributes) => [

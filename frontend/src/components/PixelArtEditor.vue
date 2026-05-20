@@ -1,7 +1,7 @@
 <template>
   <div class="pixel-editor" @mouseup="isDrawing = false" @mouseleave="isDrawing = false">
     <label class="pixel-editor__label">DIBUJA TU AVATAR (16x16)</label>
-    
+
     <div class="pixel-editor__layout">
       <!-- CANVAS -->
       <div class="pixel-editor__canvas" :style="gridStyle">
@@ -23,13 +23,13 @@
             :key="c"
             type="button"
             class="pixel-editor__color-btn"
-            :class="{ 'is-active': selectedColor === c && tool === 'pen' }"
+            :class="{ 'is-active': colorSource === 'palette' && selectedColor === c && tool === 'pen' }"
             :style="{ backgroundColor: c }"
-            @click="tool = 'pen'; selectedColor = c"
+            @click="selectPaletteColor(c)"
           ></button>
-          <button 
+          <button
             type="button"
-            class="pixel-editor__tool-btn" 
+            class="pixel-editor__tool-btn"
             :class="{ 'is-active': tool === 'eraser' }"
             @click="tool = 'eraser'"
             title="Borrador"
@@ -37,7 +37,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"></path><path d="M17 17L7 7"></path></svg>
           </button>
         </div>
-        
+
+        <div class="pixel-editor__custom-row">
+          <span class="pixel-editor__custom-text">PERSONALIZADO</span>
+          <label
+            class="pixel-editor__custom-picker"
+            :class="{ 'is-active': colorSource === 'custom' && tool === 'pen' }"
+            title="Elegir color personalizado"
+          >
+            <span class="pixel-editor__custom-preview" :style="{ backgroundColor: customColor }"></span>
+            <input
+              type="color"
+              class="pixel-editor__color-input-native"
+              :value="customColor"
+              @pointerdown="activateCustom"
+              @input="onCustomColorPick($event)"
+            />
+          </label>
+        </div>
+
         <button type="button" class="pixel-editor__action-btn" @click="clearCanvas">
           LIMPIAR
         </button>
@@ -46,8 +64,8 @@
         <div class="pixel-editor__preview-box">
           <span class="pixel-editor__preview-label">VISTA PREVIA</span>
           <div class="pixel-editor__preview-grid">
-            <div 
-              v-for="(color, pIdx) in pixels" 
+            <div
+              v-for="(color, pIdx) in pixels"
               :key="pIdx"
               class="pixel-editor__preview-pixel"
               :style="{ backgroundColor: color || 'transparent' }"
@@ -69,15 +87,34 @@ const emit = defineEmits(['update:modelValue'])
 
 const size = 16
 const palette = [
-  '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', 
+  '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
   '#ffff00', '#ff00ff', '#00ffff', '#8b4513', '#facc15',
   '#ca8a04', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'
 ]
 
 const pixels = ref(props.modelValue.length === size * size ? [...props.modelValue] : Array(size * size).fill(''))
 const selectedColor = ref('#facc15')
+const colorSource = ref('palette') // which swatch is active (palette vs custom)
+const customColor = ref('#e879f9')
 const tool = ref('pen') // 'pen' or 'eraser'
 const isDrawing = ref(false)
+
+function selectPaletteColor(c) {
+  tool.value = 'pen'
+  colorSource.value = 'palette'
+  selectedColor.value = c
+}
+
+function activateCustom() {
+  tool.value = 'pen'
+  colorSource.value = 'custom'
+  selectedColor.value = customColor.value
+}
+
+function onCustomColorPick(event) {
+  customColor.value = event.target.value
+  activateCustom()
+}
 
 const gridStyle = computed(() => ({
   display: 'grid',
@@ -164,6 +201,53 @@ watch(() => props.modelValue, (newVal) => {
   grid-template-columns: repeat(4, 1fr);
   gap: 0.4rem;
 }
+
+.pixel-editor__custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.pixel-editor__custom-text {
+  font-size: 0.45rem;
+  letter-spacing: 0.08em;
+  color: #facc15;
+  opacity: 0.55;
+}
+.pixel-editor__custom-picker {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #0b0d17;
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.pixel-editor__custom-picker:hover {
+  transform: scale(1.05);
+}
+.pixel-editor__custom-picker.is-active {
+  border-color: #facc15;
+  box-shadow: 0 0 5px #facc15;
+}
+.pixel-editor__custom-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pixel-editor__color-input-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .pixel-editor__color-btn {
   width: 24px;
   height: 24px;

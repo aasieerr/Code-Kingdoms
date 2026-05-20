@@ -18,35 +18,31 @@ class Item extends Model
         'description',
         'type',
         'price',
+        'id_kingdom',
+        'id_class',
+        'is_purchasable',
     ];
 
-    /**
-     * Relación polimórfica con tipos específicos de items
-     */
-    public function itemable()
+    public function characterClass()
     {
-        return $this->morphTo();
+        return $this->belongsTo(CharacterClass::class, 'id_class');
     }
 
-    /**
-     * Relación con Weapon
-     */
+    public function kingdom()
+    {
+        return $this->belongsTo(Kingdom::class, 'id_kingdom', 'id_kingdom');
+    }
+
     public function weapon()
     {
         return $this->hasOne(Weapon::class, 'id_item', 'id_item');
     }
 
-    /**
-     * Relación con Armor
-     */
     public function armor()
     {
         return $this->hasOne(Armor::class, 'id_item', 'id_item');
     }
 
-    /**
-     * Relación con Consumable
-     */
     public function consumable()
     {
         return $this->hasOne(Consumable::class, 'id_item', 'id_item');

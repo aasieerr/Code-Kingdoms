@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas'
 import screenshotsApi from './api/screenshots'
 import { useAuthStore } from './stores/auth'
 import { useCharacterStore } from './stores/character'
+import { initGameSettings } from './composables/useGameSettings'
 
 const isCapturing = ref(false)
 const lastCaptureTime = ref(0)
@@ -88,11 +89,13 @@ const handleMouseDown = (e) => {
 }
 
 onMounted(() => {
+  initGameSettings()
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('mousedown', handleMouseDown)
 })
 
 onUnmounted(() => {
+  if (notificationTimeout) clearTimeout(notificationTimeout)
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('mousedown', handleMouseDown)
 })

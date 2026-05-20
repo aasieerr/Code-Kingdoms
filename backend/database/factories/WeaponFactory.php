@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Weapon>
- */
 class WeaponFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -24,9 +16,6 @@ class WeaponFactory extends Factory
         ];
     }
 
-    /**
-     * Arma de guerrero
-     */
     public function warriorWeapon(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -36,9 +25,6 @@ class WeaponFactory extends Factory
         ]);
     }
 
-    /**
-     * Arma de mago
-     */
     public function mageWeapon(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -48,9 +34,6 @@ class WeaponFactory extends Factory
         ]);
     }
 
-    /**
-     * Arma de arquero
-     */
     public function archerWeapon(): self
     {
         return $this->state(fn (array $attributes) => [

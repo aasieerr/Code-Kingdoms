@@ -1,11 +1,11 @@
 <template>
-  <div class="char-page min-h-screen flex flex-col bg-[#0b0d17] overflow-hidden" 
+  <div class="char-page min-h-screen flex flex-col bg-[#0b0d17] overflow-hidden"
     :class="{ 'is-zooming': isZooming }"
-    :style="{ 
+    :style="{
       fontFamily: '\'Press Start 2P\', monospace',
       transformOrigin: zoomOrigin
     }">
-    
+
     <AppHeader />
 
     <main class="flex-grow max-w-6xl mx-auto w-full px-6 py-10">
@@ -39,9 +39,15 @@
                 :class="{ 'char-card--active': activeCharacterId === c.id }"
               >
                 <div class="char-card__avatar">
-                  <div v-if="c.sprite_data && !isEmptySprite(c.sprite_data)" class="mini-grid">
-                    <div 
-                      v-for="(color, pIdx) in parseSprite(c.sprite_data)" 
+                  <img
+                    v-if="charListPortrait(c)"
+                    class="char-card__portrait"
+                    :src="charListPortrait(c)"
+                    alt=""
+                  >
+                  <div v-else-if="c.sprite_data && !isEmptySprite(c.sprite_data)" class="mini-grid">
+                    <div
+                      v-for="(color, pIdx) in parseSprite(c.sprite_data)"
                       :key="pIdx"
                       class="mini-grid__pixel"
                       :style="{ backgroundColor: color || 'transparent' }"
@@ -52,7 +58,8 @@
                 <div class="flex-1 min-w-0">
                   <h3 class="text-[#facc15] text-[10px] mb-2 truncate">{{ c.name.toUpperCase() }}</h3>
                   <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span class="text-[7px] text-[#facc15]/60">NIVEL {{ c.level }}</span>
+                    <span class="text-[7px] text-[#facc15]/60">NIVEL {{ charLevel(c) }}</span>
+                    <span class="text-[7px] text-emerald-300/70">XP {{ charExperience(c) }}</span>
                     <span class="text-[7px] text-yellow-500/80">{{ labelKingdom(c) }}</span>
                     <span class="text-[7px] text-blue-400/60">{{ labelRace(c) }}</span>
                     <span class="text-[7px] text-green-400/60">{{ labelClass(c) }}</span>
@@ -117,6 +124,8 @@ import { fetchCharacters, deleteCharacter } from '../api/character'
 import CreateCharacterForm from '../components/CreateCharacterForm.vue'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
+import { parseSprite, isEmptySprite } from '../utils/sprite'
+import { getCosmeticShopPreviewBySlug } from '../constants/cosmeticVisuals'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -150,19 +159,11 @@ async function loadList() {
 function labelKingdom(c) { return c.kingdom?.name ?? '—' }
 function labelRace(c) { return c.race?.name ?? '—' }
 function labelClass(c) { return c.character_class?.name ?? c.characterClass?.name ?? '—' }
+function charLevel(c) { return Math.max(1, Number(c?.level ?? 1) || 1) }
+function charExperience(c) { return Math.max(0, Number(c?.experience ?? c?.xp ?? 0) || 0) }
 
-function parseSprite(data) {
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data
-    return Array.isArray(parsed) ? parsed : Array(256).fill('')
-  } catch {
-    return Array(256).fill('')
-  }
-}
-
-function isEmptySprite(data) {
-  const pixels = parseSprite(data)
-  return !pixels.some(p => p && p !== '')
+function charListPortrait(c) {
+  return getCosmeticShopPreviewBySlug(c?.equipped_skin?.slug)
 }
 
 const isZooming = ref(false)
@@ -171,7 +172,7 @@ const zoomOrigin = ref('center center')
 function playAs(event, c) {
   if (c?.id == null) return
   setActiveCharacterId(c.id)
-  
+
   // Calculate zoom origin from button position
   if (event && event.currentTarget) {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -182,7 +183,7 @@ function playAs(event, c) {
 
   lastTransition.value = 'menu-to-game'
   isZooming.value = true
-  
+
   // Navigate after zoom and fade
   setTimeout(() => {
     router.push({ name: 'Game' })
@@ -196,7 +197,7 @@ function askDelete(id) {
 
 async function confirmDelete() {
   if (!characterToDelete.value) return
-  
+
   try {
     await deleteCharacter(characterToDelete.value)
     if (activeCharacterId.value === characterToDelete.value) {
@@ -214,6 +215,7 @@ async function confirmDelete() {
 async function onCharacterCreated(ch) {
   if (ch?.id != null) setActiveCharacterId(ch.id)
   await loadList()
+  lastTransition.value = 'menu-to-game'
   router.push({ name: 'Game' })
 }
 
@@ -303,6 +305,15 @@ async function logout() {
   flex-shrink: 0;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
   image-rendering: pixelated;
+  overflow: hidden;
+}
+
+.char-card__portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
 }
 
 .mini-grid {
@@ -316,6 +327,24 @@ async function logout() {
 .mini-grid__pixel {
   width: 3px;
   height: 3px;
+}
+
+.char-card__placeholder {
+  font-size: 14px;
+  color: #854d0e;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 2px);
+  grid-template-rows: repeat(16, 2px);
+  width: 32px;
+  height: 32px;
+}
+
+.mini-grid__pixel {
+  width: 2px;
+  height: 2px;
 }
 
 /* Buttons */

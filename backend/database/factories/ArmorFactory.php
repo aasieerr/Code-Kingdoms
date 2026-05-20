@@ -4,16 +4,8 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Armor>
- */
 class ArmorFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -24,9 +16,6 @@ class ArmorFactory extends Factory
         ];
     }
 
-    /**
-     * Armadura pesada
-     */
     public function heavyArmor(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -36,9 +25,6 @@ class ArmorFactory extends Factory
         ]);
     }
 
-    /**
-     * Armadura ligera
-     */
     public function lightArmor(): self
     {
         return $this->state(fn (array $attributes) => [
@@ -48,9 +34,6 @@ class ArmorFactory extends Factory
         ]);
     }
 
-    /**
-     * Escudo
-     */
     public function shield(): self
     {
         return $this->state(fn (array $attributes) => [

@@ -1,6 +1,6 @@
 <template>
   <footer class="app-footer relative z-40 px-8 pt-16 pb-10 mt-20 border-t-4 border-[#facc15] bg-[#0b0d17] shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-    
+
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 mb-16 text-left">
       <!-- Brand Section -->
       <div class="flex flex-col gap-6">
@@ -17,7 +17,16 @@
           "En la forja del código, solo los más persistentes alcanzan la maestría. El compilador juzgará tus actos."
         </p>
         <div class="flex gap-5">
-          <a v-for="social in socials" :key="social.label" href="#" class="social-icon" :aria-label="social.label" v-html="social.icon"></a>
+          <a
+            v-for="social in socials"
+            :key="social.label"
+            :href="social.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="social-icon"
+            :aria-label="social.label"
+            v-html="social.icon"
+          ></a>
         </div>
       </div>
 
@@ -35,9 +44,9 @@
           <h4 class="text-[#facc15] text-[9px] mb-2 tracking-[0.2em] font-bold flex items-center gap-3">
             <span class="w-1.5 h-1.5 bg-[#facc15] rotate-45"></span> SOPORTE
           </h4>
-          <a href="#" class="footer-link">SOPORTE TÉCNICO</a>
-          <a href="#" class="footer-link">PRIVACIDAD</a>
-          <a href="#" class="footer-link">TÉRMINOS</a>
+          <router-link to="/soporte" class="footer-link">SOPORTE TÉCNICO</router-link>
+          <router-link to="/privacidad" class="footer-link">PRIVACIDAD</router-link>
+          <router-link to="/terminos" class="footer-link">TÉRMINOS</router-link>
         </div>
       </div>
 
@@ -51,7 +60,7 @@
           <div class="flex items-center justify-between">
             <span class="text-[7px] text-[#facc15]/40 tracking-widest uppercase">Núcleo Central</span>
             <span class="flex items-center gap-2 text-[#4ade80] text-[7px] font-bold">
-              <span class="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_#4ade80]"></span> 
+              <span class="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse shadow-[0_0_8px_#4ade80]"></span>
               ESTABLE
             </span>
           </div>
@@ -79,9 +88,11 @@
 
 <script setup>
 const socials = [
-  { label: 'Instagram', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>' },
-  { label: 'Twitter', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>' },
-  { label: 'GitHub', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>' }
+  {
+    label: 'GitHub',
+    href: 'https://github.com/aasieerr/Code-Kingdoms.git',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>',
+  },
 ]
 </script>
 

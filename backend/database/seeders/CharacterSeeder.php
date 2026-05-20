@@ -9,9 +9,6 @@ use Illuminate\Database\Seeder;
 
 class CharacterSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $user = User::query()->where('email', 'test@example.com')->firstOrFail();

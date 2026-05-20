@@ -1,5 +1,10 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
+
+set -euo pipefail
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -49,17 +54,32 @@ sleep 10
 
 # ── 5. Generar APP_KEY ────────────────────────────────────────────────────────
 echo -e "${YELLOW}🔑 Generando APP_KEY...${NC}"
-docker compose exec laravel.test php artisan key:generate --force
+docker compose exec -T laravel.test php artisan key:generate --force
 
 # ── 6. Migraciones ────────────────────────────────────────────────────────────
 echo ""
 echo -e "${YELLOW}🗄  Ejecutando migraciones...${NC}"
-docker compose exec laravel.test php artisan migrate --force
+docker compose exec -T laravel.test php artisan migrate --force
+
+echo -e "${YELLOW}📡 Arrancando servidor de WebSockets (Reverb)...${NC}"
+docker compose exec -d laravel.test php artisan reverb:start
+
+echo -e "${YELLOW}🖼  Enlazando almacenamiento público...${NC}"
+rm -rf backend/public/storage
+ln -sfn ../storage/app/public backend/public/storage
 
 # ── 7. (Opcional) Seeders ─────────────────────────────────────────────────────
-read -p "¿Ejecutar seeders con datos de prueba? (s/N): " run_seed
-if [[ "$run_seed" =~ ^[sS]$ ]]; then
-  docker compose exec laravel.test php artisan db:seed --force
+run_seed="${RUN_SEED:-}"
+if [ -z "$run_seed" ]; then
+  if [ -t 0 ]; then
+    read -r -p "¿Ejecutar seeders con datos de prueba? (s/N): " run_seed
+  else
+    run_seed="N"
+  fi
+fi
+
+if [ "$run_seed" = "s" ] || [ "$run_seed" = "S" ]; then
+  docker compose exec -T laravel.test php artisan db:seed --force
   echo -e "${GREEN}✓ Seeders ejecutados${NC}"
 fi
 
@@ -73,5 +93,5 @@ echo -e "  🔐 Auth       → ${YELLOW}Laravel Sanctum${NC} (registro / login e
 echo -e ""
 echo -e "  📋 Logs:       ${YELLOW}docker compose logs -f${NC}"
 echo -e "  🛑 Parar:      ${YELLOW}docker compose down${NC}"
-echo -e "  🐚 Artisan:    ${YELLOW}docker compose exec laravel.test php artisan <cmd>${NC}"
+echo -e "  🐚 Artisan:    ${YELLOW}docker compose exec laravel.test php artisan [comando]${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
