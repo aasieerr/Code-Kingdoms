@@ -93,14 +93,14 @@ RUN_SEED=s ./start.sh
 
 ---
 
-## Cuenta de prueba (con seeders)
+## Cuentas de prueba (con seeders)
 
 Si ejecutaste los seeders, puedes usar:
 
-| Campo | Valor |
-|-------|-------|
-| Email | `test@example.com` |
-| Contraseña | `password` |
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Jugador demo | `test@example.com` | `password` |
+| Admin (todas las secciones, inmortal y mucho daño en arena) | `admin@example.com` | `password` |
 
 También puedes **registrarte** desde la landing (`/register`).
 

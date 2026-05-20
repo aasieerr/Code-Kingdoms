@@ -6,7 +6,9 @@ import {
   isJavaFinalBoss,
   maxWavesForSection,
   normalizeArenaProgressFromServer,
+  isAdminCombatEnabled,
   resolveOptionValue,
+  scalePlayerDamageForAdmin,
   sectionMultiplier,
   waveMultiplier,
   WAVES_PER_SECTION,
@@ -19,6 +21,21 @@ describe('resolveOptionValue', () => {
     expect(resolveOptionValue({ value: null }, 'java')).toBe('java')
     expect(resolveOptionValue('direct')).toBe('direct')
     expect(resolveOptionValue(undefined, 'x')).toBe('x')
+  })
+})
+
+describe('admin combat', () => {
+  it('detects admin flag from refs or booleans', () => {
+    expect(isAdminCombatEnabled(true)).toBe(true)
+    expect(isAdminCombatEnabled({ value: true })).toBe(true)
+    expect(isAdminCombatEnabled(false)).toBe(false)
+    expect(isAdminCombatEnabled({ value: false })).toBe(false)
+  })
+
+  it('amplifies damage for admins', () => {
+    expect(scalePlayerDamageForAdmin(12, false)).toBe(12)
+    expect(scalePlayerDamageForAdmin(12, true)).toBeGreaterThanOrEqual(100)
+    expect(scalePlayerDamageForAdmin(5, { value: true })).toBeGreaterThanOrEqual(100)
   })
 })
 

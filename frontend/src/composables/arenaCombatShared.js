@@ -21,8 +21,16 @@ export const WAVES_PER_SECTION = 7
 export const SECTION_GROWTH = 0.22
 export const WAVE_GROWTH = 0.028
 export const LEVEL_DAMAGE_BONUS = 0.055
+/** Multiplicador de daño del jugador en modo admin. */
+export const ADMIN_DAMAGE_MULTIPLIER = 10
+export const ADMIN_MIN_DAMAGE = 100
 export const JAVA_BOSS_SHIELD_MS = 1800
 export const JAVA_BOSS_SHIELD_GAP_MS = 6500
+/** Juan Carlos: más lento y solo retrocede cuando el jugador está muy cerca. */
+export const JAVA_BOSS_SPEED = 1.75
+export const JAVA_BOSS_APPROACH_DIST = 300
+export const JAVA_BOSS_RETREAT_DIST = 140
+export const JAVA_BOSS_RETREAT_SPEED_MULT = 0.68
 export const DEPENDENCY_MARK_RANGE = 235
 export const DEPENDENCY_MARK_DURATION_MS = 2600
 export const DEPENDENCY_MARK_MOVE_THRESHOLD = 44
@@ -44,6 +52,18 @@ export function resolveOptionValue(option, fallback = '') {
     return option.value ?? fallback
   }
   return option ?? fallback
+}
+
+export function isAdminCombatEnabled(isAdminOption) {
+  return Boolean(resolveOptionValue(isAdminOption, false))
+}
+
+export function scalePlayerDamageForAdmin(damage, isAdminOption) {
+  if (!isAdminCombatEnabled(isAdminOption)) {
+    return Math.max(1, Math.round(Number(damage) || 0))
+  }
+  const base = Math.max(1, Math.round(Number(damage) || 0))
+  return Math.max(ADMIN_MIN_DAMAGE, Math.round(base * ADMIN_DAMAGE_MULTIPLIER))
 }
 
 export { isPhpKingdom } from '../utils/realm'
