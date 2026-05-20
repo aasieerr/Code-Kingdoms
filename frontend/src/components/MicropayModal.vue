@@ -20,7 +20,7 @@
           @click="claimPack(pack.id)"
         >
           <span class="pack-coins">◆ +{{ pack.coins }}</span>
-          <span class="pack-name">{{ pack.name }}</span>
+          <span class="pack-name">{{ pack.name }} <span class="pack-price">{{ pack.price }}</span></span>
           <span class="pack-action">Añadir</span>
         </button>
       </div>
@@ -48,9 +48,9 @@ const statusMessage = ref('')
 const errorMessage = ref('')
 
 const packs = [
-  { id: 'starter', name: 'Starter', coins: 100 },
-  { id: 'pro', name: 'Pro', coins: 275 },
-  { id: 'legend', name: 'Legend', coins: 750 },
+  { id: 'starter', name: 'Starter', coins: 100, price: '1,99 €' },
+  { id: 'pro', name: 'Pro', coins: 275, price: '3,99 €' },
+  { id: 'legend', name: 'Legend', coins: 750, price: '9,99 €' },
 ]
 
 async function claimPack(packId) {
@@ -159,6 +159,11 @@ async function claimPack(packId) {
 .pack-name {
   font-size: 7px;
   color: #d1c4e9;
+}
+
+.pack-price {
+  color: #ffd54f;
+  margin-left: 6px;
 }
 
 .pack-action {
