@@ -201,6 +201,7 @@ import phpKingdomMap from './assets/maps/php-kingdom-map.png'
 import { parseSprite, isEmptySprite, defaultStickmanSprite } from './utils/sprite'
 import { isPlayerPhpKingdom } from './utils/realm'
 import { WARDROBE_LOBBY_IMAGE, getDirectionalSkinWorldSrc } from './constants/cosmeticVisuals'
+import { playMusic, stopMusic } from './composables/useMusic'
 
 const stickmanSprite = defaultStickmanSprite()
 
@@ -443,6 +444,7 @@ const currentLobbyMapName = computed(() => (
 
 // Entrada desde SecondView o CharacterMenu (transición)
 onMounted(async () => {
+  playMusic(isPlayerPhp.value ? 'village-php' : 'village-java')
   window.addEventListener('keydown', onSkinShopKey)
 
   try {
@@ -584,6 +586,7 @@ watchEffect(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onSkinShopKey)
+  stopMusic()
 })
 </script>
 

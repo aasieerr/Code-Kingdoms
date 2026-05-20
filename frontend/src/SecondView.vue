@@ -163,6 +163,7 @@ import javaBossFly from './assets/characters/java-boss/fly.png'
 import javaBossIdle8 from './assets/characters/java-boss/idle-8.png'
 import javaBossCloak from './assets/characters/java-boss/shield-cloak.png'
 import { lastTransition } from './gameState'
+import { playMusic, stopMusic } from './composables/useMusic'
 import { ensureActiveCharacterId, addCharacterGold } from './api/character'
 import { consumeCharacterItem } from './api/consumable'
 import { fetchInventoryData, myCharacterItems } from './api/inventario'
@@ -1176,10 +1177,19 @@ watch([x, y], ([newX, newY]) => {
   }
 })
 
+watch([section, enemyFaction], ([sec, faction]) => {
+  if (sec >= TOTAL_SECTIONS) {
+    playMusic(`boss-${faction}`)
+  } else {
+    playMusic('combat')
+  }
+}, { immediate: true })
+
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', saveArenaProgress, { capture: true })
   saveArenaProgress(true)
   syncRunGoldOnce()
+  stopMusic()
 })
 
 watch(phase, (p) => {
