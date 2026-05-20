@@ -23,6 +23,8 @@ const emit = defineEmits([
 ])
 
 const isImagePost = computed(() => props.post.has_image && props.post.image_url)
+const canDeletePost = computed(() => Boolean(props.post.can_delete))
+const isModeratorDelete = computed(() => canDeletePost.value && !props.post.is_mine)
 
 const showDeleteConfirm = ref(false)
 
@@ -156,12 +158,12 @@ const confirmDeletePost = () => {
             para comentar.
           </p>
 
-          <div v-if="post.is_mine" class="flex justify-center border-t-4 border-[#ef4444]/20 pt-6 mt-4">
+          <div v-if="canDeletePost" class="flex justify-center border-t-4 border-[#ef4444]/20 pt-6 mt-4">
             <button 
               class="w-full bg-[#ef4444]/10 hover:bg-[#ef4444] border-2 border-[#ef4444] text-[#ef4444] hover:text-white text-[9px] py-3 tracking-[0.2em] font-press-start transition-all shadow-[4px_4px_0_rgba(239,68,68,0.2)] hover:shadow-[6px_6px_0_rgba(239,68,68,0.4)] hover:-translate-y-1" 
               @click="showDeleteConfirm = true"
             >
-              ⚠ RETIRAR PUBLICACIÓN
+              {{ isModeratorDelete ? '⚠ ELIMINAR (MODERADOR)' : '⚠ RETIRAR PUBLICACIÓN' }}
             </button>
           </div>
         </div>
@@ -177,10 +179,15 @@ const confirmDeletePost = () => {
         <div class="relative z-10 bg-[#0f172a] border-4 border-[#ef4444] p-8 max-w-md w-full shadow-[0_0_50px_rgba(239,68,68,0.3)] text-center">
           <div class="text-4xl mb-4">🗑️</div>
           <h2 class="text-[#ef4444] text-sm mb-4 tracking-widest font-press-start leading-loose">
-            ¿RETIRAR CRÓNICA?
+            {{ isModeratorDelete ? '¿ELIMINAR CRÓNICA?' : '¿RETIRAR CRÓNICA?' }}
           </h2>
           <p class="text-white/70 text-[9px] tracking-widest mb-8 font-press-start leading-loose">
-            Esta acción no se puede deshacer. La publicación desaparecerá del tablón de la comunidad para siempre.
+            <template v-if="isModeratorDelete">
+              Acción de moderador: la publicación de {{ post.author }} se borrará del tablón para todos.
+            </template>
+            <template v-else>
+              Esta acción no se puede deshacer. La publicación desaparecerá del tablón de la comunidad para siempre.
+            </template>
           </p>
           
           <div class="flex flex-col sm:flex-row justify-center gap-4">
@@ -194,7 +201,7 @@ const confirmDeletePost = () => {
               @click="confirmDeletePost"
               class="bg-[#ef4444] border-2 border-[#b91c1c] text-white shadow-[4px_4px_0_#991b1b] hover:shadow-[6px_6px_0_#7f1d1d] hover:-translate-y-1 text-[9px] px-6 py-3 tracking-widest transition-all font-press-start"
             >
-              SÍ, RETIRAR
+              {{ isModeratorDelete ? 'SÍ, ELIMINAR' : 'SÍ, RETIRAR' }}
             </button>
           </div>
         </div>

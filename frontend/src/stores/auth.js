@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import api, { clearAuthToken, setAuthToken } from '../api/axios'
+import { isAdminUser } from '../utils/admin'
 
 const STORAGE_KEY = 'ck_sanctum_session'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(null)
   const user = ref(null)
+  const isAdmin = computed(() => isAdminUser(user.value))
 
   function hydrateFromStorage() {
     try {
@@ -69,5 +71,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, hydrateFromStorage, setSession, updateUser, clearSession, logout }
+  return { token, user, isAdmin, hydrateFromStorage, setSession, updateUser, clearSession, logout }
 })

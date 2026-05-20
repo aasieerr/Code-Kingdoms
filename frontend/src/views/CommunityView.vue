@@ -270,7 +270,7 @@ async function removePost(postId) {
     }
   } catch (error) {
     console.error('Error removing community post:', error)
-    alert('No se pudo retirar la publicación.')
+    alert(error.response?.data?.message || 'No se pudo retirar la publicación.')
   }
 }
 
