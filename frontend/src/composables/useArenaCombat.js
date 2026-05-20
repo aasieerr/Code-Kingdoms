@@ -26,8 +26,12 @@ import {
   isJavaBossShielded,
   isJavaFinalBoss,
   isPhpKingdom,
+  JAVA_BOSS_APPROACH_DIST,
+  JAVA_BOSS_RETREAT_DIST,
+  JAVA_BOSS_RETREAT_SPEED_MULT,
   JAVA_BOSS_SHIELD_GAP_MS,
   JAVA_BOSS_SHIELD_MS,
+  JAVA_BOSS_SPEED,
   JAVA_ROUTE_STEPS,
   LEVEL_DAMAGE_BONUS,
   MAGNET_RANGE,
@@ -40,7 +44,9 @@ import {
   PLAYER_COLLISION_SIZE,
   PLAYER_SIZE,
   randomSpawnEdgePosition,
+  isAdminCombatEnabled,
   resolveOptionValue,
+  scalePlayerDamageForAdmin,
   sectionMultiplier,
   TOTAL_SECTIONS,
   waveMultiplier,
@@ -67,6 +73,7 @@ export function useArenaCombat(options = {}) {
   const characterBaseDamage = options.characterBaseDamage ?? ref(BULLET_DAMAGE)
   const isWalkable = typeof options.isWalkable === 'function' ? options.isWalkable : null
   const getWalkMapName = typeof options.getWalkMapName === 'function' ? options.getWalkMapName : () => ''
+  const isAdminOption = options.isAdmin
 
   const arenaRef = ref(null)
   const x = ref(startX)
@@ -191,6 +198,7 @@ export function useArenaCombat(options = {}) {
   }
 
   function applyPlayerDamage(rawDamage) {
+    if (isAdminCombatEnabled(isAdminOption)) return
     const safeDamage = Math.max(0, Math.round(Number(rawDamage) || 0))
     if (safeDamage <= 0) return
     
@@ -350,7 +358,7 @@ export function useArenaCombat(options = {}) {
         y: pad,
         hp,
         maxHp: hp,
-        speed: 2.2,
+        speed: enemyFaction.value === 'java' ? JAVA_BOSS_SPEED : 2.2,
         size: 132,
         type: 'boss',
         contactDamage: Math.round(26 * multiplier),
@@ -580,13 +588,21 @@ export function useArenaCombat(options = {}) {
         let ny = e.y
         const eSpeed = (e.speed || 1) * dt
         if (e.type === 'boss') {
+          const isJavaBoss = isJavaFinalBoss(e, enemyFaction.value)
+          const approachDist = isJavaBoss ? JAVA_BOSS_APPROACH_DIST : 350
+          const retreatDist = isJavaBoss ? JAVA_BOSS_RETREAT_DIST : 220
+          const retreatMult = isJavaBoss ? JAVA_BOSS_RETREAT_SPEED_MULT : 1
           const strafeAmt = Math.sin(now / 700 + (e.zigSeed || 0)) * 1.5 * dt
-          if (len > 350) {
+          if (len > approachDist) {
             nx = e.x + dx * eSpeed
             ny = e.y + dy * eSpeed
-          } else if (len < 220) {
-            nx = e.x - dx * eSpeed + (dx) * strafeAmt
-            ny = e.y - dy * eSpeed + (dx) * strafeAmt
+          } else if (len < retreatDist) {
+            nx = e.x - dx * eSpeed * retreatMult
+            ny = e.y - dy * eSpeed * retreatMult
+            if (!isJavaBoss) {
+              nx += dx * strafeAmt
+              ny += dx * strafeAmt
+            }
           } else {
             nx = e.x + (-dy) * strafeAmt * 1.2
             ny = e.y + (dx) * strafeAmt * 1.2
@@ -828,6 +844,11 @@ export function useArenaCombat(options = {}) {
       } else if (strengthBuffUntil > 0) {
         resetArenaConsumableBuffs()
       }
+      currentDamage = scalePlayerDamageForAdmin(currentDamage, isAdminOption)
+
+      if (isAdminCombatEnabled(isAdminOption)) {
+        playerHp.value = playerMaxHp.value
+      }
 
       if (tgt && now - lastFireAt >= currentFireInterval) {
         lastFireAt = now
@@ -1017,7 +1038,7 @@ export function useArenaCombat(options = {}) {
         })
 
 
-      if (playerHp.value <= 0) {
+      if (playerHp.value <= 0 && !isAdminCombatEnabled(isAdminOption)) {
         clearDependencyMark()
         phase.value = 'gameover'
       } else if (enemies.value.length === 0 && phase.value === 'fighting') {

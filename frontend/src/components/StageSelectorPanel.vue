@@ -4,7 +4,14 @@
       <h2>Seleccionar Sección</h2>
       <button type="button" class="close-btn" @click="$emit('close')">X</button>
     </header>
-    <p class="stage-desc">Elige la sección a la que deseas viajar. Tu progreso máximo actual es la Sección {{ maxUnlocked }}.</p>
+    <p class="stage-desc">
+      <template v-if="authStore.isAdmin">
+        Modo admin: puedes viajar a cualquier sección.
+      </template>
+      <template v-else>
+        Elige la sección a la que deseas viajar. Tu progreso máximo actual es la Sección {{ maxUnlocked }}.
+      </template>
+    </p>
 
     <ul class="stage-list">
       <li
@@ -33,12 +40,15 @@
 
 <script setup>
 import { computed } from 'vue'
+import { TOTAL_SECTIONS } from '../composables/arenaCombatShared'
 import { SECTION_MAPS } from '../constants/maps'
+import { useAuthStore } from '../stores/auth'
 import { useCharacterStore } from '../stores/character'
 import { isPlayerPhpKingdom } from '../utils/realm'
 
 const emit = defineEmits(['close', 'select-stage'])
 
+const authStore = useAuthStore()
 const characterStore = useCharacterStore()
 
 const isPhp = computed(() =>
@@ -48,8 +58,9 @@ const isPhp = computed(() =>
 const enemyFaction = computed(() => (isPhp.value ? 'java' : 'php'))
 const maps = computed(() => SECTION_MAPS[enemyFaction.value])
 
-// The user can travel to any section up to their currently saved section
-const maxUnlocked = computed(() => Number(characterStore.arenaSection || 1))
+const maxUnlocked = computed(() =>
+  authStore.isAdmin ? TOTAL_SECTIONS : Number(characterStore.arenaSection || 1),
+)
 
 function selectStage(stageNum) {
   emit('select-stage', stageNum)

@@ -13,6 +13,7 @@ class UserPresenter
             'name' => $user->name,
             'email' => $user->email,
             'avatar_url' => $user->avatar_path ? PublicStorage::url($user->avatar_path) : null,
+            'is_admin' => (bool) $user->is_admin,
         ];
     }
 }

@@ -177,6 +177,7 @@ import SettingsModal from './components/SettingsModal.vue'
 import ArenaWorldLayer from './components/arena/ArenaWorldLayer.vue'
 import ArenaPremiumHud from './components/arena/ArenaPremiumHud.vue'
 import ArenaPhaseModals from './components/arena/ArenaPhaseModals.vue'
+import { useAuthStore } from './stores/auth'
 import { useCharacterStore } from './stores/character'
 import { useGameSettings } from './composables/useGameSettings'
 import { isPlayerPhpKingdom } from './utils/realm'
@@ -201,6 +202,7 @@ const showMapPanel = ref(false)
 const showMicropay = ref(false)
 const showSettings = ref(false)
 
+const authStore = useAuthStore()
 const characterStore = useCharacterStore()
 const isPlayerPhp = computed(() =>
   isPlayerPhpKingdom(characterStore.kingdomName, characterStore.kingdomId),
@@ -587,6 +589,7 @@ const {
   playerMaxHp: computed(() => levelState.value.maxHealth),
   isWalkable: isArenaWalkable,
   getWalkMapName: () => currentMap.value?.name || '',
+  isAdmin: computed(() => authStore.isAdmin),
   onExperienceGain: ({ amount }) => gainExperience(amount),
   onVictory: () => {
     showVictoryModal.value = true
@@ -668,6 +671,7 @@ function getArenaStartFromQuery() {
  */
 function getArenaStartWithinProgress(start) {
   if (!start) return null
+  if (authStore.isAdmin) return start
   const progressSection = clamp(Math.max(1, Number(characterStore.arenaSection || 1) || 1), 1, TOTAL_SECTIONS)
   const progressWave = clamp(
     Math.max(1, Number(characterStore.arenaWave || 1) || 1),
