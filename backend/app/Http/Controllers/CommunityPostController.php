@@ -19,7 +19,9 @@ class CommunityPostController extends Controller
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
-        $viewerId = $request->user()?->id;
+        $viewer = $request->user();
+        $viewerId = $viewer?->id;
+        $viewerIsAdmin = $viewer?->isAdmin() ?? false;
         $likedPostIds = [];
 
         if ($viewerId !== null) {
@@ -32,7 +34,12 @@ class CommunityPostController extends Controller
 
         return response()->json([
             'data' => $posts->getCollection()->map(
-                fn (CommunityPost $post) => $this->formatPost($post, $viewerId, in_array($post->id, $likedPostIds, true))
+                fn (CommunityPost $post) => $this->formatPost(
+                    $post,
+                    $viewerId,
+                    in_array($post->id, $likedPostIds, true),
+                    $viewerIsAdmin,
+                )
             )->values(),
             'meta' => [
                 'current_page' => $posts->currentPage(),
@@ -97,22 +104,34 @@ class CommunityPostController extends Controller
             'message' => $screenshotId !== null
                 ? 'Captura publicada en la comunidad.'
                 : 'Crónica publicada en la comunidad.',
-            'post' => $this->formatPost($post, $request->user()->id, false),
+            'post' => $this->formatPost($post, $request->user()->id, false, $request->user()->isAdmin()),
         ], 201);
     }
 
     public function destroy(Request $request, int $id)
     {
-        $post = CommunityPost::query()
-            ->where('user_id', $request->user()->id)
-            ->findOrFail($id);
+        $user = $request->user();
+        $post = CommunityPost::query()->findOrFail($id);
+
+        if ($post->user_id !== $user->id && ! $user->isAdmin()) {
+            return response()->json(['message' => 'No tienes permiso para eliminar esta publicación.'], 403);
+        }
 
         $post->delete();
 
-        return response()->json(['message' => 'Publicación eliminada de la comunidad.']);
+        return response()->json([
+            'message' => $user->isAdmin() && $post->user_id !== $user->id
+                ? 'Publicación eliminada por moderación.'
+                : 'Publicación eliminada de la comunidad.',
+        ]);
     }
 
-    private function formatPost(CommunityPost $post, ?int $viewerId = null, ?bool $viewerHasLiked = null): array
+    private function formatPost(
+        CommunityPost $post,
+        ?int $viewerId = null,
+        ?bool $viewerHasLiked = null,
+        bool $viewerIsAdmin = false,
+    ): array
     {
         $likesCount = (int) ($post->likes_count ?? $post->likes()->count());
         $commentsCount = (int) ($post->comments_count ?? $post->comments()->count());
@@ -137,6 +156,7 @@ class CommunityPostController extends Controller
             'created_at' => $post->created_at?->toIso8601String(),
             'is_featured' => $post->is_featured,
             'is_mine' => $viewerId !== null && $viewerId === $post->user_id,
+            'can_delete' => $viewerId !== null && ($viewerId === $post->user_id || $viewerIsAdmin),
             'likes_count' => $likesCount,
             'comments_count' => $commentsCount,
             'viewer_has_liked' => (bool) $viewerHasLiked,
