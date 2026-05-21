@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
+
+set -euo pipefail
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║     Code Kingdoms - Docker Setup     ║${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════╝${NC}"
+echo ""
+
+# ── 1. Instalar dependencias PHP si no existe vendor ──────────────────────────
+if [ ! -d "backend/vendor" ]; then
+  echo -e "${YELLOW}📦 Instalando dependencias PHP (composer install)...${NC}"
+  MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$(pwd)/backend:/app" \
+    -w /app \
+    composer:latest \
+    composer install --no-interaction --no-progress
+  echo -e "${GREEN}✓ Vendor listo${NC}"
+fi
+
+# ── 2. Crear backend/.env si no existe ───────────────────────────────────────
+if [ ! -f "backend/.env" ]; then
+  echo -e "${YELLOW}⚙  Creando backend/.env...${NC}"
+  cp backend/.env.example backend/.env
+
+  sed -i 's/^DB_CONNECTION=sqlite/DB_CONNECTION=mariadb/' backend/.env
+  sed -i 's/^# DB_HOST=127.0.0.1/DB_HOST=mariadb/'       backend/.env
+  sed -i 's/^# DB_PORT=3306/DB_PORT=3306/'                backend/.env
+  sed -i 's/^# DB_DATABASE=laravel/DB_DATABASE=codekingdomsdb/' backend/.env
+  sed -i 's/^# DB_USERNAME=root/DB_USERNAME=sail/'         backend/.env
+  sed -i 's/^# DB_PASSWORD=/DB_PASSWORD=password/'         backend/.env
+  sed -i 's/^# FORWARD_DB_PORT=3306/FORWARD_DB_PORT=3306/' backend/.env
+
+  echo -e "${GREEN}✓ backend/.env creado${NC}"
+fi
+
+# ── 3. Arrancar contenedores ──────────────────────────────────────────────────
+echo ""
+echo -e "${YELLOW}🐳 Arrancando contenedores...${NC}"
+docker compose up -d
+
+# ── 4. Esperar a que Laravel este listo ──────────────────────────────────────
+echo -e "${YELLOW}Esperando a que Laravel arranque...${NC}"
+sleep 10
+
+# ── 5. Generar APP_KEY ────────────────────────────────────────────────────────
+echo -e "${YELLOW}🔑 Generando APP_KEY...${NC}"
+docker compose exec -T laravel.test php artisan key:generate --force
+
+# ── 6. Migraciones ────────────────────────────────────────────────────────────
+echo ""
+echo -e "${YELLOW}🗄  Ejecutando migraciones...${NC}"
+docker compose exec -T laravel.test php artisan migrate --force
+
+echo -e "${YELLOW}📡 Arrancando servidor de WebSockets (Reverb)...${NC}"
+docker compose exec -d laravel.test php artisan reverb:start
+
+echo -e "${YELLOW}🖼  Enlazando almacenamiento público...${NC}"
+rm -rf backend/public/storage
+ln -sfn ../storage/app/public backend/public/storage
+
+# ── 7. (Opcional) Seeders ─────────────────────────────────────────────────────
+run_seed="${RUN_SEED:-}"
+if [ -z "$run_seed" ]; then
+  if [ -t 0 ]; then
+    read -r -p "¿Ejecutar seeders con datos de prueba? (s/N): " run_seed
+  else
+    run_seed="N"
+  fi
+fi
+
+if [ "$run_seed" = "s" ] || [ "$run_seed" = "S" ]; then
+  docker compose exec -T laravel.test php artisan db:seed --force
+  echo -e "${GREEN}✓ Seeders ejecutados${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
+echo -e "${GREEN}  ✅ Proyecto levantado. Servicios:${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
+echo -e "  🌐 Frontend   → ${YELLOW}http://localhost:5173${NC}"
+echo -e "  ⚙  Backend    → ${YELLOW}http://localhost${NC}"
+echo -e "  🔐 Auth       → ${YELLOW}Laravel Sanctum${NC} (registro / login en el front)"
+echo -e ""
+echo -e "  📋 Logs:       ${YELLOW}docker compose logs -f${NC}"
+echo -e "  🛑 Parar:      ${YELLOW}docker compose down${NC}"
+echo -e "  🐚 Artisan:    ${YELLOW}docker compose exec laravel.test php artisan [comando]${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════${NC}"

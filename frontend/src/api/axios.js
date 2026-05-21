@@ -1,0 +1,42 @@
+import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+const api = axios.create({
+  baseURL,
+})
+
+export function setAuthToken(token) {
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`
+  } else {
+    delete api.defaults.headers.common.Authorization
+  }
+}
+
+export function clearAuthToken() {
+  delete api.defaults.headers.common.Authorization
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+
+    // Si recibimos 401 (No autorizado) y no es una ruta de auth
+    if (status === 401 && !url.includes('/login') && !url.includes('/register')) {
+      const authStore = useAuthStore()
+      authStore.clearSession()
+
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login')
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
+
+export default api

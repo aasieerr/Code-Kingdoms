@@ -1,0 +1,27 @@
+import api from './axios'
+import { fetchInventoryData } from './inventario'
+import { requireActiveCharacterId } from './requireActiveCharacter'
+
+export async function purchaseItem(id_item, quantity = 1) {
+  const cid = requireActiveCharacterId()
+
+  const { data } = await api.post('/shop/purchase', {
+    id_character: cid,
+    id_item,
+    quantity
+  })
+  await fetchInventoryData(true)
+  return data
+}
+
+export async function sellItem(id_character_item, quantity = 1) {
+  const cid = requireActiveCharacterId()
+
+  const { data } = await api.post('/shop/sell', {
+    id_character: cid,
+    id_character_item,
+    quantity
+  })
+  await fetchInventoryData(true)
+  return data
+}
